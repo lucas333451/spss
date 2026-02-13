@@ -108,8 +108,9 @@ python scripts/pipeline.py \
 ---
 
 ## 9. Colab 部署
-- 详细说明：`docs/COLAB_GUIDE.md`
-- 现成 Notebook：`notebooks/spss_colab.ipynb`
+- 超详细零基础指南：`docs/COLAB_GUIDE.md`
+- 现成 Notebook：`notebooks/spss_colab.ipynb`（逐格运行，只改 `EXCEL_FILE`）
+- 建议先看指南第 3 节“按顺序运行代码块”，再开始
 
 ---
 

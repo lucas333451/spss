@@ -107,8 +107,8 @@ python scripts/pipeline.py \
 ---
 
 ## 9. Colab Usage / Colab 使用
-- Full guide: `docs/COLAB_GUIDE.md`
-- Ready notebook: `notebooks/spss_colab.ipynb`
+- Full step-by-step guide (beginner-friendly): `docs/COLAB_GUIDE.md`
+- Ready notebook: `notebooks/spss_colab.ipynb` (run cells top-down, only change `EXCEL_FILE`)
 
 ---
 

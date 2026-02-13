@@ -1,168 +1,199 @@
-# Colab 部署与运行指南（spss 项目）
+# Colab 超详细上手指南（零基础版）
 
-本指南用于在 **Google Colab** 上完整跑通本项目：
-- 宽表 Excel → long-format
-- QC 检查
-- LMM 结果表
-- 研究问题扩展分析（角度1+角度2）
-
-> 适合：本地环境缺 pip/venv、想快速复现结果、想分享给同学一键运行。
+> 目标：你不用配置本地 Python，直接在 Google Colab 跑完整项目。  
+> 结果：得到 `results/` 文件夹（包含 long 数据、QC、LMM 表格、图）。
 
 ---
 
-## 1) 打开 Colab 并准备运行环境
+## 目录
+- [0. 你将得到什么](#0-你将得到什么)
+- [1. 打开 Colab](#1-打开-colab)
+- [2. 新建 Notebook](#2-新建-notebook)
+- [3. 复制并运行代码块（按顺序）](#3-复制并运行代码块按顺序)
+- [4. 如何判断“运行成功”](#4-如何判断运行成功)
+- [5. 下载结果到本地](#5-下载结果到本地)
+- [6. 保存到 Google Drive（防止会话断开丢失）](#6-保存到-google-drive防止会话断开丢失)
+- [7. 常见报错与解决](#7-常见报错与解决)
+- [8. 给同学复现的最简说明](#8-给同学复现的最简说明)
 
-新建 Notebook 后，先执行：
+---
 
-```python
-!python --version
-!pip -q install --upgrade pip
-```
+## 0. 你将得到什么
+运行完成后会生成：
+- `results/long/long_format.csv`（宽转长后的主数据）
+- `results/long/qc_issues.csv`（质控失败明细）
+- `results/model/paper_tables.md`（论文可贴表）
+- `results/research/table_main_interactions_all_dv.csv`（主效应/交互汇总）
+- 多张图（交互图、热力图、Round 差值图）
 
-克隆仓库并安装依赖：
+---
+
+## 1. 打开 Colab
+1. 浏览器进入：<https://colab.research.google.com>
+2. 使用你的 Google 账号登录
+
+---
+
+## 2. 新建 Notebook
+1. 点击右下角或左上角 **New Notebook / 新建笔记本**
+2. 打开后，你会看到一个代码单元（cell）
+
+> 提示：Colab 每个代码块都要点左侧“播放按钮（▶）”执行。
+
+---
+
+## 3. 复制并运行代码块（按顺序）
+
+## 3.1 环境准备：克隆仓库 + 安装依赖
+把下面整段粘贴到第一个 cell，执行：
 
 ```python
 !git clone https://github.com/wannaqueen66-create/spss.git
 %cd spss
+!pip -q install --upgrade pip
 !pip -q install -r requirements.txt
+print("✅ 环境准备完成")
 ```
+
+执行时间：约 1~3 分钟。
 
 ---
 
-## 2) 上传 Excel 数据
-
-方式A（推荐新手）：直接上传文件到当前 Colab 会话。
+## 3.2 上传 Excel 文件
+新建第二个 cell，执行：
 
 ```python
 from google.colab import files
-uploaded = files.upload()  # 选择你的 Excel 文件
+uploaded = files.upload()  # 点按钮选择你的Excel
+print("已上传文件：", list(uploaded.keys()))
 ```
 
-上传后，文件会出现在当前目录（通常是 `/content/spss/`）。
+执行后会弹出文件选择框，选你的 Excel（例如：`VR+EEG实验问卷-原始数据-2026-02-04.xlsx`）。
 
-查看文件名：
+---
+
+## 3.3 指定文件名（只改这一行）
+新建第三个 cell，执行：
 
 ```python
+EXCEL_FILE = "VR+EEG实验问卷-原始数据-2026-02-04.xlsx"  # 改成你实际上传后的文件名
+
 import os
-print(os.listdir('.'))
+assert os.path.exists(EXCEL_FILE), f"❌ 找不到文件: {EXCEL_FILE}"
+print("✅ 当前使用文件:", EXCEL_FILE)
 ```
 
-假设上传后的文件名为：
-`VR+EEG实验问卷-原始数据-2026-02-04.xlsx`
+如果断言报错，说明文件名不一致（常见于多空格或括号差异）。
 
 ---
 
-## 3) 一键全流程运行（推荐）
+## 3.4 一键跑完整流程
+新建第四个 cell，执行：
 
 ```python
-!python scripts/pipeline.py \
-  --excel "VR+EEG实验问卷-原始数据-2026-02-04.xlsx" \
-  --out-root results
+!python scripts/pipeline.py --excel "$EXCEL_FILE" --out-root results
 ```
 
-运行成功后，你会得到：
-- `results/long/`（long格式+QC）
-- `results/model/`（基础论文结果表）
-- `results/research/`（角度1+角度2扩展分析）
+这一步会自动做三件事：
+1. 宽表 -> long + QC
+2. 基础论文表导出
+3. 扩展研究问题分析（角度1+角度2）
 
 ---
 
-## 4) 分步运行（便于排错）
-
-### Step 1: 宽转长 + QC
-```python
-!python scripts/transform_wide_to_long.py \
-  --excel "VR+EEG实验问卷-原始数据-2026-02-04.xlsx" \
-  --out-dir results/long
-```
-
-### Step 2: 基础论文结果表
-```python
-!python scripts/run_analysis.py \
-  --long-csv results/long/long_format.csv \
-  --out-dir results/model
-```
-
-### Step 3: 研究问题扩展分析
-```python
-!python scripts/analyze_research_questions.py \
-  --long-csv results/long/long_format.csv \
-  --out-dir results/research
-```
-
----
-
-## 5) 查看关键输出
+## 3.5 列出结果文件（确认产物）
+新建第五个 cell，执行：
 
 ```python
 !find results -maxdepth 3 -type f | sort
 ```
 
-重点文件：
-- `results/long/qc_summary.json`
-- `results/long/qc_issues.csv`
-- `results/model/paper_tables.md`
-- `results/model/table_fixed_effects.csv`
-- `results/research/table_main_interactions_all_dv.csv`
-- `results/research/round_consistency_by_group.csv`
+如果你看到 `results/long/`、`results/model/`、`results/research/` 下多文件，说明流程成功。
 
 ---
 
-## 6) 下载结果到本地
+## 4. 如何判断“运行成功”
+至少满足以下 3 条：
+1. `results/long/long_format.csv` 存在
+2. `results/model/paper_tables.md` 存在
+3. `results/research/table_main_interactions_all_dv.csv` 存在
 
-### 下载单个文件
+可用下面命令快速检查：
+
+```python
+!test -f results/long/long_format.csv && echo "✅ long_format.csv ok"
+!test -f results/model/paper_tables.md && echo "✅ paper_tables.md ok"
+!test -f results/research/table_main_interactions_all_dv.csv && echo "✅ interactions table ok"
+```
+
+---
+
+## 5. 下载结果到本地
+
+## 5.1 下载单个文件
 ```python
 from google.colab import files
 files.download('results/model/paper_tables.md')
 ```
 
-### 打包全部 results 再下载
+## 5.2 打包下载全部结果（推荐）
 ```python
-!zip -r results.zip results
+!zip -r results.zip results > /dev/null
 from google.colab import files
 files.download('results.zip')
 ```
 
 ---
 
-## 7) 可选：挂载 Google Drive 持久化
-
-Colab 会话断开后本地文件会丢失，建议挂载 Drive：
+## 6. 保存到 Google Drive（防止会话断开丢失）
 
 ```python
 from google.colab import drive
 drive.mount('/content/drive')
-```
 
-把结果复制到 Drive：
-
-```python
 !mkdir -p "/content/drive/MyDrive/spss_results"
 !cp -r results "/content/drive/MyDrive/spss_results/"
+print("✅ 已保存到 Drive: MyDrive/spss_results")
 ```
+
+> 注意：Colab 会话断开后，`/content` 下文件可能丢失；重要结果务必下载或复制到 Drive。
 
 ---
 
-## 8) 常见问题
+## 7. 常见报错与解决
 
-### Q1. 报错：找不到 Excel 文件
-检查文件是否上传成功：
+## 报错 A：`File not found` / `找不到 Excel`
+原因：`EXCEL_FILE` 与实际上传文件名不一致。  
+处理：先运行
 ```python
-!ls -lah
+import os
+print(os.listdir('.'))
 ```
-并确认 `--excel` 路径与文件名完全一致。
+复制真实文件名替换 `EXCEL_FILE`。
 
-### Q2. 报错：`No module named ...`
-重新安装依赖：
+## 报错 B：`No module named xxx`
+原因：依赖没装完整。  
+处理：重新执行安装单元：
 ```python
 !pip -q install -r requirements.txt
 ```
 
-### Q3. QC 没通过怎么办？
-先看：
-- `results/long/qc_issues.csv`（具体哪个被试、哪项失败）
-- `results/long/missing_rate.csv`（缺失率）
+## 报错 C：QC 失败
+处理顺序：
+1. 看 `results/long/qc_issues.csv`（具体哪位被试、哪条规则）
+2. 看 `results/long/missing_rate.csv`（是否缺失过高）
+3. 确认原始问卷导出是否有漏填或手工改列名
 
-### Q4. 如何给同学复现？
-把本文件 + Notebook 链接发给同学，让其只改 `--excel` 文件名即可。
+## 报错 D：运行很慢或中断
+处理：
+- 菜单 `Runtime -> Change runtime type` 选择更稳定环境（CPU 即可）
+- 断开后重连再执行（建议直接用 `notebooks/spss_colab.ipynb`）
+
+---
+
+## 8. 给同学复现的最简说明
+把这三句发给同学就够：
+1. 打开 `notebooks/spss_colab.ipynb`
+2. 逐格运行，只改 `EXCEL_FILE`
+3. 跑完下载 `results.zip`
 
