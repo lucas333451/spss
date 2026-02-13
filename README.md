@@ -60,3 +60,18 @@ python scripts/run_analysis.py \
 - `table_main_interactions.csv`
 - `paper_tables.md`（可直接粘贴文稿的 Markdown 表格）
 - `table_fixed_effects.csv` 与 `table_main_interactions.csv` 新增 `APA_Term` 列（自动人类可读重命名）
+
+
+## 5) 角度1+角度2一键分析（WWR×复杂度×频率 + 重复收敛）
+```bash
+python scripts/analyze_research_questions.py \
+  --long-csv results/long/long_format.csv \
+  --out-dir results/research
+```
+
+输出：
+- `table_fixed_effects_all_dv.csv`（S1-S5/Afford4/Afford5 各DV固定效应表，含 APA_Term）
+- `table_main_interactions_all_dv.csv`（主效应/交互项汇总）
+- `round_consistency_by_subject.csv`（每人 Round1~2 一致性）
+- `round_consistency_by_group.csv`（按频率组汇总）
+- 图：热力图、交互折线图、Round差值箱线图
