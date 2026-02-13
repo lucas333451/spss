@@ -162,3 +162,16 @@ pip install -r requirements.txt
 2. 再跑 `run_analysis.py`，拿到可贴论文的表
 3. 最后跑 `analyze_research_questions.py`，补“重复收敛/经验塑形”亮点
 
+
+## 10. Colab 部署（免本地环境）
+
+如果你想直接在云端跑，见：
+- `docs/COLAB_GUIDE.md`
+
+最短命令（在 Colab 中）：
+```bash
+!git clone https://github.com/wannaqueen66-create/spss.git
+%cd spss
+!pip -q install -r requirements.txt
+!python scripts/pipeline.py --excel "你的Excel文件名.xlsx" --out-root results
+```
