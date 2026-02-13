@@ -80,6 +80,37 @@ def _classify_effect(term: str) -> tuple[str, str]:
     return "Other", term
 
 
+
+
+def _humanize_term(term: str) -> str:
+    t = str(term)
+    mapping = {
+        "Intercept": "Intercept",
+        "C(WWR)[T.15]": "WWR: 15 (vs reference)",
+        "C(WWR)[T.45]": "WWR: 45 (vs reference)",
+        "C(WWR)[T.75]": "WWR: 75 (vs reference)",
+        "C(Complexity)[T.1]": "Complexity: High/C1 (vs Low/C0)",
+        "C(Complexity)[T.0]": "Complexity: Low/C0 (vs High/C1)",
+        "C(Block)[T.2]": "Block 2 (vs Block 1)",
+    }
+    if t in mapping:
+        return mapping[t]
+
+    # SportFreq / Position / Block generic categorical terms
+    t = t.replace('C(SportFreq)[T.', 'Sport frequency: level ')
+    t = t.replace('C(Position)[T.', 'Position: ')
+    t = t.replace('C(Block)[T.', 'Block: ')
+    t = t.replace('C(WWR)[T.', 'WWR: ')
+    t = t.replace('C(Complexity)[T.', 'Complexity: ')
+    t = t.replace(']', ' (vs reference)')
+
+    # interactions
+    t = t.replace(':', ' × ')
+    t = t.replace('Complexity: 1 (vs reference)', 'Complexity: High/C1 (vs Low/C0)')
+    t = t.replace('Complexity: 0 (vs reference)', 'Complexity: Low/C0 (vs High/C1)')
+    return t
+
+
 def _build_paper_tables(model_df: pd.DataFrame, coef_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     # Table A: descriptive stats by condition
     desc = (
@@ -91,13 +122,15 @@ def _build_paper_tables(model_df: pd.DataFrame, coef_df: pd.DataFrame) -> tuple[
     # Table B: fixed effect coefficients (publication-friendly)
     fixed = coef_df.copy()
     fixed[["EffectType", "Effect"]] = fixed["Term"].apply(lambda t: pd.Series(_classify_effect(str(t))))
-    fixed = fixed[["EffectType", "Effect", "Coef", "SE", "z", "p", "Sig", "CI95_low", "CI95_high"]]
+    fixed["APA_Term"] = fixed["Effect"].apply(_humanize_term)
+    fixed = fixed[["EffectType", "Effect", "APA_Term", "Coef", "SE", "z", "p", "Sig", "CI95_low", "CI95_high"]]
     fixed = fixed.sort_values(["EffectType", "Effect"]).reset_index(drop=True)
 
     # Table C: compact inferential summary (main/interactions only)
     infer = fixed[fixed["EffectType"].isin(["Main Effect", "Interaction (2-way)", "Interaction (3-way)"])].copy()
     infer = infer.rename(columns={"Effect": "Term"})
-    infer = infer[["EffectType", "Term", "Coef", "SE", "z", "p", "Sig", "CI95_low", "CI95_high"]]
+    infer["APA_Term"] = infer["Term"].apply(_humanize_term)
+    infer = infer[["EffectType", "Term", "APA_Term", "Coef", "SE", "z", "p", "Sig", "CI95_low", "CI95_high"]]
 
     return desc, fixed, infer
 

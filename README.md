@@ -59,3 +59,4 @@ python scripts/run_analysis.py \
 - `table_fixed_effects.csv`
 - `table_main_interactions.csv`
 - `paper_tables.md`（可直接粘贴文稿的 Markdown 表格）
+- `table_fixed_effects.csv` 与 `table_main_interactions.csv` 新增 `APA_Term` 列（自动人类可读重命名）
