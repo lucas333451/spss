@@ -1,178 +1,118 @@
-# spss（问卷宽表 -> Long格式 -> LMM论文结果）
+# spss — Questionnaire Wide-to-Long + LMM Pipeline / 问卷宽表转长表与LMM分析流程
 
-这个项目用 **Python 开源方案**替代 SPSS，专门服务你的 VR+EEG 问卷流程：
-- Excel 宽表（每位被试一行）
-- 自动转换为 long-format（每位被试 12 行）
-- 自动做 QC
-- 自动导出论文可用表格与图
+[中文纯文档 / Chinese-only guide](./README_zh.md)
 
----
-
-## 1. 适用数据（已按你的问卷结构适配）
-
-- Block1：Q2~Q7（每个 Q 含 S1~S5）
-- Block2：Q9~Q14（每个 Q 含 S1~S5）
-- 顺序变量：`Q1.8_场景顺序编号`（Order=1/2）
-- 频率变量：`Q1.5_近 6 个月平均运动频率：`
-- C1汇总题：
-  - Block1: Q8.1~Q8.3
-  - Block2: Q15.1~Q15.3
-
-映射 `Order × Block × Position -> (WWR, Condition)` 已硬编码到脚本中。
+## Table of Contents / 目录
+- [1. Project Overview / 项目概述](#1-project-overview--项目概述)
+- [2. Repository Structure / 仓库结构](#2-repository-structure--仓库结构)
+- [3. Installation / 安装](#3-installation--安装)
+- [4. Quick Start / 快速开始](#4-quick-start--快速开始)
+- [5. One-Click Pipeline / 一键全流程](#5-one-click-pipeline--一键全流程)
+- [6. Output Files / 输出文件](#6-output-files--输出文件)
+- [7. Data Schema (Long Format) / Long格式字段](#7-data-schema-long-format--long格式字段)
+- [8. QC Rules / 质控规则](#8-qc-rules--质控规则)
+- [9. Colab Usage / Colab 使用](#9-colab-usage--colab-使用)
+- [10. FAQ / 常见问题](#10-faq--常见问题)
 
 ---
 
-## 2. 目录结构（新手先看）
-
-- `scripts/transform_wide_to_long.py`：核心转换 + QC
-- `scripts/run_analysis.py`：基础 LMM + 论文结果表导出
-- `scripts/analyze_research_questions.py`：扩展分析（角度1/角度2）
-- `scripts/pipeline.py`：一键全流程
-- `docs/PROJECT_OVERVIEW.md`：项目总览
-- `requirements.txt`：依赖
+## 1. Project Overview / 项目概述
+**EN:** This project replaces SPSS with a Python open-source pipeline for your VR+EEG questionnaire workflow: wide Excel → long-format dataset → QC → LMM tables/figures for manuscript use.  
+**中文：** 本项目用 Python 开源流程替代 SPSS，面向你的 VR+EEG 问卷：宽表 Excel → long-format → 质控(QC) → 论文可用统计表和图。
 
 ---
 
-## 3. 安装
+## 2. Repository Structure / 仓库结构
+- `scripts/transform_wide_to_long.py` — wide → long + QC
+- `scripts/run_analysis.py` — core LMM + paper-ready tables
+- `scripts/analyze_research_questions.py` — angle-1/angle-2 extended analyses
+- `scripts/pipeline.py` — one-click end-to-end runner
+- `docs/PROJECT_OVERVIEW.md` — concise orientation
+- `docs/COLAB_GUIDE.md` — Colab deployment guide
+- `notebooks/spss_colab.ipynb` — ready-to-run Colab notebook
 
-### 3.1 推荐（有 venv）
+---
+
+## 3. Installation / 安装
 ```bash
-python -m venv .venv
-source .venv/bin/activate
 pip install -r requirements.txt
 ```
-
-### 3.2 如果系统没有 venv/pip（Ubuntu/Debian）
+If your system misses `pip/venv` (Ubuntu/Debian):
 ```bash
 sudo apt update
 sudo apt install -y python3-pip python3-venv
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
 ```
 
 ---
 
-## 4. 最快上手（一步一步）
-
-### Step 1: 宽表转长表 + QC
+## 4. Quick Start / 快速开始
+### Step 1: Wide to Long + QC
 ```bash
 python scripts/transform_wide_to_long.py \
-  --excel "/home/wannaqueen66/VR+EEG实验问卷-原始数据-2026-02-04.xlsx" \
+  --excel "/path/to/your.xlsx" \
   --out-dir results/long
 ```
 
-输出重点：
-- `results/long/long_format.csv`
-- `results/long/qc_issues.csv`
-- `results/long/qc_summary.json`
-- `results/long/missing_rate.csv`
-
-### Step 2: 出论文基础结果表
+### Step 2: Core paper tables
 ```bash
 python scripts/run_analysis.py \
   --long-csv results/long/long_format.csv \
   --out-dir results/model
 ```
 
-输出重点：
-- `table_descriptives.csv`
-- `table_fixed_effects.csv`
-- `table_main_interactions.csv`
-- `paper_tables.md`（可直接贴文稿）
-- `figures/wwr_complexity_afford5.png`
-
-### Step 3: 跑“角度1+角度2”扩展分析
+### Step 3: Extended research analysis
 ```bash
 python scripts/analyze_research_questions.py \
   --long-csv results/long/long_format.csv \
   --out-dir results/research
 ```
 
-输出重点：
-- `table_fixed_effects_all_dv.csv`
-- `table_main_interactions_all_dv.csv`
-- `round_consistency_by_subject.csv`
-- `round_consistency_by_group.csv`
-- `figures/heatmap_afford5_*.png`
-- `figures/interaction_afford5_by_freqgroup.png`
-- `figures/round_diff_afford5_by_freqgroup.png`
-
 ---
 
-## 5. 一键全流程（推荐）
-
+## 5. One-Click Pipeline / 一键全流程
 ```bash
 python scripts/pipeline.py \
-  --excel "/home/wannaqueen66/VR+EEG实验问卷-原始数据-2026-02-04.xlsx" \
+  --excel "/path/to/your.xlsx" \
   --out-root results
 ```
 
-会自动按顺序执行：
-1) 转长表 2) 基础论文表 3) 扩展研究问题分析
+---
+
+## 6. Output Files / 输出文件
+**Core outputs / 核心输出：**
+- `results/long/long_format.csv`
+- `results/long/qc_issues.csv`
+- `results/long/qc_summary.json`
+- `results/model/table_descriptives.csv`
+- `results/model/table_fixed_effects.csv`
+- `results/model/table_main_interactions.csv`
+- `results/model/paper_tables.md`
+- `results/research/table_fixed_effects_all_dv.csv`
+- `results/research/round_consistency_by_group.csv`
 
 ---
 
-## 6. Long-format 字段说明
-
-每行是“被试 × Block × Position”一条记录，核心字段：
-- `SubjectID, Order, Block, Position`
-- `WWR, Condition(C0/C1), Complexity(0/1), SceneID`
-- `SportFreq`
-- `S1~S5`
-- `Afford4`（S1~S4均值）
-- `Afford5`（S1~S5均值）
-- `Pleasure`（S5）
-- `B1~B3, Bmean`（仅 C1 行有值，C0 必须 NA）
+## 7. Data Schema (Long Format) / Long格式字段
+`SubjectID, Order, Block, Position, WWR, Condition, Complexity, SportFreq, S1~S5, Afford4, Afford5, Pleasure, B1~B3, Bmean, SceneID`
 
 ---
 
-## 7. QC 通过标准
-
-必须同时满足：
-- 每位被试 12 行
-- 每个 Block 6 行
-- 每个 Block 内 C1=3, C0=3
-- 每个 Block 内 WWR: 15×2, 45×2, 75×2
-- C0 行 B1~B3 全为空；C1 行 B1~B3 非空且同一 Block 内一致
+## 8. QC Rules / 质控规则
+- 12 rows per subject / 每被试12行
+- 6 rows per block / 每Block 6行
+- C1=3 and C0=3 per block / 每Block内C1与C0各3行
+- WWR distribution: 15×2, 45×2, 75×2 per block
+- B1~B3 only non-NA in C1 rows / B题仅C1行可非空
 
 ---
 
-## 8. 常见问题
-
-### Q1: 报错 `No module named pandas`
-没装依赖，先执行：
-```bash
-pip install -r requirements.txt
-```
-
-### Q2: QC 出现异常被试怎么办？
-先看：
-- `qc_issues.csv`（哪个被试、哪条规则没过）
-- `missing_rate.csv`（是否缺失过高）
-
-### Q3: 表里 `C(WWR)[T.45]` 看不懂
-`run_analysis.py` 已加 `APA_Term` 自动重命名，可直接看人类可读术语。
+## 9. Colab Usage / Colab 使用
+- Full guide: `docs/COLAB_GUIDE.md`
+- Ready notebook: `notebooks/spss_colab.ipynb`
 
 ---
 
-## 9. 给新同学的建议流程（30分钟内跑通）
-
-1. 先跑 `transform_wide_to_long.py`，确认 QC 全过
-2. 再跑 `run_analysis.py`，拿到可贴论文的表
-3. 最后跑 `analyze_research_questions.py`，补“重复收敛/经验塑形”亮点
-
-
-## 10. Colab 部署（免本地环境）
-
-如果你想直接在云端跑，见：
-- `docs/COLAB_GUIDE.md`
-- 现成 Colab Notebook：`notebooks/spss_colab.ipynb`（开箱即跑，只改 Excel 文件名）
-
-最短命令（在 Colab 中）：
-```bash
-!git clone https://github.com/wannaqueen66-create/spss.git
-%cd spss
-!pip -q install -r requirements.txt
-!python scripts/pipeline.py --excel "你的Excel文件名.xlsx" --out-root results
-```
+## 10. FAQ / 常见问题
+1) `No module named pandas` → run `pip install -r requirements.txt`  
+2) QC failed → check `results/long/qc_issues.csv` and `missing_rate.csv`  
+3) Hard-to-read terms like `C(WWR)[T.45]` → use `APA_Term` column in exported tables
