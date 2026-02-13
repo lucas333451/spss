@@ -167,6 +167,7 @@ pip install -r requirements.txt
 
 如果你想直接在云端跑，见：
 - `docs/COLAB_GUIDE.md`
+- 现成 Colab Notebook：`notebooks/spss_colab.ipynb`（开箱即跑，只改 Excel 文件名）
 
 最短命令（在 Colab 中）：
 ```bash
