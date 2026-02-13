@@ -1,23 +1,18 @@
-# Copy this file to config/config.yaml and edit column names to match your coded Excel.
-
 coded_excel: "/home/wannaqueen66/VR+EEG实验问卷-原始数据-2026-02-04.xlsx"
 sheet_name: 0
-attention_pass_value: 1
 
 columns:
-  subject: "被试编号"
-  wwr: "WWR"
-  complexity: "信息复杂度"
-  frequency: "运动频率"
-  round: "轮次"
+  subject: "姓名"
+  frequency: "Q1.5_近 6 个月平均运动频率："
+  scene_order_code: "Q1.8_场景顺序编号"
 
-  # Five immediate items (rename as needed)
-  instant_items:
-    - "Q1"
-    - "Q2"
-    - "Q3"
-    - "Q4"
-    - "Q5"
+# 场景题块（每块包含 S1~S5 五题）
+# Round1: Q2~Q7, Round2: Q9~Q14
+scene_blocks: [2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14]
 
-  # Optional: if no attention check column, set to null
-  attention_pass: "核查是否通过"
+# 需要你按实验编码补全（scene_index: 1..6）
+# 例如：
+# 1: {wwr: "low", complexity: "low"}
+# 2: {wwr: "mid", complexity: "low"}
+# ...
+scene_condition_map: {}

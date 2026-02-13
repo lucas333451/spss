@@ -1,48 +1,35 @@
-# spss (Python Replacement for Questionnaire Analysis)
+# spss
 
-用 Python + 开源库替代 SPSS，面向你这套 VR+EEG 问卷数据（N=32, 3×2 场景, 两轮重复）。
+Python 开源流程替代 SPSS（面向 VR+EEG 问卷）。
 
-## Features
-- Excel 问卷自动读取与字段映射
-- 质控筛选（核查题）
-- 量表得分与信度（Cronbach's alpha）
-- 线性混合效应模型（LMM，替代 SPSS 重复测量）
-- 自动导出结果表、模型摘要、交互图、Markdown 报告
+## 当前已适配你的列结构
+- 人口学与背景：`姓名`, `Q1.5_近 6 个月平均运动频率：`, `Q1.8_场景顺序编号`
+- 场景题块：`Q2~Q7` + `Q9~Q14`（每块 `S1~S5`）
+- 自动识别列名模式：`Qx.y_Sy.` 开头
 
-## Quick Start
+## 安装
 ```bash
-python -m venv .venv
-source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-1) 先检查列名：
-```bash
-python scripts/inspect_excel.py "/home/wannaqueen66/VR+EEG实验问卷-原始数据-2026-02-04.xlsx"
-```
-
-2) 复制配置并修改列名：
+## 运行
 ```bash
 cp config/config.example.yaml config/config.yaml
-# edit config/config.yaml
-```
-
-3) 运行主分析：
-```bash
 python scripts/run_analysis.py --config config/config.yaml --out results/run1
 ```
 
-## Output
-`results/run1/` 下会生成：
-- `data_scored.csv`
-- `descriptives.csv`
-- `cleaning_log.csv` / `cleaning_log.json`
+## 输出
+- `long_data.csv`（宽表转长表）
+- `reliability.csv`（S1~S5 信度 alpha）
+- `descriptives_by_scene.csv`
 - `lmm_summary.txt`
-- `figures/wwr_complexity_interaction.png`
-- `report.md`
+- `figures/interaction.png`
+- `report.json`
 
-## Notes
-- 当前模型默认：
-  `affordance_score ~ WWR * complexity * frequency + round + (1|subject)`
-- 如果字段名不同，改 `config/config.yaml` 即可。
+## 关键说明
+现在脚本已经可跑，但 **WWR×信息复杂度** 需要你补 `scene_condition_map`（scene_index 1~6 到条件标签映射）。
+补完后模型会自动切换为：
 
+`affordance_score ~ C(wwr) * C(complexity) * C(frequency) + C(round) + (1|subject)`
+
+未补映射时，会先用 `scene_index` 做占位分析。
