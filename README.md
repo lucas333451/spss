@@ -51,3 +51,11 @@ python scripts/run_analysis.py \
 默认模型：
 `Afford5 ~ C(WWR) * C(Complexity) * C(SportFreq) + C(Block) + C(Position) + (1|SubjectID)`
 
+
+
+## 4) 论文结果表一键导出
+`run_analysis.py` 会额外导出：
+- `table_descriptives.csv`
+- `table_fixed_effects.csv`
+- `table_main_interactions.csv`
+- `paper_tables.md`（可直接粘贴文稿的 Markdown 表格）
