@@ -66,8 +66,8 @@ def split_experience_group(v) -> str:
     x = to_num(v)
     if pd.isna(x):
         return "Unknown"
-    # Lucas规则：Q1.4 选1=高经验；选2/3/4=低经验
-    return "High" if int(x) == 1 else "Low"
+    # Lucas规则：Q1.4 前低后高（1=Low；2/3/4=High）
+    return "Low" if int(x) == 1 else "High"
 
 
 def split_sport_freq_group(v) -> str:

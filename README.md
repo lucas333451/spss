@@ -96,7 +96,7 @@ For traceability, the script writes:
 - `results/long/column_resolution.json` (detected mode + resolved column mapping)
 
 It also outputs grouped factors used in analysis:
-- `ExperienceGroup` from Q1.4: `1 -> High`, `2/3/4 -> Low`
+- `ExperienceGroup` from Q1.4: `1 -> Low`, `2/3/4 -> High`
 - `SportFreqGroup` from Q1.5: `4 -> High`, `1/2/3 -> Low`
 
 ---
