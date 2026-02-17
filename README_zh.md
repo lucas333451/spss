@@ -5,12 +5,13 @@
 - [2. 仓库结构](#2-仓库结构)
 - [3. 安装](#3-安装)
 - [4. 快速开始](#4-快速开始)
-- [5. 一键全流程](#5-一键全流程)
-- [6. 输出文件说明](#6-输出文件说明)
-- [7. Long格式字段](#7-long格式字段)
-- [8. 质控规则](#8-质控规则)
-- [9. Colab 部署](#9-colab-部署)
-- [10. 常见问题](#10-常见问题)
+- [5. Excel导出模式（文本版/编码版）](#5-excel导出模式文本版编码版)
+- [6. 一键全流程](#6-一键全流程)
+- [7. 输出文件说明](#7-输出文件说明)
+- [8. Long格式字段](#8-long格式字段)
+- [9. 质控规则](#9-质控规则)
+- [10. Colab 部署](#10-colab-部署)
+- [11. 常见问题](#11-常见问题)
 
 ---
 
@@ -70,7 +71,34 @@ python scripts/analyze_research_questions.py \
 
 ---
 
-## 5. 一键全流程
+## 5. Excel导出模式（文本版/编码版）
+`transform_wide_to_long.py` 现已支持两种问卷导出格式：
+- **文本版**：列名类似 `姓名`、`Q1.8_场景顺序编号`、`Q2.1_S1...`
+- **编码版**：列名类似 `name`、`Q1.8`、`Q2.1_1`
+
+默认自动识别：
+```bash
+python scripts/transform_wide_to_long.py \
+  --excel "/path/to/your.xlsx" \
+  --mode auto \
+  --out-dir results/long
+```
+
+也可手动指定：
+```bash
+# 强制按编码版解析
+python scripts/transform_wide_to_long.py --excel "/path/to/coded.xlsx" --mode coded --out-dir results/long
+
+# 强制按文本版解析
+python scripts/transform_wide_to_long.py --excel "/path/to/text.xlsx" --mode text --out-dir results/long
+```
+
+为便于追溯，脚本会额外输出：
+- `results/long/column_resolution.json`（包含识别模式与列映射结果）
+
+---
+
+## 6. 一键全流程
 ```bash
 python scripts/pipeline.py \
   --excel "/path/to/your.xlsx" \
@@ -79,7 +107,7 @@ python scripts/pipeline.py \
 
 ---
 
-## 6. 输出文件说明
+## 7. 输出文件说明
 - `results/long/long_format.csv`：长格式主数据
 - `results/long/qc_issues.csv`：QC问题明细
 - `results/long/qc_summary.json`：QC总览
@@ -92,12 +120,12 @@ python scripts/pipeline.py \
 
 ---
 
-## 7. Long格式字段
+## 8. Long格式字段
 `SubjectID, Order, Block, Position, WWR, Condition, Complexity, SportFreq, S1~S5, Afford4, Afford5, Pleasure, B1~B3, Bmean, SceneID`
 
 ---
 
-## 8. 质控规则
+## 9. 质控规则
 必须满足：
 - 每位被试 12 行
 - 每个 Block 6 行
@@ -107,14 +135,14 @@ python scripts/pipeline.py \
 
 ---
 
-## 9. Colab 部署
+## 10. Colab 部署
 - 超详细零基础指南：`docs/COLAB_GUIDE.md`
 - 现成 Notebook：`notebooks/spss_colab.ipynb`（逐格运行，只改 `EXCEL_FILE`）
 - 建议先看指南第 3 节“按顺序运行代码块”，再开始
 
 ---
 
-## 10. 常见问题
+## 11. 常见问题
 1）报错 `No module named pandas`：
 ```bash
 pip install -r requirements.txt
@@ -125,3 +153,6 @@ pip install -r requirements.txt
 
 3）模型项看不懂（如 `C(WWR)[T.45]`）：
 查看导出表中的 `APA_Term` 列（已自动重命名）。
+
+4）出现 `LinAlgError: Singular matrix`：
+脚本已内置从 `lbfgs` 自动回退到 `powell`，通常可继续完成拟合。

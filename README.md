@@ -7,12 +7,13 @@
 - [2. Repository Structure / 仓库结构](#2-repository-structure--仓库结构)
 - [3. Installation / 安装](#3-installation--安装)
 - [4. Quick Start / 快速开始](#4-quick-start--快速开始)
-- [5. One-Click Pipeline / 一键全流程](#5-one-click-pipeline--一键全流程)
-- [6. Output Files / 输出文件](#6-output-files--输出文件)
-- [7. Data Schema (Long Format) / Long格式字段](#7-data-schema-long-format--long格式字段)
-- [8. QC Rules / 质控规则](#8-qc-rules--质控规则)
-- [9. Colab Usage / Colab 使用](#9-colab-usage--colab-使用)
-- [10. FAQ / 常见问题](#10-faq--常见问题)
+- [5. Excel Export Modes (Text/Coded) / Excel导出模式（文本版/编码版）](#5-excel-export-modes-textcoded--excel导出模式文本版编码版)
+- [6. One-Click Pipeline / 一键全流程](#6-one-click-pipeline--一键全流程)
+- [7. Output Files / 输出文件](#7-output-files--输出文件)
+- [8. Data Schema (Long Format) / Long格式字段](#8-data-schema-long-format--long格式字段)
+- [9. QC Rules / 质控规则](#9-qc-rules--质控规则)
+- [10. Colab Usage / Colab 使用](#10-colab-usage--colab-使用)
+- [11. FAQ / 常见问题](#11-faq--常见问题)
 
 ---
 
@@ -69,7 +70,34 @@ python scripts/analyze_research_questions.py \
 
 ---
 
-## 5. One-Click Pipeline / 一键全流程
+## 5. Excel Export Modes (Text/Coded) / Excel导出模式（文本版/编码版）
+`transform_wide_to_long.py` now supports both export styles:
+- **text mode**: questionnaire text columns (e.g., `姓名`, `Q1.8_场景顺序编号`, `Q2.1_S1...`)
+- **coded mode**: coded columns (e.g., `name`, `Q1.8`, `Q2.1_1`)
+
+Default is auto-detection:
+```bash
+python scripts/transform_wide_to_long.py \
+  --excel "/path/to/your.xlsx" \
+  --mode auto \
+  --out-dir results/long
+```
+
+You can force mode if needed:
+```bash
+# force coded export parsing
+python scripts/transform_wide_to_long.py --excel "/path/to/coded.xlsx" --mode coded --out-dir results/long
+
+# force text export parsing
+python scripts/transform_wide_to_long.py --excel "/path/to/text.xlsx" --mode text --out-dir results/long
+```
+
+For traceability, the script writes:
+- `results/long/column_resolution.json` (detected mode + resolved column mapping)
+
+---
+
+## 6. One-Click Pipeline / 一键全流程
 ```bash
 python scripts/pipeline.py \
   --excel "/path/to/your.xlsx" \
@@ -78,7 +106,7 @@ python scripts/pipeline.py \
 
 ---
 
-## 6. Output Files / 输出文件
+## 7. Output Files / 输出文件
 **Core outputs / 核心输出：**
 - `results/long/long_format.csv`
 - `results/long/qc_issues.csv`
@@ -92,12 +120,12 @@ python scripts/pipeline.py \
 
 ---
 
-## 7. Data Schema (Long Format) / Long格式字段
+## 8. Data Schema (Long Format) / Long格式字段
 `SubjectID, Order, Block, Position, WWR, Condition, Complexity, SportFreq, S1~S5, Afford4, Afford5, Pleasure, B1~B3, Bmean, SceneID`
 
 ---
 
-## 8. QC Rules / 质控规则
+## 9. QC Rules / 质控规则
 - 12 rows per subject / 每被试12行
 - 6 rows per block / 每Block 6行
 - C1=3 and C0=3 per block / 每Block内C1与C0各3行
@@ -106,13 +134,14 @@ python scripts/pipeline.py \
 
 ---
 
-## 9. Colab Usage / Colab 使用
+## 10. Colab Usage / Colab 使用
 - Full step-by-step guide (beginner-friendly): `docs/COLAB_GUIDE.md`
 - Ready notebook: `notebooks/spss_colab.ipynb` (run cells top-down, only change `EXCEL_FILE`)
 
 ---
 
-## 10. FAQ / 常见问题
+## 11. FAQ / 常见问题
 1) `No module named pandas` → run `pip install -r requirements.txt`  
 2) QC failed → check `results/long/qc_issues.csv` and `missing_rate.csv`  
-3) Hard-to-read terms like `C(WWR)[T.45]` → use `APA_Term` column in exported tables
+3) Hard-to-read terms like `C(WWR)[T.45]` → use `APA_Term` column in exported tables  
+4) `LinAlgError: Singular matrix` in MixedLM → script now auto-falls back from `lbfgs` to `powell`.
