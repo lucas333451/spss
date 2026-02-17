@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 import argparse
 import json
+import re
 import numpy as np
 import pandas as pd
 
@@ -20,51 +21,120 @@ MAPPING = {
 }
 
 
-def q_prefix(block: int, pos: int) -> str:
-    if block == 1:
-        qn = 1 + pos  # Q2..Q7
-    else:
-        qn = 8 + pos  # Q9..Q14
-    return f"Q{qn}"
+def q_num(block: int, pos: int) -> int:
+    return (1 + pos) if block == 1 else (8 + pos)  # block1: Q2..Q7; block2: Q9..Q14
 
 
-def num(v):
-    return pd.to_numeric(v, errors="coerce")
+def detect_format(columns: list[str]) -> str:
+    cols = set(columns)
+    if {"name", "Q1.8", "Q2.1_1"}.issubset(cols):
+        return "coded"
+    return "text"
 
 
-def build_long(df: pd.DataFrame, subject_col: str, order_col: str, freq_col: str) -> pd.DataFrame:
+def to_num(v):
+    if pd.isna(v):
+        return np.nan
+    if isinstance(v, (int, float, np.number)):
+        return float(v)
+    s = str(v).strip()
+    if s == "":
+        return np.nan
+    # 兼容“6分”“7 分”等文本评分
+    m = re.search(r"-?\d+(?:\.\d+)?", s)
+    if m:
+        try:
+            return float(m.group(0))
+        except Exception:
+            return np.nan
+    return np.nan
+
+
+def find_first_col(columns: list[str], *, prefix: str | None = None, contains: str | None = None, fallback: str | None = None) -> str | None:
+    if fallback and fallback in columns:
+        return fallback
+    for c in columns:
+        if prefix is not None and not c.startswith(prefix):
+            continue
+        if contains is not None and contains not in c:
+            continue
+        return c
+    return None
+
+
+def build_column_index(df: pd.DataFrame, mode: str, subject_col: str | None, order_col: str | None, freq_col: str | None) -> dict:
+    cols = [str(c) for c in df.columns]
+    idx: dict[str, str] = {}
+
+    if mode == "coded":
+        idx["subject"] = subject_col or "name"
+        idx["order"] = order_col or "Q1.8"
+        idx["freq"] = freq_col or "Q1.5"
+
+        for block in [1, 2]:
+            for pos in [1, 2, 3, 4, 5, 6]:
+                qn = q_num(block, pos)
+                for i in [1, 2, 3, 4, 5]:
+                    key = f"S_{block}_{pos}_{i}"
+                    idx[key] = f"Q{qn}.{i}_1"
+
+            bq = 8 if block == 1 else 15
+            for i in [1, 2, 3]:
+                idx[f"B_{block}_{i}"] = f"Q{bq}.{i}_1"
+
+    else:  # text
+        idx["subject"] = subject_col or find_first_col(cols, fallback="姓名", prefix="姓名")
+        idx["order"] = order_col or find_first_col(cols, fallback="Q1.8_场景顺序编号", prefix="Q1.8")
+        idx["freq"] = freq_col or find_first_col(cols, fallback="Q1.5_近 6 个月平均运动频率：", prefix="Q1.5")
+
+        for block in [1, 2]:
+            for pos in [1, 2, 3, 4, 5, 6]:
+                qn = q_num(block, pos)
+                for i in [1, 2, 3, 4, 5]:
+                    key = f"S_{block}_{pos}_{i}"
+                    idx[key] = find_first_col(cols, prefix=f"Q{qn}.{i}_")
+
+            bq = 8 if block == 1 else 15
+            for i in [1, 2, 3]:
+                idx[f"B_{block}_{i}"] = find_first_col(cols, prefix=f"Q{bq}.{i}_")
+
+    required = ["subject", "order", "freq"]
+    missing_required = [k for k in required if (k not in idx or idx[k] is None or idx[k] not in cols)]
+    if missing_required:
+        raise ValueError(f"Missing required columns for mode={mode}: {missing_required}. Resolved={{{k: idx.get(k) for k in required}}}")
+
+    return idx
+
+
+def build_long(df: pd.DataFrame, col_idx: dict) -> pd.DataFrame:
     records = []
 
     for ridx, r in df.reset_index(drop=True).iterrows():
-        subject = r.get(subject_col)
+        subject = r.get(col_idx["subject"])
         if pd.isna(subject) or str(subject).strip() == "":
             subject = f"SUBJ_{ridx+1:03d}"
 
-        order = int(num(r.get(order_col))) if not pd.isna(num(r.get(order_col))) else np.nan
-        sport_freq = r.get(freq_col)
+        order_raw = to_num(r.get(col_idx["order"]))
+        order = int(order_raw) if not pd.isna(order_raw) else np.nan
+        sport_freq = to_num(r.get(col_idx["freq"]))
 
         for block in [1, 2]:
-            bvals = None
-            if block == 1:
-                bvals = [num(r.get("Q8.1_B1. 出现功能性器材要素的场景整体给我一种信息更为丰富的感觉。_")),
-                         num(r.get("Q8.2_B2.这些功能性器材要素有助于我理解这个空间如何进行乒乓球活动。_")),
-                         num(r.get("Q8.3_B3. 即便出现这些功能性器材要素，这个空间整体看起来仍然是有序的。_"))]
-            else:
-                bvals = [num(r.get("Q15.1_B1. 出现功能性器材要素的场景整体给我一种信息更为丰富的感觉。_")),
-                         num(r.get("Q15.2_B2.这些功能性器材要素有助于我理解这个空间如何进行乒乓球活动。_")),
-                         num(r.get("Q15.3_B3. 即便出现这些功能性器材要素，这个空间整体看起来仍然是有序的。_"))]
+            bvals = [
+                to_num(r.get(col_idx.get(f"B_{block}_1"))),
+                to_num(r.get(col_idx.get(f"B_{block}_2"))),
+                to_num(r.get(col_idx.get(f"B_{block}_3"))),
+            ]
 
             for pos in [1, 2, 3, 4, 5, 6]:
                 wwr, cond = (np.nan, None)
                 if order in MAPPING and block in MAPPING[order] and pos in MAPPING[order][block]:
                     wwr, cond = MAPPING[order][block][pos]
 
-                prefix = q_prefix(block, pos)
-                s1 = num(r.get(f"{prefix}.1_S1. 这个空间整体上适合打乒乓球。_"))
-                s2 = num(r.get(f"{prefix}.2_S2. 在这个空间里，我比较容易判断自己该站在哪里、怎么走动。_"))
-                s3 = num(r.get(f"{prefix}.3_S3. 看这个空间的时候，我能把注意力主要放在球桌区域。_"))
-                s4 = num(r.get(f"{prefix}.4_S4. 如果在现实中，我愿意使用这样的乒乓球空间。_"))
-                s5 = num(r.get(f"{prefix}.5_S5.愉悦度评价_"))
+                s1 = to_num(r.get(col_idx.get(f"S_{block}_{pos}_1")))
+                s2 = to_num(r.get(col_idx.get(f"S_{block}_{pos}_2")))
+                s3 = to_num(r.get(col_idx.get(f"S_{block}_{pos}_3")))
+                s4 = to_num(r.get(col_idx.get(f"S_{block}_{pos}_4")))
+                s5 = to_num(r.get(col_idx.get(f"S_{block}_{pos}_5")))
 
                 if cond == "C1":
                     b1, b2, b3 = bvals
@@ -100,21 +170,18 @@ def build_long(df: pd.DataFrame, subject_col: str, order_col: str, freq_col: str
                     "SceneID": f"WWR{int(wwr)}_{cond}" if not pd.isna(wwr) and cond else np.nan,
                 })
 
-    out = pd.DataFrame(records)
-    return out
+    return pd.DataFrame(records)
 
 
 def run_qc(long_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     issues = []
 
-    # Global checks
     n_subj = long_df["SubjectID"].nunique()
     expected_rows = n_subj * 12
     if len(long_df) != expected_rows:
         issues.append({"SubjectID": "__GLOBAL__", "check": "rows_total", "ok": False,
                        "detail": f"rows={len(long_df)} expected={expected_rows}"})
 
-    # Missing report
     miss = long_df.isna().mean().reset_index()
     miss.columns = ["column", "missing_rate"]
 
@@ -155,7 +222,6 @@ def run_qc(long_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
                 issues.append({"SubjectID": sid, "check": f"block{block}_c1_b_should_present", "ok": False,
                                "detail": f"rows={len(c1_missing_b)}"})
 
-            # C1 rows share same B values by design
             c1 = gb[gb["Condition"] == "C1"]
             if len(c1) == 3:
                 for bcol in ["B1", "B2", "B3"]:
@@ -181,12 +247,13 @@ def run_qc(long_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Convert wide questionnaire Excel to long-format for LMM")
+    ap = argparse.ArgumentParser(description="Convert questionnaire Excel (text/coded export) to long-format for LMM")
     ap.add_argument("--excel", type=Path, required=True)
     ap.add_argument("--sheet", default=0)
-    ap.add_argument("--subject-col", default="姓名")
-    ap.add_argument("--order-col", default="Q1.8_场景顺序编号")
-    ap.add_argument("--freq-col", default="Q1.5_近 6 个月平均运动频率：")
+    ap.add_argument("--mode", choices=["auto", "text", "coded"], default="auto")
+    ap.add_argument("--subject-col", default=None, help="Optional override of subject column")
+    ap.add_argument("--order-col", default=None, help="Optional override of order column")
+    ap.add_argument("--freq-col", default=None, help="Optional override of sport-frequency column")
     ap.add_argument("--out-dir", type=Path, default=Path("results/long"))
     args = ap.parse_args()
 
@@ -194,15 +261,19 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_excel(args.excel, sheet_name=args.sheet)
-    long_df = build_long(df, args.subject_col, args.order_col, args.freq_col)
+    mode = detect_format([str(c) for c in df.columns]) if args.mode == "auto" else args.mode
+    col_idx = build_column_index(df, mode, args.subject_col, args.order_col, args.freq_col)
+
+    long_df = build_long(df, col_idx)
     qc_df, miss_df, qc_summary = run_qc(long_df)
 
     long_df.to_csv(out / "long_format.csv", index=False, encoding="utf-8-sig")
     qc_df.to_csv(out / "qc_issues.csv", index=False, encoding="utf-8-sig")
     miss_df.to_csv(out / "missing_rate.csv", index=False, encoding="utf-8-sig")
     (out / "qc_summary.json").write_text(json.dumps(qc_summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    (out / "column_resolution.json").write_text(json.dumps({"mode": mode, "columns": col_idx}, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(json.dumps(qc_summary, ensure_ascii=False))
+    print(json.dumps({"mode": mode, **qc_summary}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

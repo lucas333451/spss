@@ -12,6 +12,7 @@ import pingouin as pg
 import seaborn as sns
 import matplotlib.pyplot as plt
 from statsmodels.formula.api import mixedlm
+from numpy.linalg import LinAlgError
 
 warnings.filterwarnings("ignore")
 
@@ -166,7 +167,13 @@ def main():
     model_df["Position"] = model_df["Position"].astype(str)
 
     formula = "Afford5 ~ C(WWR) * C(Complexity) * C(SportFreq) + C(Block) + C(Position)"
-    fit = mixedlm(formula=formula, data=model_df, groups=model_df["SubjectID"]).fit(reml=False, method="lbfgs", maxiter=1000)
+    fit_method = "lbfgs"
+    try:
+        fit = mixedlm(formula=formula, data=model_df, groups=model_df["SubjectID"]).fit(reml=False, method="lbfgs", maxiter=1000)
+    except LinAlgError:
+        # 某些真实数据下会在 Hessian 求逆处奇异，回退到更稳健优化器
+        fit_method = "powell"
+        fit = mixedlm(formula=formula, data=model_df, groups=model_df["SubjectID"]).fit(reml=False, method="powell", maxiter=2000)
 
     coef_df = _extract_coef_table(fit)
     desc_df, fixed_df, infer_df = _build_paper_tables(model_df, coef_df)
@@ -211,6 +218,7 @@ def main():
         "n_rows_model": int(len(model_df)),
         "cronbach_alpha_s1_s5": None if np.isnan(alpha) else float(alpha),
         "formula": formula,
+        "fit_method": fit_method,
         "outputs": {
             "table_descriptives_csv": str(out / "table_descriptives.csv"),
             "table_fixed_effects_csv": str(out / "table_fixed_effects.csv"),

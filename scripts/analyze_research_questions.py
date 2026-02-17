@@ -11,6 +11,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from statsmodels.formula.api import mixedlm
+from numpy.linalg import LinAlgError
 
 warnings.filterwarnings("ignore")
 
@@ -122,12 +123,18 @@ def main():
             continue
 
         formula = f"{dv} ~ C(Block)*C(WWR)*C(Complexity)*C(FreqGroup) + C(Position)"
-        fit = mixedlm(formula=formula, data=sub, groups=sub["SubjectID"]).fit(reml=False, method="lbfgs", maxiter=1000)
+        fit_method = "lbfgs"
+        try:
+            fit = mixedlm(formula=formula, data=sub, groups=sub["SubjectID"]).fit(reml=False, method="lbfgs", maxiter=1000)
+        except LinAlgError:
+            fit_method = "powell"
+            fit = mixedlm(formula=formula, data=sub, groups=sub["SubjectID"]).fit(reml=False, method="powell", maxiter=2000)
+
         coef = _coef_table(fit)
         coef.insert(0, "DV", dv)
         all_coefs.append(coef)
 
-        model_log.append({"DV": dv, "formula": formula, "n_rows": int(len(sub)), "n_subjects": int(sub["SubjectID"].nunique())})
+        model_log.append({"DV": dv, "formula": formula, "fit_method": fit_method, "n_rows": int(len(sub)), "n_subjects": int(sub["SubjectID"].nunique())})
 
         cdf = subject_consistency(sub, dv)
         cdf = cdf.merge(sub[["SubjectID", "FreqGroup"]].drop_duplicates(), on="SubjectID", how="left")
