@@ -65,6 +65,10 @@ def _coef_table(fit) -> pd.DataFrame:
 
 
 def build_freq_group(df: pd.DataFrame) -> pd.Series:
+    # 优先使用预先定义分组（Q1.5: 4=High; 1/2/3=Low）
+    if "SportFreqGroup" in df.columns:
+        return df["SportFreqGroup"].astype(str)
+
     x = pd.to_numeric(df["SportFreq"], errors="coerce")
     if x.notna().sum() >= max(10, len(df) * 0.5):
         med = x.median()

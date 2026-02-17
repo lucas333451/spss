@@ -96,6 +96,10 @@ python scripts/transform_wide_to_long.py --excel "/path/to/text.xlsx" --mode tex
 为便于追溯，脚本会额外输出：
 - `results/long/column_resolution.json`（包含识别模式与列映射结果）
 
+同时会新增用于分析的分组字段：
+- `ExperienceGroup`（来自Q1.4）：`1 -> High`，`2/3/4 -> Low`
+- `SportFreqGroup`（来自Q1.5）：`4 -> High`，`1/2/3 -> Low`
+
 ---
 
 ## 6. 一键全流程

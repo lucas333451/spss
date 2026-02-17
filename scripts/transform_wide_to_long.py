@@ -62,6 +62,22 @@ def find_first_col(columns: list[str], *, prefix: str | None = None, contains: s
     return None
 
 
+def split_experience_group(v) -> str:
+    x = to_num(v)
+    if pd.isna(x):
+        return "Unknown"
+    # Lucas规则：Q1.4 选1=高经验；选2/3/4=低经验
+    return "High" if int(x) == 1 else "Low"
+
+
+def split_sport_freq_group(v) -> str:
+    x = to_num(v)
+    if pd.isna(x):
+        return "Unknown"
+    # Lucas规则：Q1.5 选4=高频；选1/2/3=低频
+    return "High" if int(x) == 4 else "Low"
+
+
 def build_column_index(df: pd.DataFrame, mode: str, subject_col: str | None, order_col: str | None, freq_col: str | None) -> dict:
     cols = [str(c) for c in df.columns]
     idx: dict[str, str] = {}
@@ -70,6 +86,7 @@ def build_column_index(df: pd.DataFrame, mode: str, subject_col: str | None, ord
         idx["subject"] = subject_col or "name"
         idx["order"] = order_col or "Q1.8"
         idx["freq"] = freq_col or "Q1.5"
+        idx["exp"] = "Q1.4"
 
         for block in [1, 2]:
             for pos in [1, 2, 3, 4, 5, 6]:
@@ -86,6 +103,7 @@ def build_column_index(df: pd.DataFrame, mode: str, subject_col: str | None, ord
         idx["subject"] = subject_col or find_first_col(cols, fallback="姓名", prefix="姓名")
         idx["order"] = order_col or find_first_col(cols, fallback="Q1.8_场景顺序编号", prefix="Q1.8")
         idx["freq"] = freq_col or find_first_col(cols, fallback="Q1.5_近 6 个月平均运动频率：", prefix="Q1.5")
+        idx["exp"] = find_first_col(cols, fallback="Q1.4_乒乓球经验：", prefix="Q1.4")
 
         for block in [1, 2]:
             for pos in [1, 2, 3, 4, 5, 6]:
@@ -98,7 +116,7 @@ def build_column_index(df: pd.DataFrame, mode: str, subject_col: str | None, ord
             for i in [1, 2, 3]:
                 idx[f"B_{block}_{i}"] = find_first_col(cols, prefix=f"Q{bq}.{i}_")
 
-    required = ["subject", "order", "freq"]
+    required = ["subject", "order", "freq", "exp"]
     missing_required = [k for k in required if (k not in idx or idx[k] is None or idx[k] not in cols)]
     if missing_required:
         raise ValueError(f"Missing required columns for mode={mode}: {missing_required}. Resolved={{{k: idx.get(k) for k in required}}}")
@@ -117,6 +135,10 @@ def build_long(df: pd.DataFrame, col_idx: dict) -> pd.DataFrame:
         order_raw = to_num(r.get(col_idx["order"]))
         order = int(order_raw) if not pd.isna(order_raw) else np.nan
         sport_freq = to_num(r.get(col_idx["freq"]))
+        exp_raw = to_num(r.get(col_idx["exp"]))
+
+        exp_group = split_experience_group(exp_raw)
+        sport_freq_group = split_sport_freq_group(sport_freq)
 
         for block in [1, 2]:
             bvals = [
@@ -155,6 +177,9 @@ def build_long(df: pd.DataFrame, col_idx: dict) -> pd.DataFrame:
                     "Condition": cond,
                     "Complexity": complexity,
                     "SportFreq": sport_freq,
+                    "Experience": exp_raw,
+                    "ExperienceGroup": exp_group,
+                    "SportFreqGroup": sport_freq_group,
                     "S1": s1,
                     "S2": s2,
                     "S3": s3,

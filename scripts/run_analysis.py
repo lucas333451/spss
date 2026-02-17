@@ -158,15 +158,38 @@ def main():
 
     alpha = cronbach_alpha(df[["S1", "S2", "S3", "S4", "S5"]])
 
-    model_df = df.dropna(subset=["SubjectID", "Afford5", "WWR", "Complexity", "SportFreq"]).copy()
+    # 优先使用分组变量（若存在），否则回退到原始SportFreq
+    has_exp_group = "ExperienceGroup" in df.columns
+    has_freq_group = "SportFreqGroup" in df.columns
+
+    keep_cols = ["SubjectID", "Afford5", "WWR", "Complexity", "Block", "Position"]
+    if has_exp_group:
+        keep_cols.append("ExperienceGroup")
+    if has_freq_group:
+        keep_cols.append("SportFreqGroup")
+    else:
+        keep_cols.append("SportFreq")
+
+    model_df = df.dropna(subset=keep_cols).copy()
+
     # Ensure categorical for reporting clarity
     model_df["WWR"] = model_df["WWR"].astype(str)
     model_df["Complexity"] = model_df["Complexity"].astype(str)
-    model_df["SportFreq"] = model_df["SportFreq"].astype(str)
     model_df["Block"] = model_df["Block"].astype(str)
     model_df["Position"] = model_df["Position"].astype(str)
+    if has_exp_group:
+        model_df["ExperienceGroup"] = model_df["ExperienceGroup"].astype(str)
+    if has_freq_group:
+        model_df["SportFreqGroup"] = model_df["SportFreqGroup"].astype(str)
+    else:
+        model_df["SportFreq"] = model_df["SportFreq"].astype(str)
 
-    formula = "Afford5 ~ C(WWR) * C(Complexity) * C(SportFreq) + C(Block) + C(Position)"
+    if has_exp_group and has_freq_group:
+        formula = "Afford5 ~ C(WWR) * C(Complexity) * C(ExperienceGroup) * C(SportFreqGroup) + C(Block) + C(Position)"
+    elif has_freq_group:
+        formula = "Afford5 ~ C(WWR) * C(Complexity) * C(SportFreqGroup) + C(Block) + C(Position)"
+    else:
+        formula = "Afford5 ~ C(WWR) * C(Complexity) * C(SportFreq) + C(Block) + C(Position)"
     fit_method = "lbfgs"
     try:
         fit = mixedlm(formula=formula, data=model_df, groups=model_df["SubjectID"]).fit(reml=False, method="lbfgs", maxiter=1000)

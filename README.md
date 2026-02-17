@@ -95,6 +95,10 @@ python scripts/transform_wide_to_long.py --excel "/path/to/text.xlsx" --mode tex
 For traceability, the script writes:
 - `results/long/column_resolution.json` (detected mode + resolved column mapping)
 
+It also outputs grouped factors used in analysis:
+- `ExperienceGroup` from Q1.4: `1 -> High`, `2/3/4 -> Low`
+- `SportFreqGroup` from Q1.5: `4 -> High`, `1/2/3 -> Low`
+
 ---
 
 ## 6. One-Click Pipeline / 一键全流程
