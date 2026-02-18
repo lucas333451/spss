@@ -131,6 +131,7 @@ python scripts/pipeline.py \
 - `results/research/round_consistency_by_group.csv`：重复一致性分组结果
 - `results/research/item_variance_by_group.csv`：同类人群在每道题的方差/IQR/高方差标记
 - `results/research/item_variance_summary_by_group.csv`：同类人群方差汇总
+- `results/analysis_report_bundle.md`：自动汇总全部结果到一个 markdown（便于直接转发给 Sam 分析）
 
 ---
 

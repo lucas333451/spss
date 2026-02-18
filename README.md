@@ -131,6 +131,7 @@ python scripts/pipeline.py \
 - `results/research/round_consistency_by_group.csv`
 - `results/research/item_variance_by_group.csv` (within-group variance flags per item)
 - `results/research/item_variance_summary_by_group.csv`
+- `results/analysis_report_bundle.md` (one-file markdown bundle for easy sharing)
 
 ---
 

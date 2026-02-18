@@ -45,6 +45,13 @@ def main():
         "--out-dir", str(out_research),
     ])
 
+    # build one markdown bundle for easy sharing/review
+    run([
+        args.python, "scripts/build_report_md.py",
+        "--results-root", str(args.out_root),
+        "--out", str(args.out_root / "analysis_report_bundle.md"),
+    ])
+
     print("\nDone. Outputs:")
     print("-", out_long)
     print("-", out_model)
