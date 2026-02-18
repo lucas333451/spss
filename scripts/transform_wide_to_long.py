@@ -172,6 +172,8 @@ def build_long(df: pd.DataFrame, col_idx: dict) -> pd.DataFrame:
                     "SubjectID": subject,
                     "Order": order,
                     "Block": block,
+                    "Repetition": block,
+                    "RepetitionC": -0.5 if block == 1 else 0.5,
                     "Position": pos,
                     "WWR": wwr,
                     "Condition": cond,

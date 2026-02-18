@@ -12,8 +12,9 @@
 - [7. Output Files / 输出文件](#7-output-files--输出文件)
 - [8. Data Schema (Long Format) / Long格式字段](#8-data-schema-long-format--long格式字段)
 - [9. QC Rules / 质控规则](#9-qc-rules--质控规则)
-- [10. Colab Usage / Colab 使用](#10-colab-usage--colab-使用)
-- [11. FAQ / 常见问题](#11-faq--常见问题)
+- [10. LMM v2 Optimization Notes / LMM v2 优化说明](#10-lmm-v2-optimization-notes--lmm-v2-优化说明)
+- [11. Colab Usage / Colab 使用](#11-colab-usage--colab-使用)
+- [12. FAQ / 常见问题](#12-faq--常见问题)
 
 ---
 
@@ -119,6 +120,8 @@ python scripts/pipeline.py \
 - `results/model/table_descriptives.csv`
 - `results/model/table_fixed_effects.csv`
 - `results/model/table_main_interactions.csv`
+- `results/model/model_comparison.csv` (A/B/C with AIC/BIC)
+- `results/model/table_simple_effects_complexity_by_wwr.csv`
 - `results/model/paper_tables.md`
 - `results/research/table_fixed_effects_all_dv.csv`
 - `results/research/round_consistency_by_group.csv`
@@ -126,7 +129,7 @@ python scripts/pipeline.py \
 ---
 
 ## 8. Data Schema (Long Format) / Long格式字段
-`SubjectID, Order, Block, Position, WWR, Condition, Complexity, SportFreq, S1~S5, Afford4, Afford5, Pleasure, B1~B3, Bmean, SceneID`
+`SubjectID, Order, Block, Repetition, RepetitionC, Position, WWR, Condition, Complexity, SportFreq, ExperienceGroup, SportFreqGroup, S1~S5, Afford4, Afford5, Pleasure, B1~B3, Bmean, SceneID`
 
 ---
 
@@ -139,13 +142,29 @@ python scripts/pipeline.py \
 
 ---
 
-## 10. Colab Usage / Colab 使用
+## 10. LMM v2 Optimization Notes / LMM v2 优化说明
+Current recommended model (Afford5):
+
+```text
+Afford5 ~ C(Complexity) * C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)
+Random: (1 + Complexity | Subject), with automatic fallback to (1 | Subject) if singular/non-convergent.
+```
+
+What is newly added in v2:
+- Repetition is explicitly modeled (`Repetition=1/2`, generated in long-format)
+- Model comparison table (A/B/C) exported to `results/model/model_comparison.csv`
+- Simple effects of Complexity within each WWR exported to `results/model/table_simple_effects_complexity_by_wwr.csv`
+- `paper_tables.md` now includes model comparison + simple-effects section
+
+---
+
+## 11. Colab Usage / Colab 使用
 - Full step-by-step guide (beginner-friendly): `docs/COLAB_GUIDE.md`
 - Ready notebook: `notebooks/spss_colab.ipynb` (run cells top-down, only change `EXCEL_FILE`)
 
 ---
 
-## 11. FAQ / 常见问题
+## 12. FAQ / 常见问题
 1) `No module named pandas` → run `pip install -r requirements.txt`  
 2) QC failed → check `results/long/qc_issues.csv` and `missing_rate.csv`  
 3) Hard-to-read terms like `C(WWR)[T.45]` → use `APA_Term` column in exported tables  

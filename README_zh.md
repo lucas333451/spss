@@ -10,8 +10,9 @@
 - [7. 输出文件说明](#7-输出文件说明)
 - [8. Long格式字段](#8-long格式字段)
 - [9. 质控规则](#9-质控规则)
-- [10. Colab 部署](#10-colab-部署)
-- [11. 常见问题](#11-常见问题)
+- [10. LMM v2 优化说明](#10-lmm-v2-优化说明)
+- [11. Colab 部署](#11-colab-部署)
+- [12. 常见问题](#12-常见问题)
 
 ---
 
@@ -119,6 +120,8 @@ python scripts/pipeline.py \
 - `results/model/table_descriptives.csv`：描述统计
 - `results/model/table_fixed_effects.csv`：固定效应系数表
 - `results/model/table_main_interactions.csv`：主效应/交互项汇总
+- `results/model/model_comparison.csv`：A/B/C 模型比较（AIC/BIC）
+- `results/model/table_simple_effects_complexity_by_wwr.csv`：各 WWR 下 Complexity 的 simple effect
 - `results/model/paper_tables.md`：可直接粘贴文稿的 Markdown 表
 - `results/research/table_fixed_effects_all_dv.csv`：多因变量固定效应
 - `results/research/round_consistency_by_group.csv`：重复一致性分组结果
@@ -126,7 +129,7 @@ python scripts/pipeline.py \
 ---
 
 ## 8. Long格式字段
-`SubjectID, Order, Block, Position, WWR, Condition, Complexity, SportFreq, S1~S5, Afford4, Afford5, Pleasure, B1~B3, Bmean, SceneID`
+`SubjectID, Order, Block, Repetition, RepetitionC, Position, WWR, Condition, Complexity, SportFreq, ExperienceGroup, SportFreqGroup, S1~S5, Afford4, Afford5, Pleasure, B1~B3, Bmean, SceneID`
 
 ---
 
@@ -140,14 +143,30 @@ python scripts/pipeline.py \
 
 ---
 
-## 10. Colab 部署
+## 10. LMM v2 优化说明
+当前推荐主模型（Afford5）：
+
+```text
+Afford5 ~ C(Complexity) * C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)
+随机项：优先 (1 + Complexity | Subject)；若奇异/不收敛自动回退到 (1 | Subject)
+```
+
+v2 新增内容：
+- 显式纳入 Repetition（在 long 表中新增 `Repetition=1/2`）
+- 导出模型比较表（A/B/C）：`results/model/model_comparison.csv`
+- 导出 simple effect（每个 WWR 下 C1 vs C0）：`results/model/table_simple_effects_complexity_by_wwr.csv`
+- `paper_tables.md` 新增“模型比较 + simple effect”章节
+
+---
+
+## 11. Colab 部署
 - 超详细零基础指南：`docs/COLAB_GUIDE.md`
 - 现成 Notebook：`notebooks/spss_colab.ipynb`（逐格运行，只改 `EXCEL_FILE`）
 - 建议先看指南第 3 节“按顺序运行代码块”，再开始
 
 ---
 
-## 11. 常见问题
+## 12. 常见问题
 1）报错 `No module named pandas`：
 ```bash
 pip install -r requirements.txt
