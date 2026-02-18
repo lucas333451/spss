@@ -25,6 +25,7 @@ def main():
     out_long = args.out_root / "long"
     out_model = args.out_root / "model"
     out_research = args.out_root / "research"
+    out_diag = args.out_root / "diagnostics"
 
     run([
         args.python, "scripts/transform_wide_to_long.py",
@@ -33,11 +34,25 @@ def main():
         "--out-dir", str(out_long),
     ])
 
-    # Item-level only workflow (S1~S5_7)
+    # keep existing core model workflow
+    run([
+        args.python, "scripts/run_analysis.py",
+        "--long-csv", str(out_long / "long_format.csv"),
+        "--out-dir", str(out_model),
+    ])
+
+    # keep existing research workflow
     run([
         args.python, "scripts/analyze_research_questions.py",
         "--long-csv", str(out_long / "long_format.csv"),
         "--out-dir", str(out_research),
+    ])
+
+    # diagnostics workflow for model-source and robustness checks
+    run([
+        args.python, "scripts/diagnostics_lmm.py",
+        "--long-csv", str(out_long / "long_format.csv"),
+        "--out-dir", str(out_diag),
     ])
 
     # build one markdown bundle for easy sharing/review
@@ -51,6 +66,7 @@ def main():
     print("-", out_long)
     print("-", out_model)
     print("-", out_research)
+    print("-", out_diag)
 
 
 if __name__ == "__main__":

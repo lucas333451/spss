@@ -1,4 +1,4 @@
-# spss（纯中文）— 问卷宽表转长表 + LMM 论文分析流程
+# spss（纯中文）— 问卷宽表转长表 + LMM 分析流程
 
 ## 目录
 - [1. 项目简介](#1-项目简介)
@@ -10,29 +10,28 @@
 - [7. 输出文件说明](#7-输出文件说明)
 - [8. Long格式字段](#8-long格式字段)
 - [9. 质控规则](#9-质控规则)
-- [10. LMM v2 优化说明](#10-lmm-v2-优化说明)
+- [10. 诊断说明](#10-诊断说明)
 - [11. Colab 部署](#11-colab-部署)
 - [12. 常见问题](#12-常见问题)
 
 ---
 
 ## 1. 项目简介
-本项目用于替代 SPSS，完成以下流程：
-1. 读取问卷系统导出的 Excel 宽表（每位被试一行）
-2. 转为可建模 long-format（每位被试 12 行）
-3. 自动执行 QC（结构与映射校验）
-4. 输出线性混合模型（LMM）结果、论文可贴表格与图
+本项目用于替代 SPSS，完成：
+1. 读取问卷 Excel 宽表（每位被试一行）
+2. 转为 long-format（每位被试 12 行）
+3. 自动 QC（结构与映射校验）
+4. 输出 LMM 结果、诊断结果与可复用报告
 
 ---
 
 ## 2. 仓库结构
 - `scripts/transform_wide_to_long.py`：宽表转长表 + QC
 - `scripts/run_analysis.py`：基础 LMM + 论文结果表导出
-- `scripts/analyze_research_questions.py`：扩展分析（角度1/角度2）
+- `scripts/analyze_research_questions.py`：分题扩展分析（角度1/角度2）
+- `scripts/diagnostics_lmm.py`：诊断分析（交互来源/随机结构敏感性/Repetition）
 - `scripts/pipeline.py`：一键全流程执行
-- `docs/PROJECT_OVERVIEW.md`：项目总览
-- `docs/COLAB_GUIDE.md`：Colab 部署与使用
-- `notebooks/spss_colab.ipynb`：现成可跑的 Colab Notebook
+- `scripts/build_report_md.py`：将结果目录汇总成一个 markdown
 
 ---
 
@@ -40,7 +39,7 @@
 ```bash
 pip install -r requirements.txt
 ```
-如果系统缺少 pip/venv（Ubuntu/Debian）：
+如缺少 pip/venv（Ubuntu/Debian）：
 ```bash
 sudo apt update
 sudo apt install -y python3-pip python3-venv
@@ -49,22 +48,28 @@ sudo apt install -y python3-pip python3-venv
 ---
 
 ## 4. 快速开始
-### 第一步：Excel 放到仓库根目录，再执行宽表转长表 + QC
-先把 Excel 放到仓库根目录（与 `scripts/`、`docs/`、`README.md` 同级），再执行：
+### 第一步：宽表转长表 + QC
 ```bash
 python scripts/transform_wide_to_long.py \
   --excel "your_file.xlsx" \
   --out-dir results/long
 ```
 
-### 第二步：基础论文结果表
+### 第二步：基础模型
 ```bash
 python scripts/run_analysis.py \
   --long-csv results/long/long_format.csv \
   --out-dir results/model
 ```
 
-### 第三步：扩展研究分析
+### 第三步：诊断分析（新增）
+```bash
+python scripts/diagnostics_lmm.py \
+  --long-csv results/long/long_format.csv \
+  --out-dir results/diagnostics
+```
+
+### 第四步：分题扩展分析
 ```bash
 python scripts/analyze_research_questions.py \
   --long-csv results/long/long_format.csv \
@@ -74,9 +79,9 @@ python scripts/analyze_research_questions.py \
 ---
 
 ## 5. Excel导出模式（文本版/编码版）
-`transform_wide_to_long.py` 现已支持两种问卷导出格式：
-- **文本版**：列名类似 `姓名`、`Q1.8_场景顺序编号`、`Q2.1_S1...`
-- **编码版**：列名类似 `name`、`Q1.8`、`Q2.1_1`
+支持两种导出格式：
+- 文本版：`姓名`、`Q1.8_...` 等
+- 编码版：`name`、`Q1.8`、`Q2.1_1` 等
 
 默认自动识别：
 ```bash
@@ -86,21 +91,17 @@ python scripts/transform_wide_to_long.py \
   --out-dir results/long
 ```
 
-也可手动指定：
-```bash
-# 强制按编码版解析
-python scripts/transform_wide_to_long.py --excel "/path/to/coded.xlsx" --mode coded --out-dir results/long
+会输出：
+- `results/long/column_resolution.json`（识别模式 + 列映射）
 
-# 强制按文本版解析
-python scripts/transform_wide_to_long.py --excel "/path/to/text.xlsx" --mode text --out-dir results/long
-```
+并生成分组字段：
+- `ExperienceGroup`：Q1.4 的 1=Low，2/3/4=High
+- `SportFreqGroup`：Q1.5 的 4=High，1/2/3=Low
 
-为便于追溯，脚本会额外输出：
-- `results/long/column_resolution.json`（包含识别模式与列映射结果）
-
-同时会新增用于分析的分组字段：
-- `ExperienceGroup`（来自Q1.4）：`1 -> Low`，`2/3/4 -> High`
-- `SportFreqGroup`（来自Q1.5）：`4 -> High`，`1/2/3 -> Low`
+量表说明：
+- S1~S4：7分
+- S5：9分（并自动生成 `S5_7`）
+- B1~B3：7分
 
 ---
 
@@ -112,25 +113,40 @@ python scripts/pipeline.py \
   --out-root results
 ```
 
-> 若文件名包含空格，请用引号包住完整文件名。
+> 文件名有空格请加引号。
 
 ---
 
 ## 7. 输出文件说明
-- `results/long/long_format.csv`：长格式主数据
-- `results/long/qc_issues.csv`：QC问题明细
-- `results/long/qc_summary.json`：QC总览
-- `results/research/table_fixed_effects_all_dv.csv`：多因变量固定效应（S1~S5_7）
-- `results/research/table_angle1_main_interactions_all_dv.csv`：角度1主效应/交互结果
-- `results/research/table_angle2_round_interactions_all_dv.csv`：角度2轮次交互结果
-- `results/research/item_variance_by_group.csv`：同类人群在每道题的方差/IQR/高方差标记
-- `results/research/item_variance_summary_by_group.csv`：同类人群方差汇总
-- `results/analysis_report_bundle.md`：自动汇总全部结果到一个 markdown（便于直接转发给 Sam 分析）
-- `results/research/table_fixed_effects_all_dv.csv`：多因变量固定效应（当前默认仅 S1~S5）
-- `results/research/round_consistency_by_group.csv`：重复一致性分组结果
-- `results/research/item_variance_by_group.csv`：同类人群在每道题的方差/IQR/高方差标记
-- `results/research/item_variance_summary_by_group.csv`：同类人群方差汇总
-- `results/analysis_report_bundle.md`：自动汇总全部结果到一个 markdown（便于直接转发给 Sam 分析）
+- `results/long/long_format.csv`
+- `results/long/qc_issues.csv`
+- `results/long/qc_summary.json`
+
+- `results/model/table_descriptives.csv`
+- `results/model/table_fixed_effects.csv`
+- `results/model/table_main_interactions.csv`
+- `results/model/model_comparison.csv`
+- `results/model/table_simple_effects_complexity_by_wwr.csv`
+- `results/model/paper_tables.md`
+- `results/model/results_draft_zh.md`
+
+- `results/research/table_fixed_effects_all_dv.csv`
+- `results/research/table_angle1_main_interactions_all_dv.csv`
+- `results/research/table_angle2_round_interactions_all_dv.csv`
+- `results/research/item_variance_by_group.csv`
+- `results/research/item_variance_summary_by_group.csv`
+
+- `results/diagnostics/analysis_report.md`
+- `results/diagnostics/model_comparison_interactions.csv`
+- `results/diagnostics/lrt_comparison.csv`
+- `results/diagnostics/interaction_coefficients.csv`
+- `results/diagnostics/random_effect_variance.csv`
+- `results/diagnostics/main_effect_stability_by_random_structure.csv`
+- `results/diagnostics/round_condition_means.csv`
+- `results/diagnostics/subject_round_diff_distribution.csv`
+- `results/diagnostics/repetition_complexity_interaction_terms.csv`
+
+- `results/analysis_report_bundle.md`（将所有结果汇总成一个 markdown）
 
 ---
 
@@ -140,54 +156,36 @@ python scripts/pipeline.py \
 ---
 
 ## 9. 质控规则
-必须满足：
 - 每位被试 12 行
 - 每个 Block 6 行
-- 每个 Block 中 C1 与 C0 各 3 行
-- 每个 Block 中 WWR 分布为 15×2、45×2、75×2
-- B1~B3 仅允许在 C1 行非空（C0 行必须 NA）
+- 每个 Block 内 C1/C0 各 3 行
+- 每个 Block 内 WWR：15×2、45×2、75×2
+- B1~B3 仅 C1 行可非空
 
 ---
 
-## 10. Item-level 分析说明（按你的要求）
-当前流程以 **S1~S5_7 分题分析** 为主，不再将 Afford4/Afford5 作为默认分析结果。
-
-量表说明与修正：
-- S1~S4 为 7 分量表
-- S5（Pleasure）为 9 分量表
-- B1~B3 为 7 分量表
-- 为保证题项可比性，脚本自动生成 `S5_7`（将 S5 从 1-9 线性映射到 1-7）
-
-同类人群一致性/高方差检查：
-- `item_variance_by_group.csv` 提供每题在各组的 `sd/iqr/cv` 与高方差标记
-- `item_variance_summary_by_group.csv` 提供汇总视图
-
-v2 新增内容：
-- 显式纳入 Repetition（在 long 表中新增 `Repetition=1/2`）
-- 导出模型比较表（A/B/C）：`results/model/model_comparison.csv`
-- 导出 simple effect（每个 WWR 下 C1 vs C0）：`results/model/table_simple_effects_complexity_by_wwr.csv`
-- `paper_tables.md` 新增“模型比较 + simple effect”章节
+## 10. 诊断说明
+诊断脚本会自动做：
+1. 交互来源排查（A/B/C/D）
+2. 随机结构敏感性比较（3 种随机结构）
+3. Repetition 深入排查（Round 均值 + 被试差值分布）
+4. 自动生成 `results/diagnostics/analysis_report.md`
 
 ---
 
 ## 11. Colab 部署
-- 超详细零基础指南：`docs/COLAB_GUIDE.md`
-- 现成 Notebook：`notebooks/spss_colab.ipynb`（逐格运行，只改 `EXCEL_FILE`）
-- 建议先看指南第 3 节“按顺序运行代码块”，再开始
+- 详细指南：`docs/COLAB_GUIDE.md`
+- 现成 Notebook：`notebooks/spss_colab.ipynb`
+- 推荐直接跑 pipeline，再把 `results/analysis_report_bundle.md` 发给 Sam
 
 ---
 
 ## 12. 常见问题
-1）报错 `No module named pandas`：
+1）`No module named pandas`：
 ```bash
 pip install -r requirements.txt
 ```
 
-2）QC 不通过：
-先查看 `results/long/qc_issues.csv` 与 `missing_rate.csv`。
+2）QC 不通过：查看 `results/long/qc_issues.csv`
 
-3）模型项看不懂（如 `C(WWR)[T.45]`）：
-查看导出表中的 `APA_Term` 列（已自动重命名）。
-
-4）出现 `LinAlgError: Singular matrix`：
-脚本已内置从 `lbfgs` 自动回退到 `powell`，通常可继续完成拟合。
+3）MixedLM 奇异矩阵：脚本内置 `lbfgs -> powell` 回退

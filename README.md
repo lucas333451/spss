@@ -12,7 +12,7 @@
 - [7. Output Files / 输出文件](#7-output-files--输出文件)
 - [8. Data Schema (Long Format) / Long格式字段](#8-data-schema-long-format--long格式字段)
 - [9. QC Rules / 质控规则](#9-qc-rules--质控规则)
-- [10. LMM v2 Optimization Notes / LMM v2 优化说明](#10-lmm-v2-optimization-notes--lmm-v2-优化说明)
+- [10. Diagnostics / 诊断说明](#10-diagnostics--诊断说明)
 - [11. Colab Usage / Colab 使用](#11-colab-usage--colab-使用)
 - [12. FAQ / 常见问题](#12-faq--常见问题)
 
@@ -27,8 +27,10 @@
 ## 2. Repository Structure / 仓库结构
 - `scripts/transform_wide_to_long.py` — wide → long + QC
 - `scripts/run_analysis.py` — core LMM + paper-ready tables
-- `scripts/analyze_research_questions.py` — angle-1/angle-2 extended analyses
+- `scripts/analyze_research_questions.py` — item-level angle-1/angle-2 analyses
+- `scripts/diagnostics_lmm.py` — diagnostics (interaction screening / random-structure sensitivity / repetition deep-dive)
 - `scripts/pipeline.py` — one-click end-to-end runner
+- `scripts/build_report_md.py` — build one-file markdown bundle from `results/`
 - `docs/PROJECT_OVERVIEW.md` — concise orientation
 - `docs/COLAB_GUIDE.md` — Colab deployment guide
 - `notebooks/spss_colab.ipynb` — ready-to-run Colab notebook
@@ -56,14 +58,21 @@ python scripts/transform_wide_to_long.py \
   --out-dir results/long
 ```
 
-### Step 2: Core paper tables
+### Step 2: Core model
 ```bash
 python scripts/run_analysis.py \
   --long-csv results/long/long_format.csv \
   --out-dir results/model
 ```
 
-### Step 3: Extended research analysis
+### Step 3: Diagnostics (new)
+```bash
+python scripts/diagnostics_lmm.py \
+  --long-csv results/long/long_format.csv \
+  --out-dir results/diagnostics
+```
+
+### Step 4: Item-level research analysis
 ```bash
 python scripts/analyze_research_questions.py \
   --long-csv results/long/long_format.csv \
@@ -73,7 +82,7 @@ python scripts/analyze_research_questions.py \
 ---
 
 ## 5. Excel Export Modes (Text/Coded) / Excel导出模式（文本版/编码版）
-`transform_wide_to_long.py` now supports both export styles:
+`transform_wide_to_long.py` supports both export styles:
 - **text mode**: questionnaire text columns (e.g., `姓名`, `Q1.8_场景顺序编号`, `Q2.1_S1...`)
 - **coded mode**: coded columns (e.g., `name`, `Q1.8`, `Q2.1_1`)
 
@@ -85,21 +94,17 @@ python scripts/transform_wide_to_long.py \
   --out-dir results/long
 ```
 
-You can force mode if needed:
-```bash
-# force coded export parsing
-python scripts/transform_wide_to_long.py --excel "/path/to/coded.xlsx" --mode coded --out-dir results/long
-
-# force text export parsing
-python scripts/transform_wide_to_long.py --excel "/path/to/text.xlsx" --mode text --out-dir results/long
-```
-
 For traceability, the script writes:
 - `results/long/column_resolution.json` (detected mode + resolved column mapping)
 
 It also outputs grouped factors used in analysis:
 - `ExperienceGroup` from Q1.4: `1 -> Low`, `2/3/4 -> High`
 - `SportFreqGroup` from Q1.5: `4 -> High`, `1/2/3 -> Low`
+
+Scale note:
+- S1~S4 are 7-point
+- S5 is 9-point
+- Script also creates `S5_7` (S5 mapped to 7-point)
 
 ---
 
@@ -120,16 +125,31 @@ python scripts/pipeline.py \
 - `results/long/long_format.csv`
 - `results/long/qc_issues.csv`
 - `results/long/qc_summary.json`
-- `results/research/table_fixed_effects_all_dv.csv` (item-level S1~S5_7)
+
+- `results/model/table_descriptives.csv`
+- `results/model/table_fixed_effects.csv`
+- `results/model/table_main_interactions.csv`
+- `results/model/model_comparison.csv`
+- `results/model/table_simple_effects_complexity_by_wwr.csv`
+- `results/model/paper_tables.md`
+- `results/model/results_draft_zh.md`
+
+- `results/research/table_fixed_effects_all_dv.csv`
 - `results/research/table_angle1_main_interactions_all_dv.csv`
 - `results/research/table_angle2_round_interactions_all_dv.csv`
-- `results/research/item_variance_by_group.csv` (within-group variance flags per item)
+- `results/research/item_variance_by_group.csv`
 - `results/research/item_variance_summary_by_group.csv`
-- `results/analysis_report_bundle.md` (one-file markdown bundle for easy sharing)
-- `results/research/table_fixed_effects_all_dv.csv` (currently item-level S1~S5 by default)
-- `results/research/round_consistency_by_group.csv`
-- `results/research/item_variance_by_group.csv` (within-group variance flags per item)
-- `results/research/item_variance_summary_by_group.csv`
+
+- `results/diagnostics/analysis_report.md`
+- `results/diagnostics/model_comparison_interactions.csv`
+- `results/diagnostics/lrt_comparison.csv`
+- `results/diagnostics/interaction_coefficients.csv`
+- `results/diagnostics/random_effect_variance.csv`
+- `results/diagnostics/main_effect_stability_by_random_structure.csv`
+- `results/diagnostics/round_condition_means.csv`
+- `results/diagnostics/subject_round_diff_distribution.csv`
+- `results/diagnostics/repetition_complexity_interaction_terms.csv`
+
 - `results/analysis_report_bundle.md` (one-file markdown bundle for easy sharing)
 
 ---
@@ -148,35 +168,23 @@ python scripts/pipeline.py \
 
 ---
 
-## 10. Item-level analysis notes / 分题分析说明
-The current default workflow is **item-level S1~S5_7 analysis**. Afford4/Afford5 are no longer default outputs for core analysis.
-
-Scale note and correction:
-- S1~S4 are 7-point
-- S5 (Pleasure) is 9-point
-- B1~B3 are 7-point
-- Script generates `S5_7` (1-9 linearly mapped to 1-7) for item comparability.
-
-Within-group consistency/variance check:
-- `item_variance_by_group.csv` provides per-item `sd/iqr/cv` and high-variance flags
-- `item_variance_summary_by_group.csv` provides aggregated summary
-
-What is newly added in v2:
-- Repetition is explicitly modeled (`Repetition=1/2`, generated in long-format)
-- Model comparison table (A/B/C) exported to `results/model/model_comparison.csv`
-- Simple effects of Complexity within each WWR exported to `results/model/table_simple_effects_complexity_by_wwr.csv`
-- `paper_tables.md` now includes model comparison + simple-effects section
+## 10. Diagnostics / 诊断说明
+Diagnostics script evaluates:
+1. Interaction source screening (A/B/C/D models)
+2. Random-structure sensitivity (`(1|Subject)`, `(1+Complexity|Subject)`, `(1+Complexity+WWR|Subject)`)
+3. Repetition deep-dive (`Repetition×Complexity`, round means, subject-level diffs)
+4. Auto markdown report in `results/diagnostics/analysis_report.md`
 
 ---
 
 ## 11. Colab Usage / Colab 使用
-- Full step-by-step guide (beginner-friendly): `docs/COLAB_GUIDE.md`
-- Ready notebook: `notebooks/spss_colab.ipynb` (run cells top-down, only change `EXCEL_FILE`)
+- Full guide: `docs/COLAB_GUIDE.md`
+- Ready notebook: `notebooks/spss_colab.ipynb`
+- Recommended: run pipeline once, then send `results/analysis_report_bundle.md`
 
 ---
 
 ## 12. FAQ / 常见问题
 1) `No module named pandas` → run `pip install -r requirements.txt`  
 2) QC failed → check `results/long/qc_issues.csv` and `missing_rate.csv`  
-3) Hard-to-read terms like `C(WWR)[T.45]` → use `APA_Term` column in exported tables  
-4) `LinAlgError: Singular matrix` in MixedLM → script now auto-falls back from `lbfgs` to `powell`.
+3) MixedLM singular matrix → script auto-fallback from `lbfgs` to `powell` in diagnostics.
