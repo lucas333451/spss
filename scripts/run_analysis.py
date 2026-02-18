@@ -26,6 +26,12 @@ def cronbach_alpha(df: pd.DataFrame) -> float:
     return float(pg.cronbach_alpha(data=x)[0])
 
 
+def _rescale_9_to_7(x):
+    if pd.isna(x):
+        return np.nan
+    return 1.0 + (float(x) - 1.0) * (6.0 / 8.0)
+
+
 def _extract_coef_table(fit) -> pd.DataFrame:
     params = fit.params
     bse = fit.bse
@@ -153,13 +159,13 @@ def _fit_with_fallback(data: pd.DataFrame, formula: str, re_formula: str | None)
     raise RuntimeError(f"MixedLM fit failed for formula={formula}; last_error={last_err}")
 
 
-def _build_model_comparison(model_df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+def _build_model_comparison(model_df: pd.DataFrame, dv_col: str = "Afford5") -> tuple[pd.DataFrame, dict]:
     # A: compact main effects
-    f_a = "Afford5 ~ C(Complexity) + C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)"
+    f_a = f"{dv_col} ~ C(Complexity) + C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)"
     # B: key interaction
-    f_b = "Afford5 ~ C(Complexity) * C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)"
+    f_b = f"{dv_col} ~ C(Complexity) * C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)"
     # C: fuller model
-    f_c = "Afford5 ~ C(WWR) * C(Complexity) * C(ExperienceGroup) * C(SportFreqGroup) + C(Repetition) + C(Position)"
+    f_c = f"{dv_col} ~ C(WWR) * C(Complexity) * C(ExperienceGroup) * C(SportFreqGroup) + C(Repetition) + C(Position)"
 
     models = [
         ("Model_A_compact", f_a),
@@ -210,12 +216,12 @@ def _paired_cohens_d(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.mean(diff) / sd)
 
 
-def _simple_effects_by_wwr(model_df: pd.DataFrame) -> pd.DataFrame:
+def _simple_effects_by_wwr(model_df: pd.DataFrame, dv_col: str = "Afford5") -> pd.DataFrame:
     rows = []
     for w in sorted(model_df["WWR"].astype(str).unique(), key=lambda x: int(float(x)) if str(x).replace('.', '', 1).isdigit() else x):
         sub = model_df[model_df["WWR"].astype(str) == str(w)].copy()
 
-        piv = sub.pivot_table(index="SubjectID", columns="Complexity", values="Afford5", aggfunc="mean")
+        piv = sub.pivot_table(index="SubjectID", columns="Complexity", values=dv_col, aggfunc="mean")
         if "0" in piv.columns and "1" in piv.columns:
             x0 = piv["0"].to_numpy(dtype=float)
             x1 = piv["1"].to_numpy(dtype=float)
@@ -261,9 +267,9 @@ def _simple_effects_by_wwr(model_df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _build_paper_tables(model_df: pd.DataFrame, coef_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def _build_paper_tables(model_df: pd.DataFrame, coef_df: pd.DataFrame, dv_col: str = "Afford5") -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     desc = (
-        model_df.groupby(["WWR", "Complexity", "ExperienceGroup", "SportFreqGroup", "Repetition"], dropna=False)["Afford5"]
+        model_df.groupby(["WWR", "Complexity", "ExperienceGroup", "SportFreqGroup", "Repetition"], dropna=False)[dv_col]
         .agg(N="count", Mean="mean", SD="std")
         .reset_index()
     )
@@ -333,7 +339,18 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(args.long_csv)
-    alpha = cronbach_alpha(df[["S1", "S2", "S3", "S4", "S5"]])
+
+    # Scale harmonization:
+    # S1~S4 are 1-7; S5 is 1-9. Prefer normalized 7-point composite when available.
+    if "S5_7" not in df.columns and "S5" in df.columns:
+        df["S5_7"] = df["S5"].apply(_rescale_9_to_7)
+    if "Afford5_norm7" not in df.columns and all(c in df.columns for c in ["S1", "S2", "S3", "S4", "S5_7"]):
+        df["Afford5_norm7"] = df[["S1", "S2", "S3", "S4", "S5_7"]].mean(axis=1)
+
+    dv_col = "Afford5_norm7" if "Afford5_norm7" in df.columns else "Afford5"
+
+    alpha_cols = ["S1", "S2", "S3", "S4", "S5_7"] if "S5_7" in df.columns else ["S1", "S2", "S3", "S4", "S5"]
+    alpha = cronbach_alpha(df[alpha_cols])
 
     if "ExperienceGroup" not in df.columns:
         raise SystemExit("Missing ExperienceGroup in long CSV. Please re-run transform_wide_to_long.py with latest version.")
@@ -344,7 +361,7 @@ def main():
     if "Repetition" not in df.columns:
         df["Repetition"] = df["Block"]
 
-    keep_cols = ["SubjectID", "Afford5", "WWR", "Complexity", "Position", "ExperienceGroup", "SportFreqGroup", "Repetition"]
+    keep_cols = ["SubjectID", dv_col, "WWR", "Complexity", "Position", "ExperienceGroup", "SportFreqGroup", "Repetition"]
     model_df = df.dropna(subset=keep_cols).copy()
 
     # categorical coding
@@ -352,22 +369,22 @@ def main():
         model_df[c] = model_df[c].astype(str)
 
     # model selection (A/B/C)
-    cmp_df, best = _build_model_comparison(model_df)
+    cmp_df, best = _build_model_comparison(model_df, dv_col=dv_col)
     fit = best["fit"]
     fit_info = best["info"]
 
     coef_df = _extract_coef_table(fit)
-    desc_df, fixed_df, infer_df = _build_paper_tables(model_df, coef_df)
+    desc_df, fixed_df, infer_df = _build_paper_tables(model_df, coef_df, dv_col=dv_col)
 
     # simple effects under each WWR
-    simple_df = _simple_effects_by_wwr(model_df)
+    simple_df = _simple_effects_by_wwr(model_df, dv_col=dv_col)
 
     # interaction plot with repetition as style
     plt.figure(figsize=(9, 5))
     pdat = model_df.copy()
     pdat["Complexity"] = pdat["Complexity"].replace({"0": "C0", "1": "C1"})
-    sns.pointplot(data=pdat, x="WWR", y="Afford5", hue="Complexity", errorbar="se", dodge=True)
-    plt.title("WWR × Complexity on Afford5")
+    sns.pointplot(data=pdat, x="WWR", y=dv_col, hue="Complexity", errorbar="se", dodge=True)
+    plt.title(f"WWR × Complexity on {dv_col}")
     plt.tight_layout()
     (out / "figures").mkdir(parents=True, exist_ok=True)
     plt.savefig(out / "figures" / "wwr_complexity_afford5.png", dpi=220)
@@ -385,6 +402,8 @@ def main():
     md_lines = [
         "# Paper-ready Results Tables",
         "",
+        "Scale note: S1~S4 are 7-point, S5 is 9-point. Main composite uses S5 rescaled to 7-point when available (`Afford5_norm7`).",
+        "",
         "## Table 0. Model comparison (A/B/C)",
         _to_markdown_table(cmp_df),
         "",
@@ -400,7 +419,7 @@ def main():
         "## Table 4. Simple effects: Complexity (C1 vs C0) within each WWR",
         _to_markdown_table(simple_df) if not simple_df.empty else "No analyzable simple-effects rows.",
         "",
-        f"Reliability (Cronbach's alpha, S1-S5): {alpha:.3f}" if not np.isnan(alpha) else "Reliability: NA",
+        f"Reliability (Cronbach's alpha, S1-S4+S5_7): {alpha:.3f}" if not np.isnan(alpha) else "Reliability: NA",
         "",
         f"Recommended model: {best['recommended_model']}",
         f"Formula: {best['recommended_formula']}",
@@ -415,7 +434,8 @@ def main():
         "n_rows_input": int(len(df)),
         "n_rows_model": int(len(model_df)),
         "n_subjects": int(model_df["SubjectID"].nunique()),
-        "cronbach_alpha_s1_s5": None if np.isnan(alpha) else float(alpha),
+        "cronbach_alpha_s1_s4_s5_7": None if np.isnan(alpha) else float(alpha),
+        "dv_used": dv_col,
         "recommended_model": best["recommended_model"],
         "formula": best["recommended_formula"],
         "random_structure_requested": "(1 + Complexity | Subject)",

@@ -50,6 +50,16 @@ def to_num(v):
     return np.nan
 
 
+def rescale_9_to_7(x):
+    """Linearly map 1-9 scale to 1-7 scale.
+
+    y = 1 + (x - 1) * (6 / 8)
+    """
+    if pd.isna(x):
+        return np.nan
+    return 1.0 + (float(x) - 1.0) * (6.0 / 8.0)
+
+
 def find_first_col(columns: list[str], *, prefix: str | None = None, contains: str | None = None, fallback: str | None = None) -> str | None:
     if fallback and fallback in columns:
         return fallback
@@ -163,8 +173,17 @@ def build_long(df: pd.DataFrame, col_idx: dict) -> pd.DataFrame:
                 else:
                     b1, b2, b3 = np.nan, np.nan, np.nan
 
+                # Scale note:
+                # - S1~S4: 1-7
+                # - S5: 1-9 (keep raw + provide 7-point mapped version)
+                # - B1~B3: 1-7
+                s5_7 = rescale_9_to_7(s5)
+
                 afford4 = np.nanmean([s1, s2, s3, s4])
+                # Keep legacy Afford5 on raw scales for backward compatibility
                 afford5 = np.nanmean([s1, s2, s3, s4, s5])
+                # Recommended normalized composite: put S5 on 7-point scale first
+                afford5_norm7 = np.nanmean([s1, s2, s3, s4, s5_7])
                 bmean = np.nanmean([b1, b2, b3])
                 complexity = 1 if cond == "C1" else 0 if cond == "C0" else np.nan
 
@@ -187,9 +206,12 @@ def build_long(df: pd.DataFrame, col_idx: dict) -> pd.DataFrame:
                     "S3": s3,
                     "S4": s4,
                     "S5": s5,
+                    "S5_7": s5_7,
                     "Afford4": afford4,
                     "Afford5": afford5,
+                    "Afford5_norm7": afford5_norm7,
                     "Pleasure": s5,
+                    "Pleasure_7": s5_7,
                     "B1": b1,
                     "B2": b2,
                     "B3": b3,

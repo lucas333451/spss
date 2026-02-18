@@ -136,7 +136,7 @@ python scripts/pipeline.py \
 ---
 
 ## 8. Long格式字段
-`SubjectID, Order, Block, Repetition, RepetitionC, Position, WWR, Condition, Complexity, SportFreq, ExperienceGroup, SportFreqGroup, S1~S5, Afford4, Afford5, Pleasure, B1~B3, Bmean, SceneID`
+`SubjectID, Order, Block, Repetition, RepetitionC, Position, WWR, Condition, Complexity, SportFreq, ExperienceGroup, SportFreqGroup, S1~S5, S5_7, Afford4, Afford5, Afford5_norm7, Pleasure, Pleasure_7, B1~B3, Bmean, SceneID`
 
 ---
 
@@ -151,12 +151,18 @@ python scripts/pipeline.py \
 ---
 
 ## 10. LMM v2 优化说明
-当前推荐主模型（Afford5）：
+当前推荐主模型（Afford5_norm7）：
 
 ```text
-Afford5 ~ C(Complexity) * C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)
+Afford5_norm7 ~ C(Complexity) * C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)
 随机项：优先 (1 + Complexity | Subject)；若奇异/不收敛自动回退到 (1 | Subject)
 ```
+
+量表说明与修正：
+- S1~S4 为 7 分量表
+- S5（Pleasure）为 9 分量表
+- B1~B3 为 7 分量表
+- 为避免混合量表导致偏置，脚本新增 `S5_7`（将 S5 从 1-9 线性映射到 1-7），并优先使用 `Afford5_norm7` 作为主综合指标
 
 v2 新增内容：
 - 显式纳入 Repetition（在 long 表中新增 `Repetition=1/2`）

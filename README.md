@@ -136,7 +136,7 @@ python scripts/pipeline.py \
 ---
 
 ## 8. Data Schema (Long Format) / Long格式字段
-`SubjectID, Order, Block, Repetition, RepetitionC, Position, WWR, Condition, Complexity, SportFreq, ExperienceGroup, SportFreqGroup, S1~S5, Afford4, Afford5, Pleasure, B1~B3, Bmean, SceneID`
+`SubjectID, Order, Block, Repetition, RepetitionC, Position, WWR, Condition, Complexity, SportFreq, ExperienceGroup, SportFreqGroup, S1~S5, S5_7, Afford4, Afford5, Afford5_norm7, Pleasure, Pleasure_7, B1~B3, Bmean, SceneID`
 
 ---
 
@@ -150,12 +150,18 @@ python scripts/pipeline.py \
 ---
 
 ## 10. LMM v2 Optimization Notes / LMM v2 优化说明
-Current recommended model (Afford5):
+Current recommended model (Afford5_norm7):
 
 ```text
-Afford5 ~ C(Complexity) * C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)
+Afford5_norm7 ~ C(Complexity) * C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)
 Random: (1 + Complexity | Subject), with automatic fallback to (1 | Subject) if singular/non-convergent.
 ```
+
+Scale note and correction:
+- S1~S4 are 7-point
+- S5 (Pleasure) is 9-point
+- B1~B3 are 7-point
+- To avoid mixed-scale bias, script generates `S5_7` (linearly maps 1-9 to 1-7) and uses `Afford5_norm7` as the preferred composite.
 
 What is newly added in v2:
 - Repetition is explicitly modeled (`Repetition=1/2`, generated in long-format)

@@ -15,7 +15,7 @@ from statsmodels.formula.api import mixedlm
 warnings.filterwarnings("ignore")
 
 # Item-level only (remove Afford4/Afford5 from research analyses)
-DVS = ["S1", "S2", "S3", "S4", "S5"]
+DVS = ["S1", "S2", "S3", "S4", "S5_7"]
 
 
 # -----------------------------
@@ -193,10 +193,16 @@ def main():
 
     df = pd.read_csv(args.long_csv)
 
-    required_cols = ["SubjectID", "WWR", "Complexity", "Position", "S1", "S2", "S3", "S4", "S5"]
+    required_cols = ["SubjectID", "WWR", "Complexity", "Position", "S1", "S2", "S3", "S4"]
     for c in required_cols:
         if c not in df.columns:
             raise SystemExit(f"Missing required column: {c}")
+
+    # Scale harmonization: S5 is 1-9, convert to 1-7 for item-level comparability
+    if "S5_7" not in df.columns:
+        if "S5" not in df.columns:
+            raise SystemExit("Missing S5 column required for S5_7 conversion.")
+        df["S5_7"] = 1.0 + (pd.to_numeric(df["S5"], errors="coerce") - 1.0) * (6.0 / 8.0)
 
     if "ExperienceGroup" not in df.columns:
         df["ExperienceGroup"] = "Unknown"
