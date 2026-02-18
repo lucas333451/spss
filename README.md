@@ -135,7 +135,7 @@ python scripts/pipeline.py \
 ---
 
 ## 8. Data Schema (Long Format) / Long格式字段
-`SubjectID, Order, Block, Repetition, RepetitionC, Position, WWR, Condition, Complexity, SportFreq, ExperienceGroup, SportFreqGroup, S1~S5, S5_7, Afford4, Afford5, Afford5_norm7, Pleasure, Pleasure_7, B1~B3, Bmean, SceneID`
+`SubjectID, Order, Block, Repetition, RepetitionC, Position, WWR, Condition, Complexity, SportFreq, ExperienceGroup, SportFreqGroup, S1~S5, S5_7, B1~B3, Bmean, SceneID`
 
 ---
 
