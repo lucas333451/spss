@@ -105,8 +105,10 @@ print("✅ 当前使用文件:", EXCEL_FILE)
 新建第四个 cell，执行：
 
 ```python
-!python scripts/pipeline.py --excel "$EXCEL_FILE" --out-root results
+!python scripts/pipeline.py --excel "$EXCEL_FILE" --sheet 0 --out-root results
 ```
+
+> 注意：如果文件名里有空格（例如 `...2026-02-17 .xlsx`），务必放在变量里并用引号传递（上面这种写法即可）。
 
 这一步会自动做三件事：
 1. 宽表 -> long + QC

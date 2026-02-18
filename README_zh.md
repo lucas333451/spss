@@ -108,8 +108,11 @@ python scripts/transform_wide_to_long.py --excel "/path/to/text.xlsx" --mode tex
 ```bash
 python scripts/pipeline.py \
   --excel "/path/to/your.xlsx" \
+  --sheet 0 \
   --out-root results
 ```
+
+> 若文件名包含空格，请用引号包住完整文件名。
 
 ---
 

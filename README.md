@@ -107,8 +107,11 @@ It also outputs grouped factors used in analysis:
 ```bash
 python scripts/pipeline.py \
   --excel "/path/to/your.xlsx" \
+  --sheet 0 \
   --out-root results
 ```
+
+> If the Excel filename contains spaces, wrap the full filename in quotes.
 
 ---
 

@@ -273,10 +273,24 @@ def run_qc(long_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     return issue_df, miss, summary
 
 
+def _parse_sheet_arg(sheet_arg):
+    """Allow both sheet index and sheet name.
+
+    - "0" / 0 -> int(0)
+    - "Sheet1" -> "Sheet1"
+    """
+    if isinstance(sheet_arg, int):
+        return sheet_arg
+    s = str(sheet_arg).strip()
+    if s.isdigit():
+        return int(s)
+    return s
+
+
 def main():
     ap = argparse.ArgumentParser(description="Convert questionnaire Excel (text/coded export) to long-format for LMM")
     ap.add_argument("--excel", type=Path, required=True)
-    ap.add_argument("--sheet", default=0)
+    ap.add_argument("--sheet", default=0, help="Worksheet index (e.g., 0) or worksheet name")
     ap.add_argument("--mode", choices=["auto", "text", "coded"], default="auto")
     ap.add_argument("--subject-col", default=None, help="Optional override of subject column")
     ap.add_argument("--order-col", default=None, help="Optional override of order column")
@@ -287,7 +301,21 @@ def main():
     out = args.out_dir
     out.mkdir(parents=True, exist_ok=True)
 
-    df = pd.read_excel(args.excel, sheet_name=args.sheet)
+    excel_path = str(args.excel)
+    # Tolerate accidental surrounding spaces in path argument (common in copy/paste)
+    if not Path(excel_path).exists() and Path(excel_path.strip()).exists():
+        excel_path = excel_path.strip()
+
+    sheet = _parse_sheet_arg(args.sheet)
+    try:
+        df = pd.read_excel(excel_path, sheet_name=sheet)
+    except ValueError as e:
+        msg = str(e)
+        if "Worksheet named" in msg and isinstance(sheet, str) and sheet.isdigit():
+            # Defensive fallback for environments where CLI passed "0" as string sheet-name
+            df = pd.read_excel(excel_path, sheet_name=int(sheet))
+        else:
+            raise
     mode = detect_format([str(c) for c in df.columns]) if args.mode == "auto" else args.mode
     col_idx = build_column_index(df, mode, args.subject_col, args.order_col, args.freq_col)
 
