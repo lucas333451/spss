@@ -127,8 +127,10 @@ python scripts/pipeline.py \
 - `results/model/table_simple_effects_complexity_by_wwr.csv`
 - `results/model/paper_tables.md`
 - `results/model/results_draft_zh.md` (auto-generated Chinese draft paragraph)
-- `results/research/table_fixed_effects_all_dv.csv`
+- `results/research/table_fixed_effects_all_dv.csv` (currently item-level S1~S5 by default)
 - `results/research/round_consistency_by_group.csv`
+- `results/research/item_variance_by_group.csv` (within-group variance flags per item)
+- `results/research/item_variance_summary_by_group.csv`
 
 ---
 
