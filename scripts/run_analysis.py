@@ -282,6 +282,47 @@ def _build_paper_tables(model_df: pd.DataFrame, coef_df: pd.DataFrame) -> tuple[
     return desc, fixed, infer
 
 
+def _auto_results_draft_zh(best: dict, infer_df: pd.DataFrame, simple_df: pd.DataFrame) -> str:
+    lines = [
+        "# 论文结果段草稿（自动生成，中文）",
+        "",
+        "## 模型说明",
+        f"采用线性混合模型（LMM），推荐模型为：`{best['recommended_formula']}`。",
+        f"随机结构使用：`{best['random_structure_used']}`（拟合方法：{best['fit_method']}）。",
+        "",
+        "## 主要结果（固定效应）",
+    ]
+
+    sig = infer_df[infer_df["p"] < 0.05].copy() if not infer_df.empty else pd.DataFrame()
+    if sig.empty:
+        lines.append("在当前模型下，主要固定效应与交互项未达到显著水平（p < .05）。")
+    else:
+        for _, r in sig.sort_values("p").head(8).iterrows():
+            lines.append(
+                f"- {r['APA_Term']}：β={r['Coef']:.3f}, SE={r['SE']:.3f}, z={r['z']:.3f}, p={r['p']:.4f}{r['Sig']}。"
+            )
+
+    lines.extend(["", "## Simple effect（Complexity 在各 WWR 下）"])
+    if simple_df.empty:
+        lines.append("未能得到可分析的 simple effect 结果。")
+    else:
+        sig_s = simple_df[simple_df["p_holm"] < 0.05].copy()
+        if sig_s.empty:
+            lines.append("在 Holm 多重比较校正后，各 WWR 条件下 Complexity 的 simple effect 均不显著。")
+        else:
+            for _, r in sig_s.iterrows():
+                lines.append(
+                    f"- WWR={r['WWR']}：C1-C0={r['Delta_C1_minus_C0']:.3f}, t={r['t']:.3f}, p_holm={r['p_holm']:.4f}{r['Sig_holm']}, d_z={r['cohens_dz']:.3f}。"
+                )
+
+    lines.extend([
+        "",
+        "## 写作提示",
+        "请将上述自动草稿与理论假设、研究设计、图表编号进行人工核对后再用于论文正文。",
+    ])
+    return "\n".join(lines)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Run LMM on long-format questionnaire data and export paper-ready tables")
     ap.add_argument("--long-csv", type=Path, required=True)
@@ -367,6 +408,9 @@ def main():
     ]
     (out / "paper_tables.md").write_text("\n".join(md_lines), encoding="utf-8")
 
+    draft_zh = _auto_results_draft_zh(best, infer_df, simple_df)
+    (out / "results_draft_zh.md").write_text(draft_zh, encoding="utf-8")
+
     report = {
         "n_rows_input": int(len(df)),
         "n_rows_model": int(len(model_df)),
@@ -385,6 +429,7 @@ def main():
             "table_main_interactions_csv": str(out / "table_main_interactions.csv"),
             "table_simple_effects_csv": str(out / "table_simple_effects_complexity_by_wwr.csv"),
             "paper_tables_md": str(out / "paper_tables.md"),
+            "results_draft_zh_md": str(out / "results_draft_zh.md"),
         },
     }
     (out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

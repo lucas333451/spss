@@ -123,6 +123,7 @@ python scripts/pipeline.py \
 - `results/model/model_comparison.csv` (A/B/C with AIC/BIC)
 - `results/model/table_simple_effects_complexity_by_wwr.csv`
 - `results/model/paper_tables.md`
+- `results/model/results_draft_zh.md` (auto-generated Chinese draft paragraph)
 - `results/research/table_fixed_effects_all_dv.csv`
 - `results/research/round_consistency_by_group.csv`
 

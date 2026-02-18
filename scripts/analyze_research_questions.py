@@ -11,7 +11,6 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from statsmodels.formula.api import mixedlm
-from numpy.linalg import LinAlgError
 
 warnings.filterwarnings("ignore")
 
@@ -34,8 +33,9 @@ def _humanize_term(term: str) -> str:
     t = str(term)
     t = t.replace('C(WWR)[T.', 'WWR: ')
     t = t.replace('C(Complexity)[T.', 'Complexity: ')
-    t = t.replace('C(FreqGroup)[T.', 'Frequency group: ')
-    t = t.replace('C(Block)[T.', 'Round: ')
+    t = t.replace('C(SportFreqGroup)[T.', 'Sport frequency group: ')
+    t = t.replace('C(ExperienceGroup)[T.', 'Experience group: ')
+    t = t.replace('C(Repetition)[T.', 'Repetition: Round')
     t = t.replace('C(Position)[T.', 'Position: ')
     t = t.replace(']', ' (vs ref)')
     t = t.replace(':', ' × ')
@@ -48,7 +48,7 @@ def _coef_table(fit) -> pd.DataFrame:
     ci = fit.conf_int()
     rows = []
     for term in fit.params.index:
-        if term == "Group Var":
+        if term.startswith("Group Var") or " Var" in term or " Cov" in term:
             continue
         rows.append({
             "Term": term,
@@ -64,25 +64,40 @@ def _coef_table(fit) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def build_freq_group(df: pd.DataFrame) -> pd.Series:
-    # 优先使用预先定义分组（Q1.5: 4=High; 1/2/3=Low）
-    if "SportFreqGroup" in df.columns:
-        return df["SportFreqGroup"].astype(str)
+def _fit_with_fallback(data: pd.DataFrame, formula: str):
+    attempts = [
+        {"method": "lbfgs", "re_formula": "1 + C(Complexity)"},
+        {"method": "powell", "re_formula": "1 + C(Complexity)"},
+        {"method": "lbfgs", "re_formula": None},
+        {"method": "powell", "re_formula": None},
+    ]
 
-    x = pd.to_numeric(df["SportFreq"], errors="coerce")
-    if x.notna().sum() >= max(10, len(df) * 0.5):
-        med = x.median()
-        g = np.where(x >= med, "High", "Low")
-        g = pd.Series(g, index=df.index)
-        g[x.isna()] = "Unknown"
-        return g
-    return df["SportFreq"].astype(str)
+    last_err = None
+    for a in attempts:
+        try:
+            fit = mixedlm(
+                formula=formula,
+                data=data,
+                groups=data["SubjectID"],
+                re_formula=a["re_formula"],
+            ).fit(reml=False, method=a["method"], maxiter=2000)
+            return fit, {
+                "fit_method": a["method"],
+                "re_formula_used": a["re_formula"],
+                "fallback_to_random_intercept": a["re_formula"] is None,
+                "converged": bool(getattr(fit, "converged", True)),
+            }
+        except Exception as e:
+            last_err = str(e)
+            continue
+
+    raise RuntimeError(f"MixedLM failed. formula={formula}, last_error={last_err}")
 
 
 def subject_consistency(df: pd.DataFrame, dv: str) -> pd.DataFrame:
     rows = []
     for sid, g in df.groupby("SubjectID"):
-        piv = g.pivot_table(index="SceneID", columns="Block", values=dv, aggfunc="mean")
+        piv = g.pivot_table(index="SceneID", columns="Repetition", values=dv, aggfunc="mean")
         if 1 in piv.columns and 2 in piv.columns:
             a = piv[1]
             b = piv[2]
@@ -101,7 +116,7 @@ def subject_consistency(df: pd.DataFrame, dv: str) -> pd.DataFrame:
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Angle1+Angle2 analysis for WWR×Complexity×Frequency with Round effects")
+    ap = argparse.ArgumentParser(description="Angle1+Angle2 analysis for WWR×Complexity with Experience/SportFreq/Repetition controls")
     ap.add_argument("--long-csv", type=Path, required=True)
     ap.add_argument("--out-dir", type=Path, default=Path("results/research"))
     args = ap.parse_args()
@@ -111,37 +126,65 @@ def main():
     (out / "figures").mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(args.long_csv)
+
+    required_cols = ["SubjectID", "WWR", "Complexity", "Position", "Afford5"]
+    for c in required_cols:
+        if c not in df.columns:
+            raise SystemExit(f"Missing required column: {c}")
+
+    if "ExperienceGroup" not in df.columns:
+        df["ExperienceGroup"] = "Unknown"
+    if "SportFreqGroup" not in df.columns:
+        df["SportFreqGroup"] = "Unknown"
+    if "Repetition" not in df.columns:
+        df["Repetition"] = df["Block"] if "Block" in df.columns else np.nan
+
+    # numeric harmonization for consistency analysis
     df["WWR"] = pd.to_numeric(df["WWR"], errors="coerce")
     df["Complexity"] = pd.to_numeric(df["Complexity"], errors="coerce")
-    df["Block"] = pd.to_numeric(df["Block"], errors="coerce")
     df["Position"] = pd.to_numeric(df["Position"], errors="coerce")
-    df["FreqGroup"] = build_freq_group(df)
+    df["Repetition"] = pd.to_numeric(df["Repetition"], errors="coerce")
 
     all_coefs = []
     model_log = []
     consistency_all = []
 
     for dv in DVS:
-        sub = df.dropna(subset=["SubjectID", dv, "WWR", "Complexity", "Block", "Position"]).copy()
+        if dv not in df.columns:
+            continue
+
+        sub = df.dropna(subset=["SubjectID", dv, "WWR", "Complexity", "Position", "ExperienceGroup", "SportFreqGroup", "Repetition"]).copy()
         if sub.empty:
             continue
 
-        formula = f"{dv} ~ C(Block)*C(WWR)*C(Complexity)*C(FreqGroup) + C(Position)"
-        fit_method = "lbfgs"
-        try:
-            fit = mixedlm(formula=formula, data=sub, groups=sub["SubjectID"]).fit(reml=False, method="lbfgs", maxiter=1000)
-        except LinAlgError:
-            fit_method = "powell"
-            fit = mixedlm(formula=formula, data=sub, groups=sub["SubjectID"]).fit(reml=False, method="powell", maxiter=2000)
+        for c in ["WWR", "Complexity", "Position", "ExperienceGroup", "SportFreqGroup", "Repetition"]:
+            sub[c] = sub[c].astype(str)
+
+        formula = (
+            f"{dv} ~ C(WWR) * C(Complexity) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)"
+        )
+
+        fit, fit_info = _fit_with_fallback(sub, formula)
 
         coef = _coef_table(fit)
         coef.insert(0, "DV", dv)
         all_coefs.append(coef)
 
-        model_log.append({"DV": dv, "formula": formula, "fit_method": fit_method, "n_rows": int(len(sub)), "n_subjects": int(sub["SubjectID"].nunique())})
+        model_log.append({
+            "DV": dv,
+            "formula": formula,
+            "fit_method": fit_info["fit_method"],
+            "re_formula_used": fit_info["re_formula_used"] if fit_info["re_formula_used"] else "1",
+            "fallback_to_random_intercept": fit_info["fallback_to_random_intercept"],
+            "converged": fit_info["converged"],
+            "n_rows": int(len(sub)),
+            "n_subjects": int(sub["SubjectID"].nunique()),
+        })
 
-        cdf = subject_consistency(sub, dv)
-        cdf = cdf.merge(sub[["SubjectID", "FreqGroup"]].drop_duplicates(), on="SubjectID", how="left")
+        # consistency uses numeric repetition
+        csub = df.dropna(subset=["SubjectID", dv, "SceneID", "Repetition", "SportFreqGroup"]).copy()
+        cdf = subject_consistency(csub, dv)
+        cdf = cdf.merge(csub[["SubjectID", "SportFreqGroup", "ExperienceGroup"]].drop_duplicates(), on="SubjectID", how="left")
         consistency_all.append(cdf)
 
     if not all_coefs:
@@ -150,17 +193,16 @@ def main():
     coef_df = pd.concat(all_coefs, ignore_index=True)
     coef_df.to_csv(out / "table_fixed_effects_all_dv.csv", index=False, encoding="utf-8-sig")
 
-    # compact terms: main + interactions among key factors
-    key = coef_df[coef_df["Term"].str.contains("C\(WWR\)|C\(Complexity\)|C\(FreqGroup\)|C\(Block\)", regex=True, na=False)].copy()
+    key = coef_df[coef_df["Term"].str.contains("C\(WWR\)|C\(Complexity\)|C\(SportFreqGroup\)|C\(ExperienceGroup\)|C\(Repetition\)", regex=True, na=False)].copy()
     key.to_csv(out / "table_main_interactions_all_dv.csv", index=False, encoding="utf-8-sig")
 
     model_log_df = pd.DataFrame(model_log)
     model_log_df.to_csv(out / "model_log.csv", index=False, encoding="utf-8-sig")
 
-    # consistency / convergence
     cons_df = pd.concat(consistency_all, ignore_index=True)
     cons_df.to_csv(out / "round_consistency_by_subject.csv", index=False, encoding="utf-8-sig")
-    cons_grp = cons_df.groupby(["dv", "FreqGroup"], dropna=False).agg(
+
+    cons_grp = cons_df.groupby(["dv", "SportFreqGroup", "ExperienceGroup"], dropna=False).agg(
         n=("SubjectID", "nunique"),
         corr_mean=("corr_r1_r2", "mean"),
         corr_sd=("corr_r1_r2", "std"),
@@ -169,9 +211,9 @@ def main():
     ).reset_index()
     cons_grp.to_csv(out / "round_consistency_by_group.csv", index=False, encoding="utf-8-sig")
 
-    # Figure 1: heatmap mean Afford5 by WWR×Complexity, faceted by FreqGroup
-    h = df.dropna(subset=["Afford5", "WWR", "Complexity", "FreqGroup"]).copy()
-    for fg, g in h.groupby("FreqGroup"):
+    # Figure 1: heatmap mean Afford5 by WWR×Complexity, faceted by SportFreqGroup
+    h = df.dropna(subset=["Afford5", "WWR", "Complexity", "SportFreqGroup"]).copy()
+    for fg, g in h.groupby("SportFreqGroup"):
         piv = g.pivot_table(index="Complexity", columns="WWR", values="Afford5", aggfunc="mean")
         plt.figure(figsize=(5, 4))
         sns.heatmap(piv, annot=True, fmt=".2f", cmap="YlGnBu")
@@ -180,26 +222,26 @@ def main():
         plt.savefig(out / "figures" / f"heatmap_afford5_{fg}.png", dpi=220)
         plt.close()
 
-    # Figure 2: interaction line x=WWR hue=Complexity col=FreqGroup
-    g = df.dropna(subset=["Afford5", "WWR", "Complexity", "FreqGroup"]).copy()
+    # Figure 2: interaction line x=WWR hue=Complexity col=SportFreqGroup
+    g = df.dropna(subset=["Afford5", "WWR", "Complexity", "SportFreqGroup"]).copy()
     g["WWR"] = g["WWR"].astype(int).astype(str)
     g["Complexity"] = g["Complexity"].map({0: "C0", 1: "C1"}).fillna(g["Complexity"].astype(str))
-    p = sns.catplot(data=g, x="WWR", y="Afford5", hue="Complexity", col="FreqGroup", kind="point", errorbar="se", dodge=True, height=4, aspect=1)
-    p.fig.suptitle("WWR × Complexity on Afford5 by Frequency Group", y=1.05)
-    p.savefig(out / "figures" / "interaction_afford5_by_freqgroup.png", dpi=220)
+    p = sns.catplot(data=g, x="WWR", y="Afford5", hue="Complexity", col="SportFreqGroup", kind="point", errorbar="se", dodge=True, height=4, aspect=1)
+    p.fig.suptitle("WWR × Complexity on Afford5 by Sport Frequency Group", y=1.05)
+    p.savefig(out / "figures" / "interaction_afford5_by_sportfreqgroup.png", dpi=220)
     plt.close('all')
 
     # Figure 3: Round1 vs Round2 difference by group
-    d = df.dropna(subset=["Afford5", "SubjectID", "SceneID", "Block", "FreqGroup"]).copy()
-    piv = d.pivot_table(index=["SubjectID", "SceneID", "FreqGroup"], columns="Block", values="Afford5", aggfunc="mean").reset_index()
+    d = df.dropna(subset=["Afford5", "SubjectID", "SceneID", "Repetition", "SportFreqGroup"]).copy()
+    piv = d.pivot_table(index=["SubjectID", "SceneID", "SportFreqGroup"], columns="Repetition", values="Afford5", aggfunc="mean").reset_index()
     if 1 in piv.columns and 2 in piv.columns:
         piv["Diff_R2_minus_R1"] = piv[2] - piv[1]
         plt.figure(figsize=(6, 4))
-        sns.boxplot(data=piv, x="FreqGroup", y="Diff_R2_minus_R1")
-        sns.stripplot(data=piv, x="FreqGroup", y="Diff_R2_minus_R1", color="black", alpha=0.35, size=3)
-        plt.title("Round2 - Round1 (Afford5) by Frequency Group")
+        sns.boxplot(data=piv, x="SportFreqGroup", y="Diff_R2_minus_R1")
+        sns.stripplot(data=piv, x="SportFreqGroup", y="Diff_R2_minus_R1", color="black", alpha=0.35, size=3)
+        plt.title("Round2 - Round1 (Afford5) by Sport Frequency Group")
         plt.tight_layout()
-        plt.savefig(out / "figures" / "round_diff_afford5_by_freqgroup.png", dpi=220)
+        plt.savefig(out / "figures" / "round_diff_afford5_by_sportfreqgroup.png", dpi=220)
         plt.close()
 
     summary = {
@@ -210,8 +252,8 @@ def main():
             "round_consistency_by_subject.csv",
             "round_consistency_by_group.csv",
             "figures/heatmap_afford5_*.png",
-            "figures/interaction_afford5_by_freqgroup.png",
-            "figures/round_diff_afford5_by_freqgroup.png",
+            "figures/interaction_afford5_by_sportfreqgroup.png",
+            "figures/round_diff_afford5_by_sportfreqgroup.png",
         ]
     }
     (out / "analysis_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")

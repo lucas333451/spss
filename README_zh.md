@@ -123,6 +123,7 @@ python scripts/pipeline.py \
 - `results/model/model_comparison.csv`：A/B/C 模型比较（AIC/BIC）
 - `results/model/table_simple_effects_complexity_by_wwr.csv`：各 WWR 下 Complexity 的 simple effect
 - `results/model/paper_tables.md`：可直接粘贴文稿的 Markdown 表
+- `results/model/results_draft_zh.md`：自动生成的中文结果段草稿（需人工审校）
 - `results/research/table_fixed_effects_all_dv.csv`：多因变量固定效应
 - `results/research/round_consistency_by_group.csv`：重复一致性分组结果
 
