@@ -120,13 +120,12 @@ python scripts/pipeline.py \
 - `results/long/long_format.csv`
 - `results/long/qc_issues.csv`
 - `results/long/qc_summary.json`
-- `results/model/table_descriptives.csv`
-- `results/model/table_fixed_effects.csv`
-- `results/model/table_main_interactions.csv`
-- `results/model/model_comparison.csv` (A/B/C with AIC/BIC)
-- `results/model/table_simple_effects_complexity_by_wwr.csv`
-- `results/model/paper_tables.md`
-- `results/model/results_draft_zh.md` (auto-generated Chinese draft paragraph)
+- `results/research/table_fixed_effects_all_dv.csv` (item-level S1~S5_7)
+- `results/research/table_angle1_main_interactions_all_dv.csv`
+- `results/research/table_angle2_round_interactions_all_dv.csv`
+- `results/research/item_variance_by_group.csv` (within-group variance flags per item)
+- `results/research/item_variance_summary_by_group.csv`
+- `results/analysis_report_bundle.md` (one-file markdown bundle for easy sharing)
 - `results/research/table_fixed_effects_all_dv.csv` (currently item-level S1~S5 by default)
 - `results/research/round_consistency_by_group.csv`
 - `results/research/item_variance_by_group.csv` (within-group variance flags per item)
@@ -149,19 +148,18 @@ python scripts/pipeline.py \
 
 ---
 
-## 10. LMM v2 Optimization Notes / LMM v2 优化说明
-Current recommended model (Afford5_norm7):
-
-```text
-Afford5_norm7 ~ C(Complexity) * C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)
-Random: (1 + Complexity | Subject), with automatic fallback to (1 | Subject) if singular/non-convergent.
-```
+## 10. Item-level analysis notes / 分题分析说明
+The current default workflow is **item-level S1~S5_7 analysis**. Afford4/Afford5 are no longer default outputs for core analysis.
 
 Scale note and correction:
 - S1~S4 are 7-point
 - S5 (Pleasure) is 9-point
 - B1~B3 are 7-point
-- To avoid mixed-scale bias, script generates `S5_7` (linearly maps 1-9 to 1-7) and uses `Afford5_norm7` as the preferred composite.
+- Script generates `S5_7` (1-9 linearly mapped to 1-7) for item comparability.
+
+Within-group consistency/variance check:
+- `item_variance_by_group.csv` provides per-item `sd/iqr/cv` and high-variance flags
+- `item_variance_summary_by_group.csv` provides aggregated summary
 
 What is newly added in v2:
 - Repetition is explicitly modeled (`Repetition=1/2`, generated in long-format)

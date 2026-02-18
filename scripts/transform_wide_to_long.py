@@ -179,11 +179,6 @@ def build_long(df: pd.DataFrame, col_idx: dict) -> pd.DataFrame:
                 # - B1~B3: 1-7
                 s5_7 = rescale_9_to_7(s5)
 
-                afford4 = np.nanmean([s1, s2, s3, s4])
-                # Keep legacy Afford5 on raw scales for backward compatibility
-                afford5 = np.nanmean([s1, s2, s3, s4, s5])
-                # Recommended normalized composite: put S5 on 7-point scale first
-                afford5_norm7 = np.nanmean([s1, s2, s3, s4, s5_7])
                 bmean = np.nanmean([b1, b2, b3])
                 complexity = 1 if cond == "C1" else 0 if cond == "C0" else np.nan
 
@@ -207,11 +202,6 @@ def build_long(df: pd.DataFrame, col_idx: dict) -> pd.DataFrame:
                     "S4": s4,
                     "S5": s5,
                     "S5_7": s5_7,
-                    "Afford4": afford4,
-                    "Afford5": afford5,
-                    "Afford5_norm7": afford5_norm7,
-                    "Pleasure": s5,
-                    "Pleasure_7": s5_7,
                     "B1": b1,
                     "B2": b2,
                     "B3": b3,

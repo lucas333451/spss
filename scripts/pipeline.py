@@ -33,12 +33,7 @@ def main():
         "--out-dir", str(out_long),
     ])
 
-    run([
-        args.python, "scripts/run_analysis.py",
-        "--long-csv", str(out_long / "long_format.csv"),
-        "--out-dir", str(out_model),
-    ])
-
+    # Item-level only workflow (S1~S5_7)
     run([
         args.python, "scripts/analyze_research_questions.py",
         "--long-csv", str(out_long / "long_format.csv"),

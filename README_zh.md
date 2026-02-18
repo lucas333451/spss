@@ -120,13 +120,12 @@ python scripts/pipeline.py \
 - `results/long/long_format.csv`：长格式主数据
 - `results/long/qc_issues.csv`：QC问题明细
 - `results/long/qc_summary.json`：QC总览
-- `results/model/table_descriptives.csv`：描述统计
-- `results/model/table_fixed_effects.csv`：固定效应系数表
-- `results/model/table_main_interactions.csv`：主效应/交互项汇总
-- `results/model/model_comparison.csv`：A/B/C 模型比较（AIC/BIC）
-- `results/model/table_simple_effects_complexity_by_wwr.csv`：各 WWR 下 Complexity 的 simple effect
-- `results/model/paper_tables.md`：可直接粘贴文稿的 Markdown 表
-- `results/model/results_draft_zh.md`：自动生成的中文结果段草稿（需人工审校）
+- `results/research/table_fixed_effects_all_dv.csv`：多因变量固定效应（S1~S5_7）
+- `results/research/table_angle1_main_interactions_all_dv.csv`：角度1主效应/交互结果
+- `results/research/table_angle2_round_interactions_all_dv.csv`：角度2轮次交互结果
+- `results/research/item_variance_by_group.csv`：同类人群在每道题的方差/IQR/高方差标记
+- `results/research/item_variance_summary_by_group.csv`：同类人群方差汇总
+- `results/analysis_report_bundle.md`：自动汇总全部结果到一个 markdown（便于直接转发给 Sam 分析）
 - `results/research/table_fixed_effects_all_dv.csv`：多因变量固定效应（当前默认仅 S1~S5）
 - `results/research/round_consistency_by_group.csv`：重复一致性分组结果
 - `results/research/item_variance_by_group.csv`：同类人群在每道题的方差/IQR/高方差标记
@@ -150,19 +149,18 @@ python scripts/pipeline.py \
 
 ---
 
-## 10. LMM v2 优化说明
-当前推荐主模型（Afford5_norm7）：
-
-```text
-Afford5_norm7 ~ C(Complexity) * C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)
-随机项：优先 (1 + Complexity | Subject)；若奇异/不收敛自动回退到 (1 | Subject)
-```
+## 10. Item-level 分析说明（按你的要求）
+当前流程以 **S1~S5_7 分题分析** 为主，不再将 Afford4/Afford5 作为默认分析结果。
 
 量表说明与修正：
 - S1~S4 为 7 分量表
 - S5（Pleasure）为 9 分量表
 - B1~B3 为 7 分量表
-- 为避免混合量表导致偏置，脚本新增 `S5_7`（将 S5 从 1-9 线性映射到 1-7），并优先使用 `Afford5_norm7` 作为主综合指标
+- 为保证题项可比性，脚本自动生成 `S5_7`（将 S5 从 1-9 线性映射到 1-7）
+
+同类人群一致性/高方差检查：
+- `item_variance_by_group.csv` 提供每题在各组的 `sd/iqr/cv` 与高方差标记
+- `item_variance_summary_by_group.csv` 提供汇总视图
 
 v2 新增内容：
 - 显式纳入 Repetition（在 long 表中新增 `Repetition=1/2`）
