@@ -47,10 +47,11 @@ sudo apt install -y python3-pip python3-venv
 ---
 
 ## 4. Quick Start / 快速开始
-### Step 1: Wide to Long + QC
+### Step 1: Put Excel in repo root, then Wide to Long + QC
+Put your Excel file in the repository root (same level as `scripts/`, `docs/`, `README.md`), then run:
 ```bash
 python scripts/transform_wide_to_long.py \
-  --excel "/path/to/your.xlsx" \
+  --excel "your_file.xlsx" \
   --out-dir results/long
 ```
 

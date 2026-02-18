@@ -48,10 +48,11 @@ sudo apt install -y python3-pip python3-venv
 ---
 
 ## 4. 快速开始
-### 第一步：宽表转长表 + QC
+### 第一步：Excel 放到仓库根目录，再执行宽表转长表 + QC
+先把 Excel 放到仓库根目录（与 `scripts/`、`docs/`、`README.md` 同级），再执行：
 ```bash
 python scripts/transform_wide_to_long.py \
-  --excel "/path/to/your.xlsx" \
+  --excel "your_file.xlsx" \
   --out-dir results/long
 ```
 

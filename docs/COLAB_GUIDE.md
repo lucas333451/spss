@@ -59,7 +59,7 @@ print("✅ 环境准备完成")
 
 ---
 
-## 3.2 上传 Excel 文件
+## 3.2 上传 Excel 文件（上传位置说明）
 新建第二个 cell，执行：
 
 ```python
@@ -69,6 +69,20 @@ print("已上传文件：", list(uploaded.keys()))
 ```
 
 执行后会弹出文件选择框，选你的 Excel（例如：`VR+EEG实验问卷-原始数据-2026-02-04.xlsx`）。
+
+**重要：你要先在 3.1 执行过 `%cd spss`。**
+这样上传后的 Excel 会落在当前工作目录 `/content/spss/`，也就是和 `scripts/`、`docs/`、`notebooks/` **同级**。
+
+目录关系示意：
+
+```text
+/content/spss/
+├─ scripts/
+├─ docs/
+├─ notebooks/
+├─ README.md
+└─ 你的Excel文件.xlsx   ← 放这里（同级）
+```
 
 ---
 
