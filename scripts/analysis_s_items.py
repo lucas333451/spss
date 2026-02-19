@@ -377,6 +377,38 @@ def main():
     mean_2d_df.to_csv(out / "group_complexity_mean_table.csv", index=False, encoding="utf-8-sig")
     sig_2d_df.to_csv(out / "group_complexity_delta_significance.csv", index=False, encoding="utf-8-sig")
 
+    # new visualization: PeopleGroup4 × Complexity (per DV)
+    if not mean_2d_df.empty:
+        for dv in DVS:
+            d2 = mean_2d_df[mean_2d_df["DV"] == dv].copy()
+            if d2.empty:
+                continue
+
+            # heatmap: mean by group and complexity
+            hm = d2.set_index("PeopleGroup4")[["mean_C0", "mean_C1"]].copy()
+            hm = hm.rename(columns={"mean_C0": "C0", "mean_C1": "C1"})
+            plt.figure(figsize=(6, max(3, 0.6 * len(hm))))
+            sns.heatmap(hm, annot=True, fmt=".2f", cmap="YlGnBu")
+            plt.title(f"{dv}: PeopleGroup4 × Complexity Mean")
+            plt.xlabel("Complexity")
+            plt.ylabel("PeopleGroup4")
+            plt.tight_layout()
+            plt.savefig(out / "figures" / f"group_complexity_heatmap_{dv}.png", dpi=220)
+            plt.close()
+
+            # bar: delta C1-C0 by group
+            b = d2[["PeopleGroup4", "delta_C1_minus_C0"]].copy()
+            b = b.sort_values("delta_C1_minus_C0")
+            plt.figure(figsize=(7, max(3, 0.5 * len(b))))
+            sns.barplot(data=b, x="delta_C1_minus_C0", y="PeopleGroup4", orient="h", color="#4C72B0")
+            plt.axvline(0, color="black", linewidth=1)
+            plt.title(f"{dv}: Delta (C1 - C0) by PeopleGroup4")
+            plt.xlabel("C1 - C0")
+            plt.ylabel("PeopleGroup4")
+            plt.tight_layout()
+            plt.savefig(out / "figures" / f"group_complexity_delta_{dv}.png", dpi=220)
+            plt.close()
+
     var_df = group_item_variance(df, DVS)
     var_df.to_csv(out / "item_variance_by_group.csv", index=False, encoding="utf-8-sig")
     if not var_df.empty:
@@ -442,6 +474,8 @@ def main():
             "group_comparisons_item_level.csv",
             "group_complexity_mean_table.csv",
             "group_complexity_delta_significance.csv",
+            "figures/group_complexity_heatmap_S*.png",
+            "figures/group_complexity_delta_S*.png",
             "item_variance_by_group.csv",
             "item_variance_summary_by_group.csv",
             "figures/heatmap_S*_*.png",
