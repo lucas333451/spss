@@ -27,9 +27,13 @@
 ## 2. Repository Structure / 仓库结构
 - `scripts/transform_wide_to_long.py` — wide → long + QC
 - `scripts/run_analysis.py` — core LMM + paper-ready tables
-- `scripts/analyze_research_questions.py` — item-level angle-1/angle-2 analyses
+- `scripts/analyze_research_questions.py` — research orchestrator (compat entrypoint)
+- `scripts/analysis_s_items.py` — S1~S5 angle-1/angle-2 analyses + 4-group split/comparison
+- `scripts/analysis_b_items.py` — B1~B3/Bmean focused analyses (mainly C1)
+- `scripts/analysis_groups.py` — shared people-group split/comparison utilities
+- `scripts/report_summary.py` — narrative summary for angle-1/angle-2 conclusions
 - `scripts/diagnostics_lmm.py` — diagnostics (interaction screening / random-structure sensitivity / repetition deep-dive)
-- `scripts/pipeline.py` — one-click end-to-end runner
+- `scripts/pipeline.py` — one-click end-to-end runner (supports skip flags)
 - `scripts/build_report_md.py` — build one-file markdown bundle from `results/`
 - `docs/PROJECT_OVERVIEW.md` — concise orientation
 - `docs/COLAB_GUIDE.md` — Colab deployment guide
@@ -72,12 +76,13 @@ python scripts/diagnostics_lmm.py \
   --out-dir results/diagnostics
 ```
 
-### Step 4: Item-level research analysis
+### Step 4: Research analysis (orchestrated)
 ```bash
 python scripts/analyze_research_questions.py \
   --long-csv results/long/long_format.csv \
   --out-dir results/research
 ```
+(Internally runs `analysis_s_items.py` + `analysis_b_items.py` + `report_summary.py`)
 
 ---
 
@@ -140,6 +145,9 @@ python scripts/pipeline.py \
 - `results/research/groups/manifest.csv` + `results/research/groups/group_*.csv` (split by 4 people groups: Experience×SportFreq)
 - `results/research/group_comparisons_item_level.csv` (between-group comparisons on S1~S5)
 - `results/research/b_items_long_c1.csv`, `b_items_condition_means.csv`, `b_items_group_comparisons.csv` (B1~B3 focused outputs, mainly C1)
+- `results/research/analysis_narrative.md` (auto narrative summary for Angle1/Angle2)
+- `results/research/angle1_c1_minus_c0_by_group.csv` (directly answers “all groups lower in C1?” and “same or different drop magnitudes?”)
+- `results/research/angle2_round_diff_by_group.csv` (Round2-Round1 by group)
 - `results/research/item_variance_by_group.csv`
 - `results/research/item_variance_summary_by_group.csv`
 

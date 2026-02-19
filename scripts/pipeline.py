@@ -20,6 +20,10 @@ def main():
     ap.add_argument("--sheet", default="0")
     ap.add_argument("--out-root", default=Path("results"), type=Path)
     ap.add_argument("--python", default=sys.executable)
+    ap.add_argument("--skip-model", action="store_true", help="Skip scripts/run_analysis.py")
+    ap.add_argument("--skip-research", action="store_true", help="Skip research modules")
+    ap.add_argument("--skip-diagnostics", action="store_true", help="Skip scripts/diagnostics_lmm.py")
+    ap.add_argument("--skip-bundle", action="store_true", help="Skip scripts/build_report_md.py")
     args = ap.parse_args()
 
     out_long = args.out_root / "long"
@@ -34,33 +38,37 @@ def main():
         "--out-dir", str(out_long),
     ])
 
-    # keep existing core model workflow
-    run([
-        args.python, "scripts/run_analysis.py",
-        "--long-csv", str(out_long / "long_format.csv"),
-        "--out-dir", str(out_model),
-    ])
+    if not args.skip_model:
+        # keep existing core model workflow
+        run([
+            args.python, "scripts/run_analysis.py",
+            "--long-csv", str(out_long / "long_format.csv"),
+            "--out-dir", str(out_model),
+        ])
 
-    # keep existing research workflow
-    run([
-        args.python, "scripts/analyze_research_questions.py",
-        "--long-csv", str(out_long / "long_format.csv"),
-        "--out-dir", str(out_research),
-    ])
+    if not args.skip_research:
+        # research workflow (refactored orchestrator)
+        run([
+            args.python, "scripts/analyze_research_questions.py",
+            "--long-csv", str(out_long / "long_format.csv"),
+            "--out-dir", str(out_research),
+        ])
 
-    # diagnostics workflow for model-source and robustness checks
-    run([
-        args.python, "scripts/diagnostics_lmm.py",
-        "--long-csv", str(out_long / "long_format.csv"),
-        "--out-dir", str(out_diag),
-    ])
+    if not args.skip_diagnostics:
+        # diagnostics workflow for model-source and robustness checks
+        run([
+            args.python, "scripts/diagnostics_lmm.py",
+            "--long-csv", str(out_long / "long_format.csv"),
+            "--out-dir", str(out_diag),
+        ])
 
-    # build one markdown bundle for easy sharing/review
-    run([
-        args.python, "scripts/build_report_md.py",
-        "--results-root", str(args.out_root),
-        "--out", str(args.out_root / "analysis_report_bundle.md"),
-    ])
+    if not args.skip_bundle:
+        # build one markdown bundle for easy sharing/review
+        run([
+            args.python, "scripts/build_report_md.py",
+            "--results-root", str(args.out_root),
+            "--out", str(args.out_root / "analysis_report_bundle.md"),
+        ])
 
     print("\nDone. Outputs:")
     print("-", out_long)

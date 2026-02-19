@@ -28,9 +28,13 @@
 ## 2. 仓库结构
 - `scripts/transform_wide_to_long.py`：宽表转长表 + QC
 - `scripts/run_analysis.py`：基础 LMM + 论文结果表导出
-- `scripts/analyze_research_questions.py`：分题扩展分析（角度1/角度2）
+- `scripts/analyze_research_questions.py`：研究分析编排入口（兼容旧命令）
+- `scripts/analysis_s_items.py`：S1~S5 角度1/角度2 + 四类人群拆分/对比
+- `scripts/analysis_b_items.py`：B1~B3/Bmean 专项分析（主要 C1）
+- `scripts/analysis_groups.py`：四类人群拆分/对比的公共模块
+- `scripts/report_summary.py`：自动生成角度1/角度2叙事总结
 - `scripts/diagnostics_lmm.py`：诊断分析（交互来源/随机结构敏感性/Repetition）
-- `scripts/pipeline.py`：一键全流程执行
+- `scripts/pipeline.py`：一键全流程执行（支持 skip 参数）
 - `scripts/build_report_md.py`：将结果目录汇总成一个 markdown
 
 ---
@@ -69,12 +73,13 @@ python scripts/diagnostics_lmm.py \
   --out-dir results/diagnostics
 ```
 
-### 第四步：分题扩展分析
+### 第四步：研究分析（编排执行）
 ```bash
 python scripts/analyze_research_questions.py \
   --long-csv results/long/long_format.csv \
   --out-dir results/research
 ```
+（内部会依次执行 `analysis_s_items.py` + `analysis_b_items.py` + `report_summary.py`）
 
 ---
 
@@ -137,6 +142,9 @@ python scripts/pipeline.py \
 - `results/research/groups/manifest.csv` 与 `results/research/groups/group_*.csv`（按 Experience×SportFreq 四类人群拆分数据）
 - `results/research/group_comparisons_item_level.csv`（四类人群在 S1~S5 的组间对比）
 - `results/research/b_items_long_c1.csv`、`b_items_condition_means.csv`、`b_items_group_comparisons.csv`（B1~B3 专项：主要针对 C1）
+- `results/research/analysis_narrative.md`（角度1/角度2自动叙事总结）
+- `results/research/angle1_c1_minus_c0_by_group.csv`（直接回答“C1是否普遍更低、降幅是否一致”）
+- `results/research/angle2_round_diff_by_group.csv`（各人群 Round2-Round1）
 - `results/research/item_variance_by_group.csv`
 - `results/research/item_variance_summary_by_group.csv`
 
