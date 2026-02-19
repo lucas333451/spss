@@ -151,6 +151,8 @@ python scripts/pipeline.py \
 - `results/research/table_angle2_round_interactions_all_dv.csv`
 - `results/research/groups/manifest.csv` + `results/research/groups/group_*.csv` (split by 4 people groups: Experience×SportFreq)
 - `results/research/group_comparisons_item_level.csv` (between-group comparisons on S1~S5)
+- `results/research/group_complexity_mean_table.csv` (intuitive 2D table: DV × [PeopleGroup4 × Complexity means])
+- `results/research/group_complexity_delta_significance.csv` (between-group significance on complexity deltas: C1-C0)
 - `results/research/b_items_long_c1.csv`, `b_items_condition_means.csv`, `b_items_group_comparisons.csv` (B1~B3 focused outputs, mainly C1)
 - `results/research/analysis_narrative.md` (auto narrative summary for Angle1/Angle2)
 - `results/research/angle1_c1_minus_c0_by_group.csv` (directly answers “all groups lower in C1?” and “same or different drop magnitudes?”)

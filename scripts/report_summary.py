@@ -111,6 +111,8 @@ def build_summary(long_csv: Path, research_dir: Path) -> str:
             lines.append("")
 
     lines.append("## Key output files to inspect")
+    lines.append("- group_complexity_mean_table.csv (每个DV的人群×复杂度二维均值表)")
+    lines.append("- group_complexity_delta_significance.csv (组间复杂度差异显著性，比较各组 C1-C0 的差值)")
     lines.append("- group_comparisons_item_level.csv (S题四类人群比较)")
     lines.append("- b_items_group_comparisons.csv (B题四类人群比较)")
     lines.append("- angle1_c1_minus_c0_by_group.csv (直接回答‘高复杂度是否普遍下降/降幅是否不同’)")

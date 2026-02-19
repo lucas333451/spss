@@ -10,7 +10,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from scipy.stats import ttest_ind
 from statsmodels.formula.api import mixedlm
+from statsmodels.stats.multitest import multipletests
 
 from analysis_groups import split_tables_by_people_group, compare_people_groups_subject_mean, make_people_group4
 
@@ -120,6 +122,110 @@ def subject_consistency(df: pd.DataFrame, dv: str) -> pd.DataFrame:
             "sd_change": sd2 - sd1,
         })
     return pd.DataFrame(rows)
+
+
+def complexity_group_tables(df: pd.DataFrame, dvs: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Build intuitive group×complexity mean table and pairwise tests on complexity deltas.
+
+    - mean table: per DV × PeopleGroup4, means at C0/C1 and delta (C1-C0)
+    - significance table: pairwise tests of subject-level delta across PeopleGroup4
+    """
+    x = make_people_group4(df)
+
+    mean_rows = []
+    sig_rows = []
+
+    for dv in dvs:
+        if dv not in x.columns:
+            continue
+
+        sub = x.dropna(subset=["SubjectID", "PeopleGroup4", "Complexity", dv]).copy()
+        if sub.empty:
+            continue
+
+        # subject-level means in each complexity, then group-level summary
+        subj = (
+            sub.groupby(["SubjectID", "PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "Complexity"], as_index=False)[dv]
+            .mean()
+        )
+
+        grp = (
+            subj.groupby(["PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "Complexity"], as_index=False)[dv]
+            .agg(["count", "mean", "std"]).reset_index()
+        )
+        grp.columns = ["PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "Complexity", "n_subjects", "mean", "sd"]
+
+        piv_mean = grp.pivot_table(index=["PeopleGroup4", "ExperienceGroup", "SportFreqGroup"], columns="Complexity", values="mean", aggfunc="first")
+        piv_n = grp.pivot_table(index=["PeopleGroup4", "ExperienceGroup", "SportFreqGroup"], columns="Complexity", values="n_subjects", aggfunc="first")
+
+        c0_col = 0 if 0 in piv_mean.columns else (0.0 if 0.0 in piv_mean.columns else None)
+        c1_col = 1 if 1 in piv_mean.columns else (1.0 if 1.0 in piv_mean.columns else None)
+
+        tmp = piv_mean.reset_index().copy()
+        tmp.insert(0, "DV", dv)
+        tmp["mean_C0"] = tmp[c0_col] if c0_col is not None else np.nan
+        tmp["mean_C1"] = tmp[c1_col] if c1_col is not None else np.nan
+        tmp["delta_C1_minus_C0"] = tmp["mean_C1"] - tmp["mean_C0"]
+
+        n0 = piv_n[c0_col].reset_index(drop=True) if (c0_col is not None and c0_col in piv_n.columns) else pd.Series([np.nan] * len(tmp))
+        n1 = piv_n[c1_col].reset_index(drop=True) if (c1_col is not None and c1_col in piv_n.columns) else pd.Series([np.nan] * len(tmp))
+        tmp["n_subj_C0"] = n0.values
+        tmp["n_subj_C1"] = n1.values
+
+        keep = ["DV", "PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "n_subj_C0", "n_subj_C1", "mean_C0", "mean_C1", "delta_C1_minus_C0"]
+        mean_rows.append(tmp[keep])
+
+        # significance: compare subject-level delta (C1-C0) between groups
+        piv_subj = subj.pivot_table(index=["SubjectID", "PeopleGroup4", "ExperienceGroup", "SportFreqGroup"], columns="Complexity", values=dv, aggfunc="mean").reset_index()
+        if c0_col in piv_subj.columns and c1_col in piv_subj.columns:
+            piv_subj["delta_C1_minus_C0"] = piv_subj[c1_col] - piv_subj[c0_col]
+            groups = sorted(piv_subj["PeopleGroup4"].dropna().unique())
+
+            pvals, raw = [], []
+            for i in range(len(groups)):
+                for j in range(i + 1, len(groups)):
+                    g1, g2 = groups[i], groups[j]
+                    v1 = piv_subj.loc[piv_subj["PeopleGroup4"] == g1, "delta_C1_minus_C0"].dropna().to_numpy(dtype=float)
+                    v2 = piv_subj.loc[piv_subj["PeopleGroup4"] == g2, "delta_C1_minus_C0"].dropna().to_numpy(dtype=float)
+                    if len(v1) < 3 or len(v2) < 3:
+                        t, p = np.nan, np.nan
+                    else:
+                        r = ttest_ind(v1, v2, equal_var=False, nan_policy="omit")
+                        t, p = float(r.statistic), float(r.pvalue)
+                    pvals.append(p)
+                    raw.append((g1, g2, len(v1), len(v2), np.mean(v1) if len(v1) else np.nan, np.mean(v2) if len(v2) else np.nan, t, p))
+
+            valid = np.isfinite(pvals)
+            p_adj = [np.nan] * len(pvals)
+            if np.any(valid):
+                _, corr, _, _ = multipletests(np.array(pvals)[valid], method="holm")
+                k = 0
+                for idx, ok in enumerate(valid):
+                    if ok:
+                        p_adj[idx] = float(corr[k])
+                        k += 1
+
+            for (g1, g2, n1s, n2s, m1, m2, t, p), ph in zip(raw, p_adj):
+                sig_rows.append({
+                    "DV": dv,
+                    "GroupA": g1,
+                    "GroupB": g2,
+                    "nA_subjects": n1s,
+                    "nB_subjects": n2s,
+                    "meanDeltaA_C1_minus_C0": m1,
+                    "meanDeltaB_C1_minus_C0": m2,
+                    "delta_of_delta_A_minus_B": (m1 - m2) if pd.notna(m1) and pd.notna(m2) else np.nan,
+                    "t_welch": t,
+                    "p": p,
+                    "p_holm": ph,
+                    "sig_holm": _sigstar(ph),
+                })
+
+    mean_df = pd.concat(mean_rows, ignore_index=True) if mean_rows else pd.DataFrame()
+    sig_df = pd.DataFrame(sig_rows)
+    if not sig_df.empty:
+        sig_df = sig_df.sort_values(["DV", "p_holm"], na_position="last").reset_index(drop=True)
+    return mean_df, sig_df
 
 
 def group_item_variance(df: pd.DataFrame, dvs: list[str]) -> pd.DataFrame:
@@ -266,6 +372,11 @@ def main():
     group_cmp = pd.concat(cmp_rows, ignore_index=True) if cmp_rows else pd.DataFrame()
     group_cmp.to_csv(out / "group_comparisons_item_level.csv", index=False, encoding="utf-8-sig")
 
+    # intuitive 2D table: PeopleGroup4 × Complexity means (per DV)
+    mean_2d_df, sig_2d_df = complexity_group_tables(df, DVS)
+    mean_2d_df.to_csv(out / "group_complexity_mean_table.csv", index=False, encoding="utf-8-sig")
+    sig_2d_df.to_csv(out / "group_complexity_delta_significance.csv", index=False, encoding="utf-8-sig")
+
     var_df = group_item_variance(df, DVS)
     var_df.to_csv(out / "item_variance_by_group.csv", index=False, encoding="utf-8-sig")
     if not var_df.empty:
@@ -329,6 +440,8 @@ def main():
             "groups/manifest.csv",
             "groups/group_*.csv",
             "group_comparisons_item_level.csv",
+            "group_complexity_mean_table.csv",
+            "group_complexity_delta_significance.csv",
             "item_variance_by_group.csv",
             "item_variance_summary_by_group.csv",
             "figures/heatmap_S*_*.png",
