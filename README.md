@@ -27,7 +27,6 @@
 ## 2. Repository Structure / 仓库结构
 - `scripts/transform_wide_to_long.py` — wide → long + QC
 - `scripts/run_analysis.py` — core LMM + paper-ready tables
-- `scripts/analyze_research_questions.py` — research orchestrator (compat entrypoint)
 - `scripts/analysis_s_items.py` — S1~S5 angle-1/angle-2 analyses + 4-group split/comparison
 - `scripts/analysis_b_items.py` — B1~B3/Bmean focused analyses (mainly C1)
 - `scripts/analysis_groups.py` — shared people-group split/comparison utilities
@@ -76,13 +75,21 @@ python scripts/diagnostics_lmm.py \
   --out-dir results/diagnostics
 ```
 
-### Step 4: Research analysis (orchestrated)
+### Step 4: Research analysis (modular)
 ```bash
-python scripts/analyze_research_questions.py \
+python scripts/analysis_s_items.py \
   --long-csv results/long/long_format.csv \
   --out-dir results/research
+
+python scripts/analysis_b_items.py \
+  --long-csv results/long/long_format.csv \
+  --out-dir results/research
+
+python scripts/report_summary.py \
+  --long-csv results/long/long_format.csv \
+  --research-dir results/research \
+  --out results/research/analysis_narrative.md
 ```
-(Internally runs `analysis_s_items.py` + `analysis_b_items.py` + `report_summary.py`)
 
 ---
 

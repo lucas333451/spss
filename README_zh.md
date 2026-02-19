@@ -28,7 +28,6 @@
 ## 2. 仓库结构
 - `scripts/transform_wide_to_long.py`：宽表转长表 + QC
 - `scripts/run_analysis.py`：基础 LMM + 论文结果表导出
-- `scripts/analyze_research_questions.py`：研究分析编排入口（兼容旧命令）
 - `scripts/analysis_s_items.py`：S1~S5 角度1/角度2 + 四类人群拆分/对比
 - `scripts/analysis_b_items.py`：B1~B3/Bmean 专项分析（主要 C1）
 - `scripts/analysis_groups.py`：四类人群拆分/对比的公共模块
@@ -73,13 +72,21 @@ python scripts/diagnostics_lmm.py \
   --out-dir results/diagnostics
 ```
 
-### 第四步：研究分析（编排执行）
+### 第四步：研究分析（模块化）
 ```bash
-python scripts/analyze_research_questions.py \
+python scripts/analysis_s_items.py \
   --long-csv results/long/long_format.csv \
   --out-dir results/research
+
+python scripts/analysis_b_items.py \
+  --long-csv results/long/long_format.csv \
+  --out-dir results/research
+
+python scripts/report_summary.py \
+  --long-csv results/long/long_format.csv \
+  --research-dir results/research \
+  --out results/research/analysis_narrative.md
 ```
-（内部会依次执行 `analysis_s_items.py` + `analysis_b_items.py` + `report_summary.py`）
 
 ---
 

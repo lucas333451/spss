@@ -47,11 +47,22 @@ def main():
         ])
 
     if not args.skip_research:
-        # research workflow (refactored orchestrator)
+        # research workflow (modular)
         run([
-            args.python, "scripts/analyze_research_questions.py",
+            args.python, "scripts/analysis_s_items.py",
             "--long-csv", str(out_long / "long_format.csv"),
             "--out-dir", str(out_research),
+        ])
+        run([
+            args.python, "scripts/analysis_b_items.py",
+            "--long-csv", str(out_long / "long_format.csv"),
+            "--out-dir", str(out_research),
+        ])
+        run([
+            args.python, "scripts/report_summary.py",
+            "--long-csv", str(out_long / "long_format.csv"),
+            "--research-dir", str(out_research),
+            "--out", str(out_research / "analysis_narrative.md"),
         ])
 
     if not args.skip_diagnostics:
