@@ -137,6 +137,9 @@ python scripts/pipeline.py \
 - `results/research/table_fixed_effects_all_dv.csv` (item-level S1~S5)
 - `results/research/table_angle1_main_interactions_all_dv.csv`
 - `results/research/table_angle2_round_interactions_all_dv.csv`
+- `results/research/groups/manifest.csv` + `results/research/groups/group_*.csv` (split by 4 people groups: Experience×SportFreq)
+- `results/research/group_comparisons_item_level.csv` (between-group comparisons on S1~S5)
+- `results/research/b_items_long_c1.csv`, `b_items_condition_means.csv`, `b_items_group_comparisons.csv` (B1~B3 focused outputs, mainly C1)
 - `results/research/item_variance_by_group.csv`
 - `results/research/item_variance_summary_by_group.csv`
 

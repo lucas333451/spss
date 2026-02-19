@@ -134,6 +134,9 @@ python scripts/pipeline.py \
 - `results/research/table_fixed_effects_all_dv.csv`（分题：S1~S5）
 - `results/research/table_angle1_main_interactions_all_dv.csv`
 - `results/research/table_angle2_round_interactions_all_dv.csv`
+- `results/research/groups/manifest.csv` 与 `results/research/groups/group_*.csv`（按 Experience×SportFreq 四类人群拆分数据）
+- `results/research/group_comparisons_item_level.csv`（四类人群在 S1~S5 的组间对比）
+- `results/research/b_items_long_c1.csv`、`b_items_condition_means.csv`、`b_items_group_comparisons.csv`（B1~B3 专项：主要针对 C1）
 - `results/research/item_variance_by_group.csv`
 - `results/research/item_variance_summary_by_group.csv`
 

@@ -10,7 +10,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from scipy.stats import ttest_ind
 from statsmodels.formula.api import mixedlm
+from statsmodels.stats.multitest import multipletests
 
 warnings.filterwarnings("ignore")
 
@@ -140,8 +142,11 @@ def group_item_variance(df: pd.DataFrame, dvs: list[str]) -> pd.DataFrame:
         if sub.empty:
             continue
 
+        sub = sub.copy()
+        sub["PeopleGroup4"] = sub["ExperienceGroup"].astype(str) + "__" + sub["SportFreqGroup"].astype(str)
+
         global_sd = float(sub[dv].std(ddof=1)) if sub[dv].notna().sum() >= 2 else np.nan
-        for (fg, eg), g in sub.groupby(["SportFreqGroup", "ExperienceGroup"], dropna=False):
+        for grp4, g in sub.groupby(["PeopleGroup4"], dropna=False):
             vals = g[dv].dropna().to_numpy(dtype=float)
             if len(vals) < 2:
                 sd = np.nan
@@ -159,8 +164,9 @@ def group_item_variance(df: pd.DataFrame, dvs: list[str]) -> pd.DataFrame:
 
             rows.append({
                 "DV": dv,
-                "SportFreqGroup": fg,
-                "ExperienceGroup": eg,
+                "PeopleGroup4": grp4,
+                "ExperienceGroup": g["ExperienceGroup"].iloc[0],
+                "SportFreqGroup": g["SportFreqGroup"].iloc[0],
                 "n_rows": int(len(vals)),
                 "n_subjects": int(g["SubjectID"].nunique()),
                 "mean": mean,
@@ -176,6 +182,97 @@ def group_item_variance(df: pd.DataFrame, dvs: list[str]) -> pd.DataFrame:
     out = pd.DataFrame(rows)
     if not out.empty:
         out = out.sort_values(["DV", "high_variance_flag", "sd"], ascending=[True, False, False]).reset_index(drop=True)
+    return out
+
+
+def split_tables_by_people_group(df: pd.DataFrame, out_dir: Path) -> pd.DataFrame:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    x = df.copy()
+    x["PeopleGroup4"] = x["ExperienceGroup"].astype(str) + "__" + x["SportFreqGroup"].astype(str)
+
+    manifest_rows = []
+    for grp, g in x.groupby("PeopleGroup4", dropna=False):
+        safe = str(grp).replace("/", "_").replace(" ", "")
+        f = out_dir / f"group_{safe}.csv"
+        g.to_csv(f, index=False, encoding="utf-8-sig")
+        manifest_rows.append({
+            "PeopleGroup4": grp,
+            "ExperienceGroup": g["ExperienceGroup"].iloc[0],
+            "SportFreqGroup": g["SportFreqGroup"].iloc[0],
+            "n_rows": int(len(g)),
+            "n_subjects": int(g["SubjectID"].nunique()),
+            "file": str(f),
+        })
+
+    m = pd.DataFrame(manifest_rows)
+    m.to_csv(out_dir / "manifest.csv", index=False, encoding="utf-8-sig")
+    return m
+
+
+def compare_people_groups(df: pd.DataFrame, dvs: list[str]) -> pd.DataFrame:
+    """Pairwise comparison across 4 people groups (Experience×SportFreq).
+
+    Uses subject-level means per DV to avoid pseudo-replication.
+    """
+    x = df.copy()
+    x["PeopleGroup4"] = x["ExperienceGroup"].astype(str) + "__" + x["SportFreqGroup"].astype(str)
+    groups = sorted(x["PeopleGroup4"].dropna().unique())
+
+    rows = []
+    for dv in dvs:
+        if dv not in x.columns:
+            continue
+
+        # subject-level means for fair between-group comparison
+        subj = x.dropna(subset=[dv, "SubjectID", "PeopleGroup4"]).groupby(["SubjectID", "PeopleGroup4"], as_index=False)[dv].mean()
+
+        pvals = []
+        tmp_idx = []
+        for i in range(len(groups)):
+            for j in range(i + 1, len(groups)):
+                g1 = groups[i]
+                g2 = groups[j]
+                v1 = subj.loc[subj["PeopleGroup4"] == g1, dv].dropna().to_numpy(dtype=float)
+                v2 = subj.loc[subj["PeopleGroup4"] == g2, dv].dropna().to_numpy(dtype=float)
+                if len(v1) < 3 or len(v2) < 3:
+                    p = np.nan
+                    t = np.nan
+                else:
+                    tt = ttest_ind(v1, v2, equal_var=False, nan_policy="omit")
+                    p = float(tt.pvalue)
+                    t = float(tt.statistic)
+                pvals.append(p)
+                tmp_idx.append((g1, g2, len(v1), len(v2), np.mean(v1) if len(v1) else np.nan, np.mean(v2) if len(v2) else np.nan, t, p))
+
+        valid_mask = np.isfinite(pvals)
+        p_adj = [np.nan] * len(pvals)
+        if np.any(valid_mask):
+            _, p_corr, _, _ = multipletests(np.array(pvals)[valid_mask], method="holm")
+            k = 0
+            for idx, ok in enumerate(valid_mask):
+                if ok:
+                    p_adj[idx] = float(p_corr[k])
+                    k += 1
+
+        for (g1, g2, n1, n2, m1, m2, t, p), ph in zip(tmp_idx, p_adj):
+            rows.append({
+                "DV": dv,
+                "GroupA": g1,
+                "GroupB": g2,
+                "nA_subjects": n1,
+                "nB_subjects": n2,
+                "meanA": m1,
+                "meanB": m2,
+                "delta_A_minus_B": (m1 - m2) if pd.notna(m1) and pd.notna(m2) else np.nan,
+                "t_welch": t,
+                "p": p,
+                "p_holm": ph,
+                "sig_holm": _sigstar(ph),
+            })
+
+    out = pd.DataFrame(rows)
+    if not out.empty:
+        out = out.sort_values(["DV", "p_holm"], na_position="last").reset_index(drop=True)
     return out
 
 
@@ -211,6 +308,9 @@ def main():
     df["Complexity"] = pd.to_numeric(df["Complexity"], errors="coerce")
     df["Position"] = pd.to_numeric(df["Position"], errors="coerce")
     df["Repetition"] = pd.to_numeric(df["Repetition"], errors="coerce")
+
+    # 4-group people segmentation: ExperienceGroup × SportFreqGroup
+    df["PeopleGroup4"] = df["ExperienceGroup"].astype(str) + "__" + df["SportFreqGroup"].astype(str)
 
     angle1_all = []
     angle2_all = []
@@ -328,7 +428,85 @@ def main():
         sd_change_mean=("sd_change", "mean"),
         delta_mean=("mean_delta_r2_minus_r1", "mean"),
     ).reset_index()
+    cons_grp["PeopleGroup4"] = cons_grp["ExperienceGroup"].astype(str) + "__" + cons_grp["SportFreqGroup"].astype(str)
     cons_grp.to_csv(out / "round_consistency_by_group.csv", index=False, encoding="utf-8-sig")
+
+    # split long table by 4 people groups (for downstream separate analysis)
+    groups_dir = out / "groups"
+    groups_manifest = split_tables_by_people_group(df, groups_dir)
+
+    # between-group comparison (4 groups)
+    group_cmp = compare_people_groups(df, DVS)
+    group_cmp.to_csv(out / "group_comparisons_item_level.csv", index=False, encoding="utf-8-sig")
+
+    # B-items (block-level, mainly C1) analysis
+    b_cols = [c for c in ["B1", "B2", "B3", "Bmean"] if c in df.columns]
+    if b_cols:
+        bdf = df[df["Complexity"] == 1].copy() if "Complexity" in df.columns else df.copy()
+        bdf = bdf.dropna(subset=["SubjectID", "WWR", "Repetition", "ExperienceGroup", "SportFreqGroup"], how="any")
+        b_long = bdf.melt(
+            id_vars=["SubjectID", "WWR", "Repetition", "ExperienceGroup", "SportFreqGroup", "PeopleGroup4"],
+            value_vars=b_cols,
+            var_name="B_Item",
+            value_name="Score",
+        ).dropna(subset=["Score"])
+        b_long.to_csv(out / "b_items_long_c1.csv", index=False, encoding="utf-8-sig")
+
+        b_means = (
+            b_long.groupby(["B_Item", "PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "WWR", "Repetition"], dropna=False)["Score"]
+            .agg(n="count", mean="mean", sd="std")
+            .reset_index()
+        )
+        b_means.to_csv(out / "b_items_condition_means.csv", index=False, encoding="utf-8-sig")
+
+        # group comparisons for B items (subject means)
+        b_cmp_rows = []
+        groups = sorted(b_long["PeopleGroup4"].dropna().unique())
+        for bi in sorted(b_long["B_Item"].dropna().unique()):
+            subj = b_long[b_long["B_Item"] == bi].groupby(["SubjectID", "PeopleGroup4"], as_index=False)["Score"].mean()
+            pvals = []
+            tmp = []
+            for i in range(len(groups)):
+                for j in range(i + 1, len(groups)):
+                    g1, g2 = groups[i], groups[j]
+                    v1 = subj.loc[subj["PeopleGroup4"] == g1, "Score"].dropna().to_numpy(dtype=float)
+                    v2 = subj.loc[subj["PeopleGroup4"] == g2, "Score"].dropna().to_numpy(dtype=float)
+                    if len(v1) < 3 or len(v2) < 3:
+                        t, p = np.nan, np.nan
+                    else:
+                        r = ttest_ind(v1, v2, equal_var=False, nan_policy="omit")
+                        t, p = float(r.statistic), float(r.pvalue)
+                    pvals.append(p)
+                    tmp.append((g1, g2, len(v1), len(v2), np.mean(v1) if len(v1) else np.nan, np.mean(v2) if len(v2) else np.nan, t, p))
+
+            valid = np.isfinite(pvals)
+            p_adj = [np.nan] * len(pvals)
+            if np.any(valid):
+                _, p_corr, _, _ = multipletests(np.array(pvals)[valid], method="holm")
+                k = 0
+                for idx, ok in enumerate(valid):
+                    if ok:
+                        p_adj[idx] = float(p_corr[k])
+                        k += 1
+
+            for (g1, g2, n1, n2, m1, m2, t, p), ph in zip(tmp, p_adj):
+                b_cmp_rows.append({
+                    "B_Item": bi,
+                    "GroupA": g1,
+                    "GroupB": g2,
+                    "nA_subjects": n1,
+                    "nB_subjects": n2,
+                    "meanA": m1,
+                    "meanB": m2,
+                    "delta_A_minus_B": (m1 - m2) if pd.notna(m1) and pd.notna(m2) else np.nan,
+                    "t_welch": t,
+                    "p": p,
+                    "p_holm": ph,
+                    "sig_holm": _sigstar(ph),
+                })
+
+        b_cmp_df = pd.DataFrame(b_cmp_rows)
+        b_cmp_df.to_csv(out / "b_items_group_comparisons.csv", index=False, encoding="utf-8-sig")
 
     # new: same-group item variance check
     var_df = group_item_variance(df, DVS)
@@ -336,7 +514,7 @@ def main():
 
     if not var_df.empty:
         var_summary = (
-            var_df.groupby(["DV", "SportFreqGroup", "ExperienceGroup"], dropna=False)
+            var_df.groupby(["DV", "PeopleGroup4", "SportFreqGroup", "ExperienceGroup"], dropna=False)
             .agg(
                 n_rows=("n_rows", "sum"),
                 n_subjects=("n_subjects", "max"),
@@ -347,7 +525,7 @@ def main():
             .reset_index()
         )
     else:
-        var_summary = pd.DataFrame(columns=["DV", "SportFreqGroup", "ExperienceGroup", "n_rows", "n_subjects", "mean_sd", "max_sd", "any_high_variance"])
+        var_summary = pd.DataFrame(columns=["DV", "PeopleGroup4", "SportFreqGroup", "ExperienceGroup", "n_rows", "n_subjects", "mean_sd", "max_sd", "any_high_variance"])
     var_summary.to_csv(out / "item_variance_summary_by_group.csv", index=False, encoding="utf-8-sig")
 
     # Figure 1+2+3 for EACH item (S1-S5)
@@ -401,6 +579,7 @@ def main():
 
     summary = {
         "dvs": DVS,
+        "people_groups": groups_manifest.to_dict(orient="records") if isinstance(groups_manifest, pd.DataFrame) else [],
         "outputs": [
             "table_fixed_effects_all_dv.csv",
             "table_angle1_effects_all_dv.csv",
@@ -411,6 +590,12 @@ def main():
             "model_log.csv",
             "round_consistency_by_subject.csv",
             "round_consistency_by_group.csv",
+            "groups/manifest.csv",
+            "groups/group_*.csv",
+            "group_comparisons_item_level.csv",
+            "b_items_long_c1.csv",
+            "b_items_condition_means.csv",
+            "b_items_group_comparisons.csv",
             "item_variance_by_group.csv",
             "item_variance_summary_by_group.csv",
             "figures/heatmap_S*_*.png",
