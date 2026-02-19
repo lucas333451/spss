@@ -100,8 +100,9 @@ python scripts/transform_wide_to_long.py \
 
 量表说明：
 - S1~S4：7分
-- S5：9分（并自动生成 `S5_7`）
+- S5：9分（分题分析默认使用原始 S5）
 - B1~B3：7分
+- `S5_7` 仍会保留在 long 表中，仅用于需要同量尺展示时可选使用
 
 ---
 
@@ -130,7 +131,7 @@ python scripts/pipeline.py \
 - `results/model/paper_tables.md`
 - `results/model/results_draft_zh.md`
 
-- `results/research/table_fixed_effects_all_dv.csv`
+- `results/research/table_fixed_effects_all_dv.csv`（分题：S1~S5）
 - `results/research/table_angle1_main_interactions_all_dv.csv`
 - `results/research/table_angle2_round_interactions_all_dv.csv`
 - `results/research/item_variance_by_group.csv`

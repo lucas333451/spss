@@ -103,8 +103,8 @@ It also outputs grouped factors used in analysis:
 
 Scale note:
 - S1~S4 are 7-point
-- S5 is 9-point
-- Script also creates `S5_7` (S5 mapped to 7-point)
+- S5 is 9-point (item-level analysis uses raw S5 by default)
+- Script still keeps optional `S5_7` for aligned-scale display when needed
 
 ---
 
@@ -134,7 +134,7 @@ python scripts/pipeline.py \
 - `results/model/paper_tables.md`
 - `results/model/results_draft_zh.md`
 
-- `results/research/table_fixed_effects_all_dv.csv`
+- `results/research/table_fixed_effects_all_dv.csv` (item-level S1~S5)
 - `results/research/table_angle1_main_interactions_all_dv.csv`
 - `results/research/table_angle2_round_interactions_all_dv.csv`
 - `results/research/item_variance_by_group.csv`
