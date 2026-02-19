@@ -119,6 +119,7 @@ def build_summary(long_csv: Path, research_dir: Path) -> str:
     lines.append("- b_items_group_comparisons.csv (B题四类人群比较)")
     lines.append("- angle1_c1_minus_c0_by_group.csv (直接回答‘高复杂度是否普遍下降/降幅是否不同’)")
     lines.append("- angle2_round_diff_by_group.csv (重复两遍收敛/学习)")
+    lines.append("- round_icc_by_group.csv (各人群Round一致性 ICC(A,1))")
     lines.append("")
 
     return "\n".join(lines)

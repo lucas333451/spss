@@ -156,6 +156,7 @@ python scripts/pipeline.py \
 - `results/research/analysis_narrative.md`（角度1/角度2自动叙事总结）
 - `results/research/angle1_c1_minus_c0_by_group.csv`（直接回答“C1是否普遍更低、降幅是否一致”）
 - `results/research/angle2_round_diff_by_group.csv`（各人群 Round2-Round1）
+- `results/research/round_icc_by_group.csv`（各人群 Round 一致性 ICC(A,1)）
 - `results/research/item_variance_by_group.csv`
 - `results/research/item_variance_summary_by_group.csv`
 

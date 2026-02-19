@@ -124,6 +124,85 @@ def subject_consistency(df: pd.DataFrame, dv: str) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _icc_a1_from_pivot(piv: pd.DataFrame) -> tuple[float, int, int]:
+    """ICC(A,1) from a complete targets×raters matrix.
+
+    Returns: (icc_a1, n_targets, n_raters)
+    """
+    if piv.empty:
+        return np.nan, 0, 0
+
+    x = piv.dropna(axis=0, how="any").to_numpy(dtype=float)
+    n, k = x.shape
+    if n < 2 or k < 2:
+        return np.nan, int(n), int(k)
+
+    grand = np.mean(x)
+    row_means = np.mean(x, axis=1)
+    col_means = np.mean(x, axis=0)
+
+    ssr = k * np.sum((row_means - grand) ** 2)  # targets
+    ssc = n * np.sum((col_means - grand) ** 2)  # raters
+    sse = np.sum((x - row_means[:, None] - col_means[None, :] + grand) ** 2)
+
+    dfr = n - 1
+    dfc = k - 1
+    dfe = (n - 1) * (k - 1)
+
+    if dfr <= 0 or dfc <= 0 or dfe <= 0:
+        return np.nan, int(n), int(k)
+
+    msr = ssr / dfr
+    msc = ssc / dfc
+    mse = sse / dfe
+
+    denom = msr + (k - 1) * mse + (k * (msc - mse) / n)
+    if denom == 0:
+        return np.nan, int(n), int(k)
+
+    icc_a1 = (msr - mse) / denom
+    return float(icc_a1), int(n), int(k)
+
+
+def round_icc_by_group(df: pd.DataFrame, dvs: list[str]) -> pd.DataFrame:
+    """Compute ICC(A,1) for Round1/Round2 agreement by PeopleGroup4 and DV.
+
+    Targets are SubjectID×SceneID pairs, raters are Repetition rounds.
+    """
+    rows = []
+    if "PeopleGroup4" not in df.columns:
+        df = make_people_group4(df)
+
+    for dv in dvs:
+        if dv not in df.columns:
+            continue
+        sub = df.dropna(subset=["SubjectID", "SceneID", "Repetition", "PeopleGroup4", dv]).copy()
+        if sub.empty:
+            continue
+
+        for grp, g in sub.groupby("PeopleGroup4", dropna=False):
+            piv = g.pivot_table(index=["SubjectID", "SceneID"], columns="Repetition", values=dv, aggfunc="mean")
+            # Keep typical two-round setup when available; else use all present rounds
+            if 1 in piv.columns and 2 in piv.columns:
+                piv2 = piv[[1, 2]].copy()
+            else:
+                piv2 = piv.copy()
+
+            icc, n_targets, n_raters = _icc_a1_from_pivot(piv2)
+            rows.append({
+                "DV": dv,
+                "PeopleGroup4": grp,
+                "n_targets_subject_scene": n_targets,
+                "n_raters_rounds": n_raters,
+                "icc_a1_round_agreement": icc,
+            })
+
+    out = pd.DataFrame(rows)
+    if not out.empty:
+        out = out.sort_values(["DV", "PeopleGroup4"]).reset_index(drop=True)
+    return out
+
+
 def complexity_group_tables(df: pd.DataFrame, dvs: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build intuitive group×complexity mean table and pairwise tests on complexity deltas.
 
@@ -360,6 +439,10 @@ def main():
         cons_grp = pd.DataFrame()
     cons_grp.to_csv(out / "round_consistency_by_group.csv", index=False, encoding="utf-8-sig")
 
+    # ICC(A,1): round agreement by group and DV
+    icc_df = round_icc_by_group(df, DVS)
+    icc_df.to_csv(out / "round_icc_by_group.csv", index=False, encoding="utf-8-sig")
+
     groups_manifest = split_tables_by_people_group(df, out / "groups")
 
     cmp_rows = []
@@ -469,6 +552,7 @@ def main():
             "model_log.csv",
             "round_consistency_by_subject.csv",
             "round_consistency_by_group.csv",
+            "round_icc_by_group.csv",
             "groups/manifest.csv",
             "groups/group_*.csv",
             "group_comparisons_item_level.csv",

@@ -159,6 +159,7 @@ python scripts/pipeline.py \
 - `results/research/analysis_narrative.md` (auto narrative summary for Angle1/Angle2)
 - `results/research/angle1_c1_minus_c0_by_group.csv` (directly answers “all groups lower in C1?” and “same or different drop magnitudes?”)
 - `results/research/angle2_round_diff_by_group.csv` (Round2-Round1 by group)
+- `results/research/round_icc_by_group.csv` (Round agreement ICC(A,1) by group)
 - `results/research/item_variance_by_group.csv`
 - `results/research/item_variance_summary_by_group.csv`
 
