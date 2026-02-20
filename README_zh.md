@@ -28,7 +28,7 @@
 ## 2. 仓库结构
 - `scripts/transform_wide_to_long.py`：宽表转长表 + QC
 - `scripts/run_analysis.py`：基础 LMM + 论文结果表导出
-- `scripts/analysis_s_items.py`：S1~S5 角度1/角度2 + 四类人群拆分/对比
+- `scripts/analysis_s_items.py`：S1~S4（可供性主构念）+ S5（情感补充）分题分析，含角度1/角度2 + 人群拆分/对比
 - `scripts/analysis_b_items.py`：B1~B3/Bmean 专项分析（主要 C1）
 - `scripts/analysis_groups.py`：四类人群拆分/对比的公共模块
 - `scripts/report_summary.py`：自动生成角度1/角度2叙事总结
@@ -114,10 +114,9 @@ python scripts/transform_wide_to_long.py \
 - `SportFreqGroup`：Q1.5 的 4=High，1/2/3=Low
 
 量表说明：
-- S1~S4：7分
-- S5：9分（分题分析默认使用原始 S5）
+- S1~S4：7分，构成“感知可供性”主构念
+- S5：9分，作为“情感体验”补充指标（不并入 S1~S4 主构念）
 - B1~B3：7分
-- `S5_7` 仍会保留在 long 表中，仅用于需要同量尺展示时可选使用
 
 ---
 
@@ -146,7 +145,7 @@ python scripts/pipeline.py \
 - `results/model/paper_tables.md`
 - `results/model/results_draft_zh.md`
 
-- `results/research/table_fixed_effects_all_dv.csv`（分题：S1~S5）
+- `results/research/table_fixed_effects_all_dv.csv`（分题：S1~S4主构念 + S5补充）
 - `results/research/table_angle1_main_interactions_all_dv.csv`
 - `results/research/table_angle2_round_interactions_all_dv.csv`
 - `results/research/groups/manifest.csv` 与 `results/research/groups/group_*.csv`（按 Experience×SportFreq 四类人群拆分数据）
@@ -155,7 +154,10 @@ python scripts/pipeline.py \
 - `results/research/group2_complexity_delta_significance.csv`（两种二分法合并的 C1-C0 显著性）
 - `results/research/group2_complexity_mean_table_by_wwr.csv`（两种二分法合并的 WWR 分层复杂度均值）
 - `results/research/group2_complexity_delta_significance_by_wwr.csv`（两种二分法合并的 WWR 分层 C1-C0 显著性）
-- `results/research/group_comparisons_item_level.csv`（四类人群在 S1~S5 的组间对比，建议作为补充）
+- `results/research/group_comparisons_item_level.csv`（四类人群在分题指标上的组间对比，建议作为补充）
+- `results/research/affordance_s1_s4_dimension_map.csv`（S1-S4 细分维度映射）
+- `results/research/affordance_s1_s4_group2_comparisons.csv`（仅 S1-S4 的 2+2 人群比较）
+- `results/research/affordance_s1_s4_group4_comparisons.csv`（仅 S1-S4 的 4类人群比较）
 - `results/research/group2_comparisons_item_level_sportfreqgroup.csv` / `_experiencegroup.csv`（分开文件）
 - `results/research/group2_complexity_mean_table_sportfreqgroup.csv` / `_experiencegroup.csv`（分开文件）
 - `results/research/group2_complexity_delta_significance_sportfreqgroup.csv` / `_experiencegroup.csv`（分开文件）
@@ -198,7 +200,7 @@ python scripts/pipeline.py \
 ---
 
 ## 8. Long格式字段
-`SubjectID, Order, Block, Repetition, RepetitionC, Position, WWR, Condition, Complexity, SportFreq, ExperienceGroup, SportFreqGroup, S1~S5, S5_7, B1~B3, Bmean, SceneID`
+`SubjectID, Order, Block, Repetition, RepetitionC, Position, WWR, Condition, Complexity, SportFreq, ExperienceGroup, SportFreqGroup, S1~S5,（可选 S5_7）, B1~B3, Bmean, SceneID`
 
 ---
 

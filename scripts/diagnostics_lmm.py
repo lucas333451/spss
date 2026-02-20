@@ -28,11 +28,6 @@ def _sigstar(p):
     return ""
 
 
-def _rescale_9_to_7(x):
-    if pd.isna(x):
-        return np.nan
-    return 1.0 + (float(x) - 1.0) * (6.0 / 8.0)
-
 
 def _extract_coef_table(fit, model_name: str) -> pd.DataFrame:
     ci = fit.conf_int()
@@ -175,7 +170,7 @@ def _recommend_average_repetition(coef_interactions: pd.DataFrame, round_consist
 
 
 def main():
-    ap = argparse.ArgumentParser(description="LMM diagnostics: interaction screening, random-structure sensitivity, repetition diagnostics")
+    ap = argparse.ArgumentParser(description="LMM diagnostics (Afford4 main): interaction screening, random-structure sensitivity, repetition diagnostics")
     ap.add_argument("--long-csv", type=Path, required=True)
     ap.add_argument("--out-dir", type=Path, default=Path("results/diagnostics"))
     args = ap.parse_args()
@@ -195,16 +190,14 @@ def main():
     if "Repetition" not in df.columns:
         df["Repetition"] = df["Block"] if "Block" in df.columns else np.nan
 
-    # Build Afford5 diagnostic DV (scale-harmonized): S1..S4 + S5_7
-    if "S5_7" not in df.columns:
-        df["S5_7"] = pd.to_numeric(df["S5"], errors="coerce").apply(_rescale_9_to_7)
-    df["Afford5"] = df[["S1", "S2", "S3", "S4", "S5_7"]].mean(axis=1)
+    # Main construct for diagnostics: Afford4 = mean(S1..S4)
+    df["Afford4"] = df[["S1", "S2", "S3", "S4"]].mean(axis=1)
 
     # numeric for random slopes
     df["Complexity_num"] = pd.to_numeric(df["Complexity"], errors="coerce")
     df["WWR_num"] = pd.to_numeric(df["WWR"], errors="coerce")
 
-    keep = ["SubjectID", "Afford5", "WWR", "Complexity", "ExperienceGroup", "SportFreqGroup", "Repetition", "Position", "Complexity_num", "WWR_num"]
+    keep = ["SubjectID", "Afford4", "WWR", "Complexity", "ExperienceGroup", "SportFreqGroup", "Repetition", "Position", "Complexity_num", "WWR_num"]
     mdf = df.dropna(subset=keep).copy()
 
     for c in ["WWR", "Complexity", "ExperienceGroup", "SportFreqGroup", "Repetition", "Position"]:
@@ -215,10 +208,10 @@ def main():
     # ------------------------------------------------
     rhs_base = "C(Complexity) + C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)"
     formulas = {
-        "A_main": f"Afford5 ~ {rhs_base}",
-        "B_add_CxW": f"Afford5 ~ {rhs_base} + C(Complexity):C(WWR)",
-        "C_add_RxC": f"Afford5 ~ {rhs_base} + C(Repetition):C(Complexity)",
-        "D_add_RxW": f"Afford5 ~ {rhs_base} + C(Repetition):C(WWR)",
+        "A_main": f"Afford4 ~ {rhs_base}",
+        "B_add_CxW": f"Afford4 ~ {rhs_base} + C(Complexity):C(WWR)",
+        "C_add_RxC": f"Afford4 ~ {rhs_base} + C(Repetition):C(Complexity)",
+        "D_add_RxW": f"Afford4 ~ {rhs_base} + C(Repetition):C(WWR)",
     }
 
     fits = {}
@@ -317,14 +310,14 @@ def main():
     # ------------------------------------------------
     # Round means by condition
     round_means = (
-        mdf.groupby(["Repetition", "WWR", "Complexity"], dropna=False)["Afford5"]
+        mdf.groupby(["Repetition", "WWR", "Complexity"], dropna=False)["Afford4"]
         .agg(N="count", Mean="mean", SD="std")
         .reset_index()
     )
     round_means.to_csv(out / "round_condition_means.csv", index=False, encoding="utf-8-sig")
 
     # Subject-level difference distribution (Round2 - Round1)
-    piv = mdf.pivot_table(index=["SubjectID", "WWR", "Complexity"], columns="Repetition", values="Afford5", aggfunc="mean").reset_index()
+    piv = mdf.pivot_table(index=["SubjectID", "WWR", "Complexity"], columns="Repetition", values="Afford4", aggfunc="mean").reset_index()
     if "1" in piv.columns and "2" in piv.columns:
         piv["Diff_R2_minus_R1"] = piv["2"] - piv["1"]
     else:
@@ -345,23 +338,23 @@ def main():
 
     # Complexity × WWR
     plt.figure(figsize=(7, 4.5))
-    sns.pointplot(data=pdat, x="WWR", y="Afford5", hue="Complexity", errorbar="se", dodge=True)
-    plt.title("Complexity × WWR on Afford5")
+    sns.pointplot(data=pdat, x="WWR", y="Afford4", hue="Complexity", errorbar="se", dodge=True)
+    plt.title("Complexity × WWR on Afford4")
     plt.tight_layout()
     plt.savefig(fig_dir / "interaction_complexity_wwr.png", dpi=220)
     plt.close()
 
     # Repetition × Complexity
     plt.figure(figsize=(7, 4.5))
-    sns.pointplot(data=pdat, x="Repetition", y="Afford5", hue="Complexity", errorbar="se", dodge=True)
-    plt.title("Repetition × Complexity on Afford5")
+    sns.pointplot(data=pdat, x="Repetition", y="Afford4", hue="Complexity", errorbar="se", dodge=True)
+    plt.title("Repetition × Complexity on Afford4")
     plt.tight_layout()
     plt.savefig(fig_dir / "interaction_repetition_complexity.png", dpi=220)
     plt.close()
 
     # Marginal means by key conditions
     plt.figure(figsize=(8, 5))
-    sns.pointplot(data=pdat, x="WWR", y="Afford5", hue="Repetition", errorbar="se", dodge=True)
+    sns.pointplot(data=pdat, x="WWR", y="Afford4", hue="Repetition", errorbar="se", dodge=True)
     plt.title("Marginal Means: WWR by Repetition")
     plt.tight_layout()
     plt.savefig(fig_dir / "marginal_means_wwr_repetition.png", dpi=220)

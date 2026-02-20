@@ -47,7 +47,7 @@ def build(results_root: Path, out: Path, max_rows: int) -> None:
     lines.append("\n---\n")
 
     # 2) Angle 1 main
-    lines.append("## 2) 角度1主效应与交互（S1-S5）")
+    lines.append("## 2) 角度1主效应与交互（S1-S4主构念 + S5补充）")
     lines.append("\n### 2.1 主交互汇总")
     lines.append(csv_md(r / "research/table_angle1_main_interactions_all_dv.csv", max_rows))
     lines.append("\n### 2.2 四类人群复杂度均值")

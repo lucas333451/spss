@@ -29,13 +29,16 @@ def build_summary(long_csv: Path, research_dir: Path) -> str:
 
     df["PeopleGroup4"] = df["ExperienceGroup"].astype(str) + "__" + df["SportFreqGroup"].astype(str)
 
-    dvs = [c for c in ["S1", "S2", "S3", "S4", "S5"] if c in df.columns]
+    dvs_main = [c for c in ["S1", "S2", "S3", "S4"] if c in df.columns]
+    dvs_supp = [c for c in ["S5"] if c in df.columns]
+    dvs = dvs_main + dvs_supp
 
     lines = []
     lines.append("# Narrative Summary (Angles 1 & 2)")
     lines.append("")
     lines.append("## Angle 1: WWR × Complexity + frequency sensitivity")
-    lines.append("核心问题：WWR(3) × Complexity(2) 是否影响 S1~S5，且这种关系是否因频率组而异。")
+    lines.append("核心问题（主构念）：WWR(3) × Complexity(2) 是否影响 S1~S4（感知可供性），且这种关系是否因频率组而异。")
+    lines.append("补充问题：S5（情感体验，1-9）单独报告，不并入 S1~S4。")
     lines.append("")
 
     # C1 vs C0 drop by group

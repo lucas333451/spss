@@ -4,7 +4,7 @@
 
 ---
 
-## Q1. WWR×复杂度是否影响 S1-S5？（角度1主问题）
+## Q1. WWR×复杂度是否影响 S1-S4（感知可供性主构念）？（角度1主问题）
 1. `results/research/table_angle1_main_interactions_all_dv.csv`
 2. `results/research/group_complexity_mean_table.csv`
 3. `results/research/analysis_narrative.md`

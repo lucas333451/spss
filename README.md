@@ -27,7 +27,7 @@
 ## 2. Repository Structure / 仓库结构
 - `scripts/transform_wide_to_long.py` — wide → long + QC
 - `scripts/run_analysis.py` — core LMM + paper-ready tables
-- `scripts/analysis_s_items.py` — S1~S5 angle-1/angle-2 analyses + 4-group split/comparison
+- `scripts/analysis_s_items.py` — S1~S4 (affordance main construct) + S5 (supplementary emotion) item-level analyses, angle-1/angle-2 + group split/comparison
 - `scripts/analysis_b_items.py` — B1~B3/Bmean focused analyses (mainly C1)
 - `scripts/analysis_groups.py` — shared people-group split/comparison utilities
 - `scripts/report_summary.py` — narrative summary for angle-1/angle-2 conclusions
@@ -117,9 +117,9 @@ It also outputs grouped factors used in analysis:
 - `SportFreqGroup` from Q1.5: `4 -> High`, `1/2/3 -> Low`
 
 Scale note:
-- S1~S4 are 7-point
-- S5 is 9-point (item-level analysis uses raw S5 by default)
-- Script still keeps optional `S5_7` for aligned-scale display when needed
+- S1~S4 are 7-point and define the main affordance construct
+- S5 is 9-point and treated as supplementary emotional-experience item
+- Do not average S1~S5 into a single primary composite
 
 ---
 
@@ -149,7 +149,7 @@ python scripts/pipeline.py \
 - `results/model/paper_tables.md`
 - `results/model/results_draft_zh.md`
 
-- `results/research/table_fixed_effects_all_dv.csv` (item-level S1~S5)
+- `results/research/table_fixed_effects_all_dv.csv` (item-level S1~S4 main + S5 supplementary)
 - `results/research/table_angle1_main_interactions_all_dv.csv`
 - `results/research/table_angle2_round_interactions_all_dv.csv`
 - `results/research/groups/manifest.csv` + `results/research/groups/group_*.csv` (split by 4 people groups: Experience×SportFreq)
@@ -158,7 +158,10 @@ python scripts/pipeline.py \
 - `results/research/group2_complexity_delta_significance.csv` (merged two-way C1-C0 significance)
 - `results/research/group2_complexity_mean_table_by_wwr.csv` (merged two-way WWR-stratified complexity means)
 - `results/research/group2_complexity_delta_significance_by_wwr.csv` (merged two-way WWR-stratified C1-C0 significance)
-- `results/research/group_comparisons_item_level.csv` (4-cell cross-group comparisons on S1~S5; supplementary)
+- `results/research/group_comparisons_item_level.csv` (4-cell cross-group comparisons on item-level outcomes; supplementary)
+- `results/research/affordance_s1_s4_dimension_map.csv` (S1-S4 subdimension labels)
+- `results/research/affordance_s1_s4_group2_comparisons.csv` (2+2-group comparisons restricted to S1-S4)
+- `results/research/affordance_s1_s4_group4_comparisons.csv` (4-group comparisons restricted to S1-S4)
 - `results/research/group2_comparisons_item_level_sportfreqgroup.csv` / `_experiencegroup.csv` (per-source)
 - `results/research/group2_complexity_mean_table_sportfreqgroup.csv` / `_experiencegroup.csv` (per-source)
 - `results/research/group2_complexity_delta_significance_sportfreqgroup.csv` / `_experiencegroup.csv` (per-source)
@@ -201,7 +204,7 @@ python scripts/pipeline.py \
 ---
 
 ## 8. Data Schema (Long Format) / Long格式字段
-`SubjectID, Order, Block, Repetition, RepetitionC, Position, WWR, Condition, Complexity, SportFreq, ExperienceGroup, SportFreqGroup, S1~S5, S5_7, B1~B3, Bmean, SceneID`
+`SubjectID, Order, Block, Repetition, RepetitionC, Position, WWR, Condition, Complexity, SportFreq, ExperienceGroup, SportFreqGroup, S1~S5, (optional S5_7), B1~B3, Bmean, SceneID`
 
 ---
 

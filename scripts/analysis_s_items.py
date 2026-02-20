@@ -1021,6 +1021,33 @@ def main():
     group_cmp = pd.concat(cmp_rows, ignore_index=True) if cmp_rows else pd.DataFrame()
     group_cmp.to_csv(out / "group_comparisons_item_level.csv", index=False, encoding="utf-8-sig")
 
+    # explicit affordance subdimensions (S1-S4) for focused interpretation
+    afford_map = {
+        "S1": "总体适合度",
+        "S2": "站位/走动判断",
+        "S3": "注意力聚焦",
+        "S4": "使用意愿",
+    }
+    afford_dvs = ["S1", "S2", "S3", "S4"]
+
+    if not group2_cmp.empty and "DV" in group2_cmp.columns:
+        afford_g2 = group2_cmp[group2_cmp["DV"].isin(afford_dvs)].copy()
+        afford_g2.insert(1, "AffordanceDimension", afford_g2["DV"].map(afford_map))
+    else:
+        afford_g2 = pd.DataFrame()
+    afford_g2.to_csv(out / "affordance_s1_s4_group2_comparisons.csv", index=False, encoding="utf-8-sig")
+
+    if not group_cmp.empty and "DV" in group_cmp.columns:
+        afford_g4 = group_cmp[group_cmp["DV"].isin(afford_dvs)].copy()
+        afford_g4.insert(1, "AffordanceDimension", afford_g4["DV"].map(afford_map))
+    else:
+        afford_g4 = pd.DataFrame()
+    afford_g4.to_csv(out / "affordance_s1_s4_group4_comparisons.csv", index=False, encoding="utf-8-sig")
+
+    pd.DataFrame([
+        {"DV": k, "AffordanceDimension": v} for k, v in afford_map.items()
+    ]).to_csv(out / "affordance_s1_s4_dimension_map.csv", index=False, encoding="utf-8-sig")
+
     # intuitive 2D table: PeopleGroup4 × Complexity means (per DV)
     mean_2d_df, sig_2d_df = complexity_group_tables(df, DVS)
     mean_2d_df.to_csv(out / "group_complexity_mean_table.csv", index=False, encoding="utf-8-sig")
@@ -1185,6 +1212,9 @@ def main():
             "group2_complexity_mean_table_by_wwr_*.csv",
             "group2_complexity_delta_significance_by_wwr_*.csv",
             "group_comparisons_item_level.csv",
+            "affordance_s1_s4_dimension_map.csv",
+            "affordance_s1_s4_group2_comparisons.csv",
+            "affordance_s1_s4_group4_comparisons.csv",
             "group_complexity_mean_table.csv",
             "group_complexity_delta_significance.csv",
             "group_complexity_mean_table_by_wwr.csv",
