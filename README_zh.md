@@ -150,6 +150,10 @@ python scripts/pipeline.py \
 - `results/research/group_comparisons_item_level.csv`（四类人群在 S1~S5 的组间对比）
 - `results/research/group_complexity_mean_table.csv`（直观二维表：每个DV在人群×复杂度下的均值）
 - `results/research/group_complexity_delta_significance.csv`（组间复杂度差异显著性：比较各组 C1-C0）
+- `results/research/group_complexity_mean_table_by_wwr.csv`（按 WWR 分层的人群×复杂度均值）
+- `results/research/group_complexity_delta_significance_by_wwr.csv`（按 WWR 分层的人群复杂度差异显著性）
+- `results/research/group_complexity_delta_by_round.csv`（按轮次细分的 C1-C0）
+- `results/research/group_complexity_delta_round_shift.csv`（Round2-Round1 的复杂度差值变化）
 - `results/research/figures/group_complexity_heatmap_S*.png`（人群×复杂度热图）
 - `results/research/figures/group_complexity_delta_S*.png`（各人群 C1-C0 条形图）
 - `results/research/b_items_long_c1.csv`、`b_items_condition_means.csv`、`b_items_group_comparisons.csv`（B1~B3 专项：主要针对 C1）

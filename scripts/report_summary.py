@@ -113,6 +113,8 @@ def build_summary(long_csv: Path, research_dir: Path) -> str:
     lines.append("## Key output files to inspect")
     lines.append("- group_complexity_mean_table.csv (每个DV的人群×复杂度二维均值表)")
     lines.append("- group_complexity_delta_significance.csv (组间复杂度差异显著性，比较各组 C1-C0 的差值)")
+    lines.append("- group_complexity_mean_table_by_wwr.csv / group_complexity_delta_significance_by_wwr.csv (按WWR分层)")
+    lines.append("- group_complexity_delta_by_round.csv / group_complexity_delta_round_shift.csv (按轮次细分，检验顺序效应)")
     lines.append("- figures/group_complexity_heatmap_S*.png (人群×复杂度均值热图)")
     lines.append("- figures/group_complexity_delta_S*.png (各人群 C1-C0 横向条形图)")
     lines.append("- group_comparisons_item_level.csv (S题四类人群比较)")

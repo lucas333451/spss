@@ -310,6 +310,170 @@ def complexity_group_tables(df: pd.DataFrame, dvs: list[str]) -> tuple[pd.DataFr
     return mean_df, sig_df
 
 
+def complexity_group_tables_by_wwr(df: pd.DataFrame, dvs: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """WWR-stratified version of complexity deltas (C1-C0) by people group."""
+    x = make_people_group4(df)
+    mean_rows = []
+    sig_rows = []
+
+    for dv in dvs:
+        if dv not in x.columns:
+            continue
+
+        sub = x.dropna(subset=["SubjectID", "PeopleGroup4", "Complexity", "WWR", dv]).copy()
+        if sub.empty:
+            continue
+
+        subj = (
+            sub.groupby(["SubjectID", "PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "WWR", "Complexity"], as_index=False)[dv]
+            .mean()
+        )
+
+        grp = (
+            subj.groupby(["PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "WWR", "Complexity"], as_index=False)
+            .agg(
+                n_subjects=(dv, "count"),
+                mean=(dv, "mean"),
+                sd=(dv, "std"),
+            )
+        )
+
+        for wwr, gwwr in grp.groupby("WWR", dropna=False):
+            piv_mean = gwwr.pivot_table(index=["PeopleGroup4", "ExperienceGroup", "SportFreqGroup"], columns="Complexity", values="mean", aggfunc="first")
+            piv_n = gwwr.pivot_table(index=["PeopleGroup4", "ExperienceGroup", "SportFreqGroup"], columns="Complexity", values="n_subjects", aggfunc="first")
+
+            c0_col = 0 if 0 in piv_mean.columns else (0.0 if 0.0 in piv_mean.columns else None)
+            c1_col = 1 if 1 in piv_mean.columns else (1.0 if 1.0 in piv_mean.columns else None)
+
+            tmp = piv_mean.reset_index().copy()
+            tmp.insert(0, "DV", dv)
+            tmp.insert(1, "WWR", wwr)
+            tmp["mean_C0"] = tmp[c0_col] if c0_col is not None else np.nan
+            tmp["mean_C1"] = tmp[c1_col] if c1_col is not None else np.nan
+            tmp["delta_C1_minus_C0"] = tmp["mean_C1"] - tmp["mean_C0"]
+
+            n0 = piv_n[c0_col].reset_index(drop=True) if (c0_col is not None and c0_col in piv_n.columns) else pd.Series([np.nan] * len(tmp))
+            n1 = piv_n[c1_col].reset_index(drop=True) if (c1_col is not None and c1_col in piv_n.columns) else pd.Series([np.nan] * len(tmp))
+            tmp["n_subj_C0"] = n0.values
+            tmp["n_subj_C1"] = n1.values
+            mean_rows.append(tmp[["DV", "WWR", "PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "n_subj_C0", "n_subj_C1", "mean_C0", "mean_C1", "delta_C1_minus_C0"]])
+
+        # significance by WWR: compare subject-level deltas across groups
+        for wwr, gwwr in subj.groupby("WWR", dropna=False):
+            piv_subj = gwwr.pivot_table(index=["SubjectID", "PeopleGroup4"], columns="Complexity", values=dv, aggfunc="mean").reset_index()
+            c0_col = 0 if 0 in piv_subj.columns else (0.0 if 0.0 in piv_subj.columns else None)
+            c1_col = 1 if 1 in piv_subj.columns else (1.0 if 1.0 in piv_subj.columns else None)
+            if c0_col is None or c1_col is None:
+                continue
+            piv_subj["delta_C1_minus_C0"] = piv_subj[c1_col] - piv_subj[c0_col]
+            groups = sorted(piv_subj["PeopleGroup4"].dropna().unique())
+
+            pvals, raw = [], []
+            for i in range(len(groups)):
+                for j in range(i + 1, len(groups)):
+                    g1, g2 = groups[i], groups[j]
+                    v1 = piv_subj.loc[piv_subj["PeopleGroup4"] == g1, "delta_C1_minus_C0"].dropna().to_numpy(dtype=float)
+                    v2 = piv_subj.loc[piv_subj["PeopleGroup4"] == g2, "delta_C1_minus_C0"].dropna().to_numpy(dtype=float)
+                    if len(v1) < 3 or len(v2) < 3:
+                        t, p = np.nan, np.nan
+                    else:
+                        r = ttest_ind(v1, v2, equal_var=False, nan_policy="omit")
+                        t, p = float(r.statistic), float(r.pvalue)
+                    pvals.append(p)
+                    raw.append((g1, g2, len(v1), len(v2), np.mean(v1) if len(v1) else np.nan, np.mean(v2) if len(v2) else np.nan, t, p))
+
+            valid = np.isfinite(pvals)
+            p_adj = [np.nan] * len(pvals)
+            if np.any(valid):
+                _, corr, _, _ = multipletests(np.array(pvals)[valid], method="holm")
+                k = 0
+                for idx, ok in enumerate(valid):
+                    if ok:
+                        p_adj[idx] = float(corr[k])
+                        k += 1
+
+            for (g1, g2, n1s, n2s, m1, m2, t, p), ph in zip(raw, p_adj):
+                sig_rows.append({
+                    "DV": dv,
+                    "WWR": wwr,
+                    "GroupA": g1,
+                    "GroupB": g2,
+                    "nA_subjects": n1s,
+                    "nB_subjects": n2s,
+                    "meanDeltaA_C1_minus_C0": m1,
+                    "meanDeltaB_C1_minus_C0": m2,
+                    "delta_of_delta_A_minus_B": (m1 - m2) if pd.notna(m1) and pd.notna(m2) else np.nan,
+                    "t_welch": t,
+                    "p": p,
+                    "p_holm": ph,
+                    "sig_holm": _sigstar(ph),
+                })
+
+    mean_df = pd.concat(mean_rows, ignore_index=True) if mean_rows else pd.DataFrame()
+    sig_df = pd.DataFrame(sig_rows)
+    if not sig_df.empty:
+        sig_df = sig_df.sort_values(["DV", "WWR", "p_holm"], na_position="last").reset_index(drop=True)
+    return mean_df, sig_df
+
+
+def complexity_delta_by_round(df: pd.DataFrame, dvs: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Detailed C1-C0 deltas split by Repetition (round/order), with round contrast."""
+    x = make_people_group4(df)
+    rows = []
+    rounddiff_rows = []
+
+    for dv in dvs:
+        if dv not in x.columns:
+            continue
+
+        sub = x.dropna(subset=["SubjectID", "PeopleGroup4", "Complexity", "WWR", "Repetition", dv]).copy()
+        if sub.empty:
+            continue
+
+        subj = (
+            sub.groupby(["SubjectID", "PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "WWR", "Repetition", "Complexity"], as_index=False)[dv]
+            .mean()
+        )
+        piv = subj.pivot_table(
+            index=["SubjectID", "PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "WWR", "Repetition"],
+            columns="Complexity",
+            values=dv,
+            aggfunc="mean",
+        ).reset_index()
+
+        c0_col = 0 if 0 in piv.columns else (0.0 if 0.0 in piv.columns else None)
+        c1_col = 1 if 1 in piv.columns else (1.0 if 1.0 in piv.columns else None)
+        if c0_col is None or c1_col is None:
+            continue
+        piv["delta_C1_minus_C0"] = piv[c1_col] - piv[c0_col]
+
+        grp = (
+            piv.groupby(["PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "WWR", "Repetition"], as_index=False)["delta_C1_minus_C0"]
+            .agg(n_subjects="count", mean_delta="mean", sd_delta="std")
+        )
+        grp.insert(0, "DV", dv)
+        rows.append(grp)
+
+        piv_round = piv.pivot_table(
+            index=["SubjectID", "PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "WWR"],
+            columns="Repetition",
+            values="delta_C1_minus_C0",
+            aggfunc="mean",
+        ).reset_index()
+        if 1 in piv_round.columns and 2 in piv_round.columns:
+            piv_round["delta_round2_minus_round1"] = piv_round[2] - piv_round[1]
+            rd = (
+                piv_round.groupby(["PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "WWR"], as_index=False)["delta_round2_minus_round1"]
+                .agg(n_subjects="count", mean="mean", sd="std")
+            )
+            rd.insert(0, "DV", dv)
+            rounddiff_rows.append(rd)
+
+    detail_df = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
+    rounddiff_df = pd.concat(rounddiff_rows, ignore_index=True) if rounddiff_rows else pd.DataFrame()
+    return detail_df, rounddiff_df
+
+
 def group_item_variance(df: pd.DataFrame, dvs: list[str]) -> pd.DataFrame:
     rows = []
     x = make_people_group4(df)
@@ -463,6 +627,16 @@ def main():
     mean_2d_df.to_csv(out / "group_complexity_mean_table.csv", index=False, encoding="utf-8-sig")
     sig_2d_df.to_csv(out / "group_complexity_delta_significance.csv", index=False, encoding="utf-8-sig")
 
+    # WWR-stratified complexity delta tables
+    mean_wwr_df, sig_wwr_df = complexity_group_tables_by_wwr(df, DVS)
+    mean_wwr_df.to_csv(out / "group_complexity_mean_table_by_wwr.csv", index=False, encoding="utf-8-sig")
+    sig_wwr_df.to_csv(out / "group_complexity_delta_significance_by_wwr.csv", index=False, encoding="utf-8-sig")
+
+    # detailed split by round (group1/group2 viewing order)
+    delta_round_detail_df, delta_round_shift_df = complexity_delta_by_round(df, DVS)
+    delta_round_detail_df.to_csv(out / "group_complexity_delta_by_round.csv", index=False, encoding="utf-8-sig")
+    delta_round_shift_df.to_csv(out / "group_complexity_delta_round_shift.csv", index=False, encoding="utf-8-sig")
+
     # new visualization: PeopleGroup4 × Complexity (per DV)
     if not mean_2d_df.empty:
         for dv in DVS:
@@ -561,6 +735,10 @@ def main():
             "group_comparisons_item_level.csv",
             "group_complexity_mean_table.csv",
             "group_complexity_delta_significance.csv",
+            "group_complexity_mean_table_by_wwr.csv",
+            "group_complexity_delta_significance_by_wwr.csv",
+            "group_complexity_delta_by_round.csv",
+            "group_complexity_delta_round_shift.csv",
             "figures/group_complexity_heatmap_S*.png",
             "figures/group_complexity_delta_S*.png",
             "item_variance_by_group.csv",
