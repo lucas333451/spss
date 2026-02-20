@@ -55,19 +55,25 @@ def _extract_coef_table(fit, model_name: str) -> pd.DataFrame:
 
 
 def _fit_with_fallback(data: pd.DataFrame, formula: str, re_formula: str | None):
+    # Prefer robust convergence: try requested random structure + multiple optimizers,
+    # then fallback to random intercept only when needed.
     attempts = [
         {"method": "lbfgs", "re_formula": re_formula},
         {"method": "powell", "re_formula": re_formula},
+        {"method": "cg", "re_formula": re_formula},
+        {"method": "lbfgs", "re_formula": None},
+        {"method": "powell", "re_formula": None},
     ]
 
     last_err = None
     for a in attempts:
         try:
             mdl = mixedlm(formula=formula, data=data, groups=data["SubjectID"], re_formula=a["re_formula"])
-            fit = mdl.fit(reml=False, method=a["method"], maxiter=2500)
+            fit = mdl.fit(reml=False, method=a["method"], maxiter=3500)
             return fit, {
                 "fit_method": a["method"],
-                "re_formula_used": a["re_formula"],
+                "re_formula_used": a["re_formula"] if a["re_formula"] is not None else "1",
+                "fallback_to_random_intercept": a["re_formula"] is None,
                 "converged": bool(getattr(fit, "converged", True)),
                 "AIC": float(fit.aic) if pd.notna(fit.aic) else np.nan,
                 "BIC": float(fit.bic) if pd.notna(fit.bic) else np.nan,
@@ -80,7 +86,8 @@ def _fit_with_fallback(data: pd.DataFrame, formula: str, re_formula: str | None)
 
     return None, {
         "fit_method": None,
-        "re_formula_used": re_formula,
+        "re_formula_used": re_formula if re_formula is not None else "1",
+        "fallback_to_random_intercept": re_formula is None,
         "converged": False,
         "AIC": np.nan,
         "BIC": np.nan,
@@ -156,7 +163,7 @@ def _main_effect_stability(coef_df: pd.DataFrame) -> pd.DataFrame:
 
 def _recommend_average_repetition(coef_interactions: pd.DataFrame, round_consistency: pd.DataFrame) -> str:
     # if repetition interactions not significant and consistency high -> recommend averaging
-    rep_inter = coef_interactions[coef_interactions["Term"].str.contains("C\(Repetition\):", regex=True, na=False)]
+    rep_inter = coef_interactions[coef_interactions["Term"].str.contains(r"C\(Repetition\):", regex=True, na=False)]
     has_sig_rep_inter = bool((rep_inter["p"] < 0.05).any()) if not rep_inter.empty else False
 
     corr_mean = round_consistency["corr_r1_r2"].mean() if not round_consistency.empty else np.nan
@@ -326,7 +333,8 @@ def main():
 
     # Extract Repetition×Complexity terms from model C (if available)
     repcx = coef_inter[
-        (coef_inter["Model"] == "C_add_RxC") & coef_inter["Term"].str.contains("C\(Repetition\):C\(Complexity\)|C\(Complexity\):C\(Repetition\)", regex=True, na=False)
+        (coef_inter["Model"] == "C_add_RxC")
+        & coef_inter["Term"].str.contains(r"C\(Repetition\):C\(Complexity\)|C\(Complexity\):C\(Repetition\)", regex=True, na=False)
     ].copy()
     repcx.to_csv(out / "repetition_complexity_interaction_terms.csv", index=False, encoding="utf-8-sig")
 
