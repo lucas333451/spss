@@ -474,6 +474,77 @@ def complexity_delta_by_round(df: pd.DataFrame, dvs: list[str]) -> tuple[pd.Data
     return detail_df, rounddiff_df
 
 
+def scene_level_tables(df: pd.DataFrame, dvs: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Scene-level outputs.
+
+    - means: per DV × group × block/position scene cell
+    - deltas: per DV × group × (WWR, Repetition), using subject-level C1-C0
+    """
+    x = make_people_group4(df)
+    mean_rows = []
+    delta_rows = []
+
+    for dv in dvs:
+        if dv not in x.columns:
+            continue
+
+        sub = x.dropna(subset=["SubjectID", "PeopleGroup4", "Block", "Position", "WWR", "Condition", "Complexity", dv]).copy()
+        if sub.empty:
+            continue
+
+        means = (
+            sub.groupby(
+                ["PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "Repetition", "Block", "Position", "WWR", "Condition", "Complexity"],
+                as_index=False,
+            )[dv]
+            .agg(n_rows="count", mean="mean", sd="std")
+        )
+        ns = (
+            sub.groupby(
+                ["PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "Repetition", "Block", "Position", "WWR", "Condition", "Complexity"],
+                as_index=False,
+            )["SubjectID"]
+            .nunique()
+            .rename(columns={"SubjectID": "n_subjects"})
+        )
+        means = means.merge(
+            ns,
+            on=["PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "Repetition", "Block", "Position", "WWR", "Condition", "Complexity"],
+            how="left",
+        )
+        means.insert(0, "DV", dv)
+        mean_rows.append(means)
+
+        # subject-level delta within (WWR, Repetition): C1 - C0
+        subj = (
+            sub.groupby(["SubjectID", "PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "Repetition", "WWR", "Complexity"], as_index=False)[dv]
+            .mean()
+        )
+        piv = subj.pivot_table(
+            index=["SubjectID", "PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "Repetition", "WWR"],
+            columns="Complexity",
+            values=dv,
+            aggfunc="mean",
+        ).reset_index()
+
+        c0 = 0 if 0 in piv.columns else (0.0 if 0.0 in piv.columns else None)
+        c1 = 1 if 1 in piv.columns else (1.0 if 1.0 in piv.columns else None)
+        if c0 is None or c1 is None:
+            continue
+        piv["delta_C1_minus_C0"] = piv[c1] - piv[c0]
+
+        grp_delta = (
+            piv.groupby(["PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "Repetition", "WWR"], as_index=False)["delta_C1_minus_C0"]
+            .agg(n_subjects="count", mean_delta="mean", sd_delta="std")
+        )
+        grp_delta.insert(0, "DV", dv)
+        delta_rows.append(grp_delta)
+
+    mean_df = pd.concat(mean_rows, ignore_index=True) if mean_rows else pd.DataFrame()
+    delta_df = pd.concat(delta_rows, ignore_index=True) if delta_rows else pd.DataFrame()
+    return mean_df, delta_df
+
+
 def make_people_group2(df: pd.DataFrame, source: str = "SportFreqGroup") -> pd.DataFrame:
     x = df.copy()
     if source not in x.columns:
@@ -791,6 +862,34 @@ def main():
     delta_round_detail_df.to_csv(out / "group_complexity_delta_by_round.csv", index=False, encoding="utf-8-sig")
     delta_round_shift_df.to_csv(out / "group_complexity_delta_round_shift.csv", index=False, encoding="utf-8-sig")
 
+    # scene-level detailed tables (single-scene/cell granularity)
+    scene_means_df, scene_deltas_df = scene_level_tables(df, DVS)
+    scene_means_df.to_csv(out / "scene_level_means.csv", index=False, encoding="utf-8-sig")
+    scene_deltas_df.to_csv(out / "scene_level_deltas.csv", index=False, encoding="utf-8-sig")
+
+    # scene-level visualization: delta(C1-C0) heatmap by group × WWR (split by Repetition)
+    if not scene_deltas_df.empty:
+        for dv in DVS:
+            sdv = scene_deltas_df[scene_deltas_df["DV"] == dv].copy()
+            if sdv.empty:
+                continue
+            reps = sorted(pd.to_numeric(sdv["Repetition"], errors="coerce").dropna().astype(int).unique().tolist())
+            for rep in reps:
+                xrep = sdv[pd.to_numeric(sdv["Repetition"], errors="coerce") == rep].copy()
+                if xrep.empty:
+                    continue
+                piv = xrep.pivot_table(index="PeopleGroup4", columns="WWR", values="mean_delta", aggfunc="mean")
+                if piv.empty:
+                    continue
+                plt.figure(figsize=(6, max(3, 0.6 * len(piv))))
+                sns.heatmap(piv, annot=True, fmt=".2f", cmap="coolwarm", center=0)
+                plt.title(f"{dv}: Scene-level Delta (C1-C0) by Group × WWR (Round {rep})")
+                plt.xlabel("WWR")
+                plt.ylabel("PeopleGroup4")
+                plt.tight_layout()
+                plt.savefig(out / "figures" / f"scene_delta_heatmap_{dv}_R{rep}.png", dpi=220)
+                plt.close()
+
     # new visualization: PeopleGroup4 × Complexity (per DV)
     if not mean_2d_df.empty:
         for dv in DVS:
@@ -900,6 +999,9 @@ def main():
             "group_complexity_delta_significance_by_wwr.csv",
             "group_complexity_delta_by_round.csv",
             "group_complexity_delta_round_shift.csv",
+            "scene_level_means.csv",
+            "scene_level_deltas.csv",
+            "figures/scene_delta_heatmap_S*_R*.png",
             "figures/group_complexity_heatmap_S*.png",
             "figures/group_complexity_delta_S*.png",
             "item_variance_by_group.csv",

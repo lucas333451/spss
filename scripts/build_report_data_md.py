@@ -90,16 +90,24 @@ def build(results_root: Path, out: Path, max_rows: int) -> None:
     lines.append(csv_md(r / "research/group2_complexity_delta_significance.csv", max_rows))
     lines.append("\n---\n")
 
-    # 6) B items
-    lines.append("## 6) B题结果（C1）")
+    # 6) Scene-level detail
+    lines.append("## 6) 单场景细分（新增）")
+    lines.append("\n### 6.1 场景单元均值（按 Block×Position / WWR / Repetition）")
+    lines.append(csv_md(r / "research/scene_level_means.csv", max_rows))
+    lines.append("\n### 6.2 场景级复杂度差值（C1-C0）")
+    lines.append(csv_md(r / "research/scene_level_deltas.csv", max_rows))
+    lines.append("\n---\n")
+
+    # 7) B items
+    lines.append("## 7) B题结果（C1）")
     lines.append("\n### 6.1 条件均值")
     lines.append(csv_md(r / "research/b_items_condition_means.csv", max_rows))
     lines.append("\n### 6.2 组间比较")
     lines.append(csv_md(r / "research/b_items_group_comparisons.csv", max_rows))
     lines.append("\n---\n")
 
-    # 7) Diagnostics
-    lines.append("## 7) 诊断稳健性")
+    # 8) Diagnostics
+    lines.append("## 8) 诊断稳健性")
     lines.append("\n### 7.1 诊断报告")
     lines.append(text_block(r / "diagnostics/analysis_report.md"))
     lines.append("\n### 7.2 交互模型比较")
