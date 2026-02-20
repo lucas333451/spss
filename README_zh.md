@@ -76,7 +76,8 @@ python scripts/diagnostics_lmm.py \
 ```bash
 python scripts/analysis_s_items.py \
   --long-csv results/long/long_format.csv \
-  --out-dir results/research
+  --out-dir results/research \
+  --group2-source SportFreqGroup
 
 python scripts/analysis_b_items.py \
   --long-csv results/long/long_format.csv \
@@ -148,6 +149,9 @@ python scripts/pipeline.py \
 - `results/research/table_angle2_round_interactions_all_dv.csv`
 - `results/research/groups/manifest.csv` 与 `results/research/groups/group_*.csv`（按 Experience×SportFreq 四类人群拆分数据）
 - `results/research/group_comparisons_item_level.csv`（四类人群在 S1~S5 的组间对比）
+- `results/research/group2_comparisons_item_level.csv`（二分人群在 S1~S5 的组间对比，来源字段可配）
+- `results/research/group2_complexity_mean_table.csv`（二分人群在复杂度下的均值）
+- `results/research/group2_complexity_delta_significance.csv`（二分人群 C1-C0 差异显著性）
 - `results/research/group_complexity_mean_table.csv`（直观二维表：每个DV在人群×复杂度下的均值）
 - `results/research/group_complexity_delta_significance.csv`（组间复杂度差异显著性：比较各组 C1-C0）
 - `results/research/group_complexity_mean_table_by_wwr.csv`（按 WWR 分层的人群×复杂度均值）

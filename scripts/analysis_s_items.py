@@ -474,6 +474,124 @@ def complexity_delta_by_round(df: pd.DataFrame, dvs: list[str]) -> tuple[pd.Data
     return detail_df, rounddiff_df
 
 
+def make_people_group2(df: pd.DataFrame, source: str = "SportFreqGroup") -> pd.DataFrame:
+    x = df.copy()
+    if source not in x.columns:
+        x["PeopleGroup2"] = "Unknown"
+    else:
+        x["PeopleGroup2"] = x[source].astype(str)
+    return x
+
+
+def split_tables_by_people_group2(df: pd.DataFrame, out_dir: Path, source: str = "SportFreqGroup") -> pd.DataFrame:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    x = make_people_group2(df, source=source)
+    rows = []
+    for grp, g in x.groupby("PeopleGroup2", dropna=False):
+        safe = str(grp).replace("/", "_").replace(" ", "")
+        f = out_dir / f"group2_{safe}.csv"
+        g.to_csv(f, index=False, encoding="utf-8-sig")
+        rows.append({
+            "PeopleGroup2": grp,
+            "source": source,
+            "n_rows": int(len(g)),
+            "n_subjects": int(g["SubjectID"].nunique()),
+            "file": str(f),
+        })
+    m = pd.DataFrame(rows)
+    m.to_csv(out_dir / "manifest_group2.csv", index=False, encoding="utf-8-sig")
+    return m
+
+
+def compare_people_group2_subject_mean(df: pd.DataFrame, dvs: list[str], source: str = "SportFreqGroup") -> pd.DataFrame:
+    x = make_people_group2(df, source=source)
+    groups = sorted(x["PeopleGroup2"].dropna().unique())
+    if len(groups) < 2:
+        return pd.DataFrame()
+
+    rows = []
+    for dv in dvs:
+        if dv not in x.columns:
+            continue
+        subj = x.dropna(subset=[dv, "SubjectID", "PeopleGroup2"]).groupby(["SubjectID", "PeopleGroup2"], as_index=False)[dv].mean()
+
+        # for binary split, compare first two groups
+        g1, g2 = groups[0], groups[1]
+        v1 = subj.loc[subj["PeopleGroup2"] == g1, dv].dropna().to_numpy(dtype=float)
+        v2 = subj.loc[subj["PeopleGroup2"] == g2, dv].dropna().to_numpy(dtype=float)
+        if len(v1) < 3 or len(v2) < 3:
+            t, p = np.nan, np.nan
+        else:
+            r = ttest_ind(v1, v2, equal_var=False, nan_policy="omit")
+            t, p = float(r.statistic), float(r.pvalue)
+        rows.append({
+            "DV": dv,
+            "source": source,
+            "GroupA": g1,
+            "GroupB": g2,
+            "nA_subjects": len(v1),
+            "nB_subjects": len(v2),
+            "meanA": float(np.mean(v1)) if len(v1) else np.nan,
+            "meanB": float(np.mean(v2)) if len(v2) else np.nan,
+            "delta_A_minus_B": (float(np.mean(v1)) - float(np.mean(v2))) if len(v1) and len(v2) else np.nan,
+            "t_welch": t,
+            "p": p,
+            "sig": _sigstar(p),
+        })
+    return pd.DataFrame(rows)
+
+
+def group2_complexity_table(df: pd.DataFrame, dvs: list[str], source: str = "SportFreqGroup") -> tuple[pd.DataFrame, pd.DataFrame]:
+    x = make_people_group2(df, source=source)
+    mean_rows, sig_rows = [], []
+    for dv in dvs:
+        if dv not in x.columns:
+            continue
+        sub = x.dropna(subset=["SubjectID", "PeopleGroup2", "Complexity", dv]).copy()
+        if sub.empty:
+            continue
+
+        subj = sub.groupby(["SubjectID", "PeopleGroup2", "Complexity"], as_index=False)[dv].mean()
+        grp = subj.groupby(["PeopleGroup2", "Complexity"], as_index=False).agg(n_subjects=(dv, "count"), mean=(dv, "mean"), sd=(dv, "std"))
+        piv = grp.pivot_table(index="PeopleGroup2", columns="Complexity", values="mean", aggfunc="first").reset_index()
+        c0 = 0 if 0 in piv.columns else (0.0 if 0.0 in piv.columns else None)
+        c1 = 1 if 1 in piv.columns else (1.0 if 1.0 in piv.columns else None)
+        piv.insert(0, "DV", dv)
+        piv["mean_C0"] = piv[c0] if c0 is not None else np.nan
+        piv["mean_C1"] = piv[c1] if c1 is not None else np.nan
+        piv["delta_C1_minus_C0"] = piv["mean_C1"] - piv["mean_C0"]
+        mean_rows.append(piv[["DV", "PeopleGroup2", "mean_C0", "mean_C1", "delta_C1_minus_C0"]])
+
+        # delta significance between two groups
+        piv_subj = subj.pivot_table(index=["SubjectID", "PeopleGroup2"], columns="Complexity", values=dv, aggfunc="mean").reset_index()
+        if c0 in piv_subj.columns and c1 in piv_subj.columns:
+            piv_subj["delta"] = piv_subj[c1] - piv_subj[c0]
+            gs = sorted(piv_subj["PeopleGroup2"].dropna().unique())
+            if len(gs) >= 2:
+                g1, g2 = gs[0], gs[1]
+                v1 = piv_subj.loc[piv_subj["PeopleGroup2"] == g1, "delta"].dropna().to_numpy(dtype=float)
+                v2 = piv_subj.loc[piv_subj["PeopleGroup2"] == g2, "delta"].dropna().to_numpy(dtype=float)
+                if len(v1) < 3 or len(v2) < 3:
+                    t, p = np.nan, np.nan
+                else:
+                    rr = ttest_ind(v1, v2, equal_var=False, nan_policy="omit")
+                    t, p = float(rr.statistic), float(rr.pvalue)
+                sig_rows.append({
+                    "DV": dv,
+                    "source": source,
+                    "GroupA": g1,
+                    "GroupB": g2,
+                    "meanDeltaA_C1_minus_C0": float(np.mean(v1)) if len(v1) else np.nan,
+                    "meanDeltaB_C1_minus_C0": float(np.mean(v2)) if len(v2) else np.nan,
+                    "delta_of_delta_A_minus_B": (float(np.mean(v1)) - float(np.mean(v2))) if len(v1) and len(v2) else np.nan,
+                    "t_welch": t,
+                    "p": p,
+                    "sig": _sigstar(p),
+                })
+
+    return (pd.concat(mean_rows, ignore_index=True) if mean_rows else pd.DataFrame(), pd.DataFrame(sig_rows))
+
+
 def group_item_variance(df: pd.DataFrame, dvs: list[str]) -> pd.DataFrame:
     rows = []
     x = make_people_group4(df)
@@ -511,9 +629,10 @@ def group_item_variance(df: pd.DataFrame, dvs: list[str]) -> pd.DataFrame:
 
 
 def main():
-    ap = argparse.ArgumentParser(description="S-item analysis (Angle1/Angle2) with 4-group split")
+    ap = argparse.ArgumentParser(description="S-item analysis (Angle1/Angle2) with 4-group + 2-group splits")
     ap.add_argument("--long-csv", type=Path, required=True)
     ap.add_argument("--out-dir", type=Path, default=Path("results/research"))
+    ap.add_argument("--group2-source", type=str, default="SportFreqGroup", help="Column used for 2-group split (default: SportFreqGroup)")
     args = ap.parse_args()
 
     out = args.out_dir
@@ -611,6 +730,14 @@ def main():
     icc_df.to_csv(out / "round_icc_by_group.csv", index=False, encoding="utf-8-sig")
 
     groups_manifest = split_tables_by_people_group(df, out / "groups")
+
+    # 2-group split based on one source question (default: SportFreqGroup)
+    groups2_manifest = split_tables_by_people_group2(df, out / "groups", source=args.group2_source)
+    group2_cmp = compare_people_group2_subject_mean(df, DVS, source=args.group2_source)
+    group2_cmp.to_csv(out / "group2_comparisons_item_level.csv", index=False, encoding="utf-8-sig")
+    group2_mean_df, group2_sig_df = group2_complexity_table(df, DVS, source=args.group2_source)
+    group2_mean_df.to_csv(out / "group2_complexity_mean_table.csv", index=False, encoding="utf-8-sig")
+    group2_sig_df.to_csv(out / "group2_complexity_delta_significance.csv", index=False, encoding="utf-8-sig")
 
     cmp_rows = []
     for dv in DVS:
@@ -719,6 +846,8 @@ def main():
     summary = {
         "dvs": DVS,
         "people_groups": groups_manifest.to_dict(orient="records") if isinstance(groups_manifest, pd.DataFrame) else [],
+        "people_groups2": groups2_manifest.to_dict(orient="records") if isinstance(groups2_manifest, pd.DataFrame) else [],
+        "group2_source": args.group2_source,
         "outputs": [
             "table_fixed_effects_all_dv.csv",
             "table_angle1_effects_all_dv.csv",
@@ -732,7 +861,12 @@ def main():
             "round_icc_by_group.csv",
             "groups/manifest.csv",
             "groups/group_*.csv",
+            "groups/manifest_group2.csv",
+            "groups/group2_*.csv",
             "group_comparisons_item_level.csv",
+            "group2_comparisons_item_level.csv",
+            "group2_complexity_mean_table.csv",
+            "group2_complexity_delta_significance.csv",
             "group_complexity_mean_table.csv",
             "group_complexity_delta_significance.csv",
             "group_complexity_mean_table_by_wwr.csv",

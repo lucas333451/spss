@@ -79,7 +79,8 @@ python scripts/diagnostics_lmm.py \
 ```bash
 python scripts/analysis_s_items.py \
   --long-csv results/long/long_format.csv \
-  --out-dir results/research
+  --out-dir results/research \
+  --group2-source SportFreqGroup
 
 python scripts/analysis_b_items.py \
   --long-csv results/long/long_format.csv \
@@ -151,6 +152,9 @@ python scripts/pipeline.py \
 - `results/research/table_angle2_round_interactions_all_dv.csv`
 - `results/research/groups/manifest.csv` + `results/research/groups/group_*.csv` (split by 4 people groups: Experience×SportFreq)
 - `results/research/group_comparisons_item_level.csv` (between-group comparisons on S1~S5)
+- `results/research/group2_comparisons_item_level.csv` (binary-group comparisons on S1~S5; source field configurable)
+- `results/research/group2_complexity_mean_table.csv` (binary-group means under complexity levels)
+- `results/research/group2_complexity_delta_significance.csv` (binary-group significance on C1-C0)
 - `results/research/group_complexity_mean_table.csv` (intuitive 2D table: DV × [PeopleGroup4 × Complexity means])
 - `results/research/group_complexity_delta_significance.csv` (between-group significance on complexity deltas: C1-C0)
 - `results/research/group_complexity_mean_table_by_wwr.csv` (WWR-stratified people-group × complexity means)
