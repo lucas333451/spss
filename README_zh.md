@@ -154,9 +154,13 @@ python scripts/pipeline.py \
 - `results/research/group2_comparisons_item_level.csv`（两种二分法合并：SportFreqGroup + ExperienceGroup）
 - `results/research/group2_complexity_mean_table.csv`（两种二分法合并的复杂度均值）
 - `results/research/group2_complexity_delta_significance.csv`（两种二分法合并的 C1-C0 显著性）
+- `results/research/group2_complexity_mean_table_by_wwr.csv`（两种二分法合并的 WWR 分层复杂度均值）
+- `results/research/group2_complexity_delta_significance_by_wwr.csv`（两种二分法合并的 WWR 分层 C1-C0 显著性）
 - `results/research/group2_comparisons_item_level_sportfreqgroup.csv` / `_experiencegroup.csv`（分开文件）
 - `results/research/group2_complexity_mean_table_sportfreqgroup.csv` / `_experiencegroup.csv`（分开文件）
 - `results/research/group2_complexity_delta_significance_sportfreqgroup.csv` / `_experiencegroup.csv`（分开文件）
+- `results/research/group2_complexity_mean_table_by_wwr_sportfreqgroup.csv` / `_experiencegroup.csv`（分开文件：WWR分层均值）
+- `results/research/group2_complexity_delta_significance_by_wwr_sportfreqgroup.csv` / `_experiencegroup.csv`（分开文件：WWR分层显著性）
 - `results/research/group_complexity_mean_table.csv`（直观二维表：每个DV在人群×复杂度下的均值）
 - `results/research/group_complexity_delta_significance.csv`（组间复杂度差异显著性：比较各组 C1-C0）
 - `results/research/group_complexity_mean_table_by_wwr.csv`（按 WWR 分层的人群×复杂度均值）

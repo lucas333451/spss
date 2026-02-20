@@ -88,6 +88,10 @@ def build(results_root: Path, out: Path, max_rows: int) -> None:
     lines.append(csv_md(r / "research/group2_complexity_mean_table.csv", max_rows))
     lines.append("\n### 5.5 二分复杂度显著性（合并）")
     lines.append(csv_md(r / "research/group2_complexity_delta_significance.csv", max_rows))
+    lines.append("\n### 5.6 二分：按WWR分层复杂度均值（合并）")
+    lines.append(csv_md(r / "research/group2_complexity_mean_table_by_wwr.csv", max_rows))
+    lines.append("\n### 5.7 二分：按WWR分层复杂度显著性（合并）")
+    lines.append(csv_md(r / "research/group2_complexity_delta_significance_by_wwr.csv", max_rows))
     lines.append("\n---\n")
 
     # 6) Scene-level detail

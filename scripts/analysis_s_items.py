@@ -746,6 +746,86 @@ def group2_complexity_table(df: pd.DataFrame, dvs: list[str], source: str = "Spo
     return (pd.concat(mean_rows, ignore_index=True) if mean_rows else pd.DataFrame(), pd.DataFrame(sig_rows))
 
 
+def group2_complexity_table_by_wwr(df: pd.DataFrame, dvs: list[str], source: str = "SportFreqGroup") -> tuple[pd.DataFrame, pd.DataFrame]:
+    """WWR-stratified 2-group complexity means and delta significance."""
+    x = make_people_group2(df, source=source)
+    mean_rows, sig_rows = [], []
+
+    for dv in dvs:
+        if dv not in x.columns:
+            continue
+        sub = x.dropna(subset=["SubjectID", "PeopleGroup2", "WWR", "Complexity", dv]).copy()
+        if sub.empty:
+            continue
+
+        subj = sub.groupby(["SubjectID", "PeopleGroup2", "WWR", "Complexity"], as_index=False)[dv].mean()
+
+        grp = subj.groupby(["PeopleGroup2", "WWR", "Complexity"], as_index=False).agg(
+            n_subjects=(dv, "count"),
+            mean=(dv, "mean"),
+            sd=(dv, "std"),
+        )
+
+        for wwr, gwwr in grp.groupby("WWR", dropna=False):
+            piv_mean = gwwr.pivot_table(index="PeopleGroup2", columns="Complexity", values="mean", aggfunc="first")
+            piv_n = gwwr.pivot_table(index="PeopleGroup2", columns="Complexity", values="n_subjects", aggfunc="first")
+            c0 = 0 if 0 in piv_mean.columns else (0.0 if 0.0 in piv_mean.columns else None)
+            c1 = 1 if 1 in piv_mean.columns else (1.0 if 1.0 in piv_mean.columns else None)
+            if c0 is None or c1 is None:
+                continue
+
+            tmp = piv_mean.copy().reset_index()
+            tmp.insert(0, "DV", dv)
+            tmp.insert(1, "WWR", wwr)
+            tmp["n_subj_C0"] = tmp["PeopleGroup2"].map(piv_n[c0].to_dict())
+            tmp["n_subj_C1"] = tmp["PeopleGroup2"].map(piv_n[c1].to_dict())
+            tmp["mean_C0"] = tmp[c0]
+            tmp["mean_C1"] = tmp[c1]
+            tmp["delta_C1_minus_C0"] = tmp["mean_C1"] - tmp["mean_C0"]
+            mean_rows.append(tmp[["DV", "WWR", "PeopleGroup2", "n_subj_C0", "n_subj_C1", "mean_C0", "mean_C1", "delta_C1_minus_C0"]])
+
+        # significance on delta(C1-C0) between the 2 groups, within each WWR
+        piv_subj = subj.pivot_table(index=["SubjectID", "PeopleGroup2", "WWR"], columns="Complexity", values=dv, aggfunc="mean").reset_index()
+        c0s = 0 if 0 in piv_subj.columns else (0.0 if 0.0 in piv_subj.columns else None)
+        c1s = 1 if 1 in piv_subj.columns else (1.0 if 1.0 in piv_subj.columns else None)
+        if c0s is None or c1s is None:
+            continue
+        piv_subj["delta"] = piv_subj[c1s] - piv_subj[c0s]
+
+        for wwr, gwwr in piv_subj.groupby("WWR", dropna=False):
+            gs = sorted(gwwr["PeopleGroup2"].dropna().unique())
+            if len(gs) < 2:
+                continue
+            g1, g2 = gs[0], gs[1]
+            v1 = gwwr.loc[gwwr["PeopleGroup2"] == g1, "delta"].dropna().to_numpy(dtype=float)
+            v2 = gwwr.loc[gwwr["PeopleGroup2"] == g2, "delta"].dropna().to_numpy(dtype=float)
+            if len(v1) < 3 or len(v2) < 3:
+                t, p = np.nan, np.nan
+            else:
+                rr = ttest_ind(v1, v2, equal_var=False, nan_policy="omit")
+                t, p = float(rr.statistic), float(rr.pvalue)
+
+            sig_rows.append({
+                "DV": dv,
+                "WWR": wwr,
+                "source": source,
+                "GroupA": g1,
+                "GroupB": g2,
+                "nA_subjects": len(v1),
+                "nB_subjects": len(v2),
+                "meanDeltaA_C1_minus_C0": float(np.mean(v1)) if len(v1) else np.nan,
+                "meanDeltaB_C1_minus_C0": float(np.mean(v2)) if len(v2) else np.nan,
+                "delta_of_delta_A_minus_B": (float(np.mean(v1)) - float(np.mean(v2))) if len(v1) and len(v2) else np.nan,
+                "t_welch": t,
+                "p": p,
+                "sig": _sigstar(p),
+            })
+
+    mean_df = pd.concat(mean_rows, ignore_index=True) if mean_rows else pd.DataFrame()
+    sig_df = pd.DataFrame(sig_rows)
+    return mean_df, sig_df
+
+
 def group_item_variance(df: pd.DataFrame, dvs: list[str]) -> pd.DataFrame:
     rows = []
     x = make_people_group4(df)
@@ -887,11 +967,13 @@ def main():
     # 2-group split: export BOTH dimensions separately (SportFreqGroup and ExperienceGroup)
     group2_sources = ["SportFreqGroup", "ExperienceGroup"]
     group2_manifest_all, group2_cmp_all, group2_mean_all, group2_sig_all = [], [], [], []
+    group2_mean_wwr_all, group2_sig_wwr_all = [], []
 
     for gsrc in group2_sources:
         g2m = split_tables_by_people_group2(df, out / "groups", source=gsrc)
         g2c = compare_people_group2_subject_mean(df, DVS, source=gsrc)
         g2mean, g2sig = group2_complexity_table(df, DVS, source=gsrc)
+        g2mean_wwr, g2sig_wwr = group2_complexity_table_by_wwr(df, DVS, source=gsrc)
 
         if not g2m.empty:
             group2_manifest_all.append(g2m)
@@ -901,23 +983,33 @@ def main():
             group2_mean_all.append(g2mean.assign(source=gsrc))
         if not g2sig.empty:
             group2_sig_all.append(g2sig)
+        if not g2mean_wwr.empty:
+            group2_mean_wwr_all.append(g2mean_wwr.assign(source=gsrc))
+        if not g2sig_wwr.empty:
+            group2_sig_wwr_all.append(g2sig_wwr)
 
         # per-source files
         src_tag = gsrc.lower()
         g2c.to_csv(out / f"group2_comparisons_item_level_{src_tag}.csv", index=False, encoding="utf-8-sig")
         g2mean.to_csv(out / f"group2_complexity_mean_table_{src_tag}.csv", index=False, encoding="utf-8-sig")
         g2sig.to_csv(out / f"group2_complexity_delta_significance_{src_tag}.csv", index=False, encoding="utf-8-sig")
+        g2mean_wwr.to_csv(out / f"group2_complexity_mean_table_by_wwr_{src_tag}.csv", index=False, encoding="utf-8-sig")
+        g2sig_wwr.to_csv(out / f"group2_complexity_delta_significance_by_wwr_{src_tag}.csv", index=False, encoding="utf-8-sig")
 
     # merged files (both two-way splits together)
     groups2_manifest = pd.concat(group2_manifest_all, ignore_index=True) if group2_manifest_all else pd.DataFrame()
     group2_cmp = pd.concat(group2_cmp_all, ignore_index=True) if group2_cmp_all else pd.DataFrame()
     group2_mean_df = pd.concat(group2_mean_all, ignore_index=True) if group2_mean_all else pd.DataFrame()
     group2_sig_df = pd.concat(group2_sig_all, ignore_index=True) if group2_sig_all else pd.DataFrame()
+    group2_mean_wwr_df = pd.concat(group2_mean_wwr_all, ignore_index=True) if group2_mean_wwr_all else pd.DataFrame()
+    group2_sig_wwr_df = pd.concat(group2_sig_wwr_all, ignore_index=True) if group2_sig_wwr_all else pd.DataFrame()
 
     groups2_manifest.to_csv(out / "groups" / "manifest_group2_all.csv", index=False, encoding="utf-8-sig")
     group2_cmp.to_csv(out / "group2_comparisons_item_level.csv", index=False, encoding="utf-8-sig")
     group2_mean_df.to_csv(out / "group2_complexity_mean_table.csv", index=False, encoding="utf-8-sig")
     group2_sig_df.to_csv(out / "group2_complexity_delta_significance.csv", index=False, encoding="utf-8-sig")
+    group2_mean_wwr_df.to_csv(out / "group2_complexity_mean_table_by_wwr.csv", index=False, encoding="utf-8-sig")
+    group2_sig_wwr_df.to_csv(out / "group2_complexity_delta_significance_by_wwr.csv", index=False, encoding="utf-8-sig")
 
     cmp_rows = []
     for dv in DVS:
@@ -1089,6 +1181,10 @@ def main():
             "group2_comparisons_item_level.csv",
             "group2_complexity_mean_table.csv",
             "group2_complexity_delta_significance.csv",
+            "group2_complexity_mean_table_by_wwr.csv",
+            "group2_complexity_delta_significance_by_wwr.csv",
+            "group2_complexity_mean_table_by_wwr_*.csv",
+            "group2_complexity_delta_significance_by_wwr_*.csv",
             "group_complexity_mean_table.csv",
             "group_complexity_delta_significance.csv",
             "group_complexity_mean_table_by_wwr.csv",
