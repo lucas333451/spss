@@ -89,6 +89,14 @@ def main():
             "--max-rows", "5000",
         ])
 
+        # build data-first report (tables embedded directly, minimal index dependency)
+        run([
+            args.python, "scripts/build_report_data_md.py",
+            "--results-root", str(args.out_root),
+            "--out", str(args.out_root / "analysis_report_data.md"),
+            "--max-rows", "5000",
+        ])
+
     print("\nDone. Outputs:")
     print("-", out_long)
     print("-", out_model)

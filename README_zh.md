@@ -36,6 +36,7 @@
 - `scripts/pipeline.py`：一键全流程执行（支持 skip 参数）
 - `scripts/build_report_md.py`：将结果目录汇总成一个 markdown（全量索引型）
 - `scripts/build_report_key_md.py`：生成关键结果详版 markdown（更适合直接发给我做解读）
+- `scripts/build_report_data_md.py`：生成“数据直写型”markdown（关键表格直接展开，不依赖索引跳转）
 - `RESULTS_MAP.md`：一页速查（每个研究问题优先看哪3个文件）
 
 ---
