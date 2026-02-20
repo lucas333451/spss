@@ -1,3 +1,3 @@
-participant_id,csv_path,SportFreq,Experience
-P01,batch_csvs/P01.csv,High,Low
-P02,batch_csvs/P02.csv,Low,High
+name,SportFreq,Experience
+P01,High,Low
+P02,Low,High

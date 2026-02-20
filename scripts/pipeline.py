@@ -43,7 +43,6 @@ def main():
         args.python, "scripts/build_group_manifest.py",
         "--long-csv", str(out_long / "long_format.csv"),
         "--out", "group_manifest.csv",
-        "--batch-dir", "batch_csvs",
     ])
 
     if not args.skip_model:
