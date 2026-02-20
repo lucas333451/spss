@@ -229,10 +229,13 @@ def complexity_group_tables(df: pd.DataFrame, dvs: list[str]) -> tuple[pd.DataFr
         )
 
         grp = (
-            subj.groupby(["PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "Complexity"], as_index=False)[dv]
-            .agg(["count", "mean", "std"]).reset_index()
+            subj.groupby(["PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "Complexity"], as_index=False)
+            .agg(
+                n_subjects=(dv, "count"),
+                mean=(dv, "mean"),
+                sd=(dv, "std"),
+            )
         )
-        grp.columns = ["PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "Complexity", "n_subjects", "mean", "sd"]
 
         piv_mean = grp.pivot_table(index=["PeopleGroup4", "ExperienceGroup", "SportFreqGroup"], columns="Complexity", values="mean", aggfunc="first")
         piv_n = grp.pivot_table(index=["PeopleGroup4", "ExperienceGroup", "SportFreqGroup"], columns="Complexity", values="n_subjects", aggfunc="first")
