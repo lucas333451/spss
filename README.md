@@ -36,6 +36,7 @@
 - `scripts/build_report_md.py` — build one-file markdown bundle from `results/`
 - `docs/PROJECT_OVERVIEW.md` — concise orientation
 - `docs/COLAB_GUIDE.md` — Colab deployment guide
+- `RESULTS_MAP.md` — one-page map: for each research question, which 3 files to read first
 - `notebooks/spss_colab.ipynb` — ready-to-run Colab notebook
 
 ---

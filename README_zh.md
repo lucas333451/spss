@@ -35,6 +35,7 @@
 - `scripts/diagnostics_lmm.py`：诊断分析（交互来源/随机结构敏感性/Repetition）
 - `scripts/pipeline.py`：一键全流程执行（支持 skip 参数）
 - `scripts/build_report_md.py`：将结果目录汇总成一个 markdown
+- `RESULTS_MAP.md`：一页速查（每个研究问题优先看哪3个文件）
 
 ---
 
