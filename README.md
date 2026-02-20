@@ -33,7 +33,8 @@
 - `scripts/report_summary.py` — narrative summary for angle-1/angle-2 conclusions
 - `scripts/diagnostics_lmm.py` — diagnostics (interaction screening / random-structure sensitivity / repetition deep-dive)
 - `scripts/pipeline.py` — one-click end-to-end runner (supports skip flags)
-- `scripts/build_report_md.py` — build one-file markdown bundle from `results/`
+- `scripts/build_report_md.py` — build one-file markdown bundle from `results/` (full-index style)
+- `scripts/build_report_key_md.py` — build a detailed key-results markdown bundle for direct interpretation
 - `docs/PROJECT_OVERVIEW.md` — concise orientation
 - `docs/COLAB_GUIDE.md` — Colab deployment guide
 - `RESULTS_MAP.md` — one-page map: for each research question, which 3 files to read first

@@ -81,6 +81,14 @@ def main():
             "--out", str(args.out_root / "analysis_report_bundle.md"),
         ])
 
+        # build a detailed key-results bundle (more focused + richer detail)
+        run([
+            args.python, "scripts/build_report_key_md.py",
+            "--results-root", str(args.out_root),
+            "--out", str(args.out_root / "analysis_report_key.md"),
+            "--max-rows", "5000",
+        ])
+
     print("\nDone. Outputs:")
     print("-", out_long)
     print("-", out_model)

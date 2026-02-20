@@ -34,7 +34,8 @@
 - `scripts/report_summary.py`：自动生成角度1/角度2叙事总结
 - `scripts/diagnostics_lmm.py`：诊断分析（交互来源/随机结构敏感性/Repetition）
 - `scripts/pipeline.py`：一键全流程执行（支持 skip 参数）
-- `scripts/build_report_md.py`：将结果目录汇总成一个 markdown
+- `scripts/build_report_md.py`：将结果目录汇总成一个 markdown（全量索引型）
+- `scripts/build_report_key_md.py`：生成关键结果详版 markdown（更适合直接发给我做解读）
 - `RESULTS_MAP.md`：一页速查（每个研究问题优先看哪3个文件）
 
 ---
