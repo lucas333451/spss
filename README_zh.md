@@ -150,12 +150,12 @@ python scripts/pipeline.py \
 - `results/research/table_angle1_main_interactions_all_dv.csv`
 - `results/research/table_angle2_round_interactions_all_dv.csv`
 - `results/research/groups/manifest.csv` 与 `results/research/groups/group_*.csv`（按 Experience×SportFreq 四类人群拆分数据）
-- `results/research/group_comparisons_item_level.csv`（四类人群在 S1~S5 的组间对比）
-- `results/research/group2_comparisons_item_level.csv`（两种二分法合并：SportFreqGroup + ExperienceGroup）
+- `results/research/group2_comparisons_item_level.csv`（两种二分法合并：SportFreqGroup + ExperienceGroup，建议优先查看）
 - `results/research/group2_complexity_mean_table.csv`（两种二分法合并的复杂度均值）
 - `results/research/group2_complexity_delta_significance.csv`（两种二分法合并的 C1-C0 显著性）
 - `results/research/group2_complexity_mean_table_by_wwr.csv`（两种二分法合并的 WWR 分层复杂度均值）
 - `results/research/group2_complexity_delta_significance_by_wwr.csv`（两种二分法合并的 WWR 分层 C1-C0 显著性）
+- `results/research/group_comparisons_item_level.csv`（四类人群在 S1~S5 的组间对比，建议作为补充）
 - `results/research/group2_comparisons_item_level_sportfreqgroup.csv` / `_experiencegroup.csv`（分开文件）
 - `results/research/group2_complexity_mean_table_sportfreqgroup.csv` / `_experiencegroup.csv`（分开文件）
 - `results/research/group2_complexity_delta_significance_sportfreqgroup.csv` / `_experiencegroup.csv`（分开文件）

@@ -153,12 +153,12 @@ python scripts/pipeline.py \
 - `results/research/table_angle1_main_interactions_all_dv.csv`
 - `results/research/table_angle2_round_interactions_all_dv.csv`
 - `results/research/groups/manifest.csv` + `results/research/groups/group_*.csv` (split by 4 people groups: Experience×SportFreq)
-- `results/research/group_comparisons_item_level.csv` (between-group comparisons on S1~S5)
-- `results/research/group2_comparisons_item_level.csv` (merged two-way splits: SportFreqGroup + ExperienceGroup)
+- `results/research/group2_comparisons_item_level.csv` (merged two-way splits: SportFreqGroup + ExperienceGroup; recommended first pass)
 - `results/research/group2_complexity_mean_table.csv` (merged two-way complexity means)
 - `results/research/group2_complexity_delta_significance.csv` (merged two-way C1-C0 significance)
 - `results/research/group2_complexity_mean_table_by_wwr.csv` (merged two-way WWR-stratified complexity means)
 - `results/research/group2_complexity_delta_significance_by_wwr.csv` (merged two-way WWR-stratified C1-C0 significance)
+- `results/research/group_comparisons_item_level.csv` (4-cell cross-group comparisons on S1~S5; supplementary)
 - `results/research/group2_comparisons_item_level_sportfreqgroup.csv` / `_experiencegroup.csv` (per-source)
 - `results/research/group2_complexity_mean_table_sportfreqgroup.csv` / `_experiencegroup.csv` (per-source)
 - `results/research/group2_complexity_delta_significance_sportfreqgroup.csv` / `_experiencegroup.csv` (per-source)
