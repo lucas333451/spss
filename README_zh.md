@@ -165,6 +165,9 @@ python scripts/pipeline.py \
 - `results/research/group_complexity_delta_round_shift.csv`（Round2-Round1 的复杂度差值变化）
 - `results/research/scene_level_means.csv`（单场景单元均值：Block×Position / WWR / Repetition）
 - `results/research/scene_level_deltas.csv`（单场景 C1-C0 差值）
+- `results/research/scene_group_comparisons_by_condition.csv`（单场景组间比较：按 C0/C1 分开）
+- `results/research/scene_group_comparisons_c0.csv`（仅 C0 的单场景组间比较）
+- `results/research/scene_group_comparisons_c1.csv`（仅 C1 的单场景组间比较）
 - `results/research/figures/scene_delta_heatmap_S*_R*.png`（单场景差值热图）
 - `results/research/figures/group_complexity_heatmap_S*.png`（人群×复杂度热图）
 - `results/research/figures/group_complexity_delta_S*.png`（各人群 C1-C0 条形图）

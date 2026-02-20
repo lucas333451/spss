@@ -545,6 +545,88 @@ def scene_level_tables(df: pd.DataFrame, dvs: list[str]) -> tuple[pd.DataFrame, 
     return mean_df, delta_df
 
 
+def scene_group_comparisons_by_condition(df: pd.DataFrame, dvs: list[str]) -> pd.DataFrame:
+    """Pairwise PeopleGroup4 comparisons within each scene condition (C0/C1).
+
+    Scene cell is defined by DV × Condition × WWR × Repetition.
+    Outcome is subject-level mean within each cell, then Welch t-tests between groups.
+    """
+    x = make_people_group4(df)
+    out_rows = []
+
+    for dv in dvs:
+        if dv not in x.columns:
+            continue
+        sub = x.dropna(subset=["SubjectID", "PeopleGroup4", "Condition", "WWR", "Repetition", dv]).copy()
+        if sub.empty:
+            continue
+
+        subj = (
+            sub.groupby(["SubjectID", "PeopleGroup4", "ExperienceGroup", "SportFreqGroup", "Condition", "WWR", "Repetition"], as_index=False)[dv]
+            .mean()
+            .rename(columns={dv: "score"})
+        )
+
+        for (cond, wwr, rep), cell in subj.groupby(["Condition", "WWR", "Repetition"], dropna=False):
+            groups = {g: v["score"].dropna().values for g, v in cell.groupby("PeopleGroup4", dropna=False)}
+            labels = sorted(groups.keys())
+            pvals_idx = []
+
+            for i in range(len(labels)):
+                for j in range(i + 1, len(labels)):
+                    ga, gb = labels[i], labels[j]
+                    va, vb = groups.get(ga, np.array([])), groups.get(gb, np.array([]))
+
+                    if len(va) < 2 or len(vb) < 2:
+                        t, p = np.nan, np.nan
+                    else:
+                        tt = ttest_ind(va, vb, equal_var=False, nan_policy="omit")
+                        t, p = float(tt.statistic), float(tt.pvalue)
+
+                    idx = len(out_rows)
+                    pvals_idx.append(idx)
+                    out_rows.append({
+                        "DV": dv,
+                        "Condition": cond,
+                        "WWR": wwr,
+                        "Repetition": rep,
+                        "GroupA": ga,
+                        "GroupB": gb,
+                        "nA_subjects": int(len(va)),
+                        "nB_subjects": int(len(vb)),
+                        "meanA": float(np.nanmean(va)) if len(va) else np.nan,
+                        "meanB": float(np.nanmean(vb)) if len(vb) else np.nan,
+                        "delta_A_minus_B": (float(np.nanmean(va)) - float(np.nanmean(vb))) if (len(va) and len(vb)) else np.nan,
+                        "t_welch": t,
+                        "p": p,
+                    })
+
+            # Holm correction within each scene cell
+            if pvals_idx:
+                pvec = [out_rows[k]["p"] for k in pvals_idx]
+                valid = [k for k, pv in zip(pvals_idx, pvec) if pd.notna(pv)]
+                if valid:
+                    _, ph, _, _ = multipletests([out_rows[k]["p"] for k in valid], method="holm")
+                    it = iter(ph)
+                    for k in pvals_idx:
+                        if pd.isna(out_rows[k]["p"]):
+                            out_rows[k]["p_holm"] = np.nan
+                            out_rows[k]["sig_holm"] = ""
+                        else:
+                            pv = float(next(it))
+                            out_rows[k]["p_holm"] = pv
+                            out_rows[k]["sig_holm"] = _sigstar(pv)
+                else:
+                    for k in pvals_idx:
+                        out_rows[k]["p_holm"] = np.nan
+                        out_rows[k]["sig_holm"] = ""
+
+    out = pd.DataFrame(out_rows)
+    if not out.empty:
+        out = out.sort_values(["DV", "Condition", "WWR", "Repetition", "p_holm", "p"]).reset_index(drop=True)
+    return out
+
+
 def make_people_group2(df: pd.DataFrame, source: str = "SportFreqGroup") -> pd.DataFrame:
     x = df.copy()
     if source not in x.columns:
@@ -867,6 +949,20 @@ def main():
     scene_means_df.to_csv(out / "scene_level_means.csv", index=False, encoding="utf-8-sig")
     scene_deltas_df.to_csv(out / "scene_level_deltas.csv", index=False, encoding="utf-8-sig")
 
+    # scene-level between-group comparisons by condition (treat C0/C1 as separate scenes)
+    scene_cmp_df = scene_group_comparisons_by_condition(df, DVS)
+    scene_cmp_df.to_csv(out / "scene_group_comparisons_by_condition.csv", index=False, encoding="utf-8-sig")
+    if not scene_cmp_df.empty:
+        scene_cmp_df[scene_cmp_df["Condition"].astype(str) == "C0"].to_csv(
+            out / "scene_group_comparisons_c0.csv", index=False, encoding="utf-8-sig"
+        )
+        scene_cmp_df[scene_cmp_df["Condition"].astype(str) == "C1"].to_csv(
+            out / "scene_group_comparisons_c1.csv", index=False, encoding="utf-8-sig"
+        )
+    else:
+        pd.DataFrame().to_csv(out / "scene_group_comparisons_c0.csv", index=False, encoding="utf-8-sig")
+        pd.DataFrame().to_csv(out / "scene_group_comparisons_c1.csv", index=False, encoding="utf-8-sig")
+
     # scene-level visualization: delta(C1-C0) heatmap by group × WWR (split by Repetition)
     if not scene_deltas_df.empty:
         for dv in DVS:
@@ -1001,6 +1097,9 @@ def main():
             "group_complexity_delta_round_shift.csv",
             "scene_level_means.csv",
             "scene_level_deltas.csv",
+            "scene_group_comparisons_by_condition.csv",
+            "scene_group_comparisons_c0.csv",
+            "scene_group_comparisons_c1.csv",
             "figures/scene_delta_heatmap_S*_R*.png",
             "figures/group_complexity_heatmap_S*.png",
             "figures/group_complexity_delta_S*.png",
