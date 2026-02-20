@@ -38,6 +38,14 @@ def main():
         "--out-dir", str(out_long),
     ])
 
+    # auto-build participant-level group manifest (no manual filling)
+    run([
+        args.python, "scripts/build_group_manifest.py",
+        "--long-csv", str(out_long / "long_format.csv"),
+        "--out", "group_manifest.csv",
+        "--batch-dir", "batch_csvs",
+    ])
+
     if not args.skip_model:
         # keep existing core model workflow
         run([
