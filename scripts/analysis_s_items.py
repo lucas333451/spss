@@ -486,10 +486,11 @@ def make_people_group2(df: pd.DataFrame, source: str = "SportFreqGroup") -> pd.D
 def split_tables_by_people_group2(df: pd.DataFrame, out_dir: Path, source: str = "SportFreqGroup") -> pd.DataFrame:
     out_dir.mkdir(parents=True, exist_ok=True)
     x = make_people_group2(df, source=source)
+    src = str(source).replace("/", "_").replace(" ", "").lower()
     rows = []
     for grp, g in x.groupby("PeopleGroup2", dropna=False):
         safe = str(grp).replace("/", "_").replace(" ", "")
-        f = out_dir / f"group2_{safe}.csv"
+        f = out_dir / f"group2_{src}_{safe}.csv"
         g.to_csv(f, index=False, encoding="utf-8-sig")
         rows.append({
             "PeopleGroup2": grp,
@@ -499,7 +500,7 @@ def split_tables_by_people_group2(df: pd.DataFrame, out_dir: Path, source: str =
             "file": str(f),
         })
     m = pd.DataFrame(rows)
-    m.to_csv(out_dir / "manifest_group2.csv", index=False, encoding="utf-8-sig")
+    m.to_csv(out_dir / f"manifest_group2_{src}.csv", index=False, encoding="utf-8-sig")
     return m
 
 
@@ -632,7 +633,6 @@ def main():
     ap = argparse.ArgumentParser(description="S-item analysis (Angle1/Angle2) with 4-group + 2-group splits")
     ap.add_argument("--long-csv", type=Path, required=True)
     ap.add_argument("--out-dir", type=Path, default=Path("results/research"))
-    ap.add_argument("--group2-source", type=str, default="SportFreqGroup", help="Column used for 2-group split (default: SportFreqGroup)")
     args = ap.parse_args()
 
     out = args.out_dir
@@ -731,11 +731,38 @@ def main():
 
     groups_manifest = split_tables_by_people_group(df, out / "groups")
 
-    # 2-group split based on one source question (default: SportFreqGroup)
-    groups2_manifest = split_tables_by_people_group2(df, out / "groups", source=args.group2_source)
-    group2_cmp = compare_people_group2_subject_mean(df, DVS, source=args.group2_source)
+    # 2-group split: export BOTH dimensions separately (SportFreqGroup and ExperienceGroup)
+    group2_sources = ["SportFreqGroup", "ExperienceGroup"]
+    group2_manifest_all, group2_cmp_all, group2_mean_all, group2_sig_all = [], [], [], []
+
+    for gsrc in group2_sources:
+        g2m = split_tables_by_people_group2(df, out / "groups", source=gsrc)
+        g2c = compare_people_group2_subject_mean(df, DVS, source=gsrc)
+        g2mean, g2sig = group2_complexity_table(df, DVS, source=gsrc)
+
+        if not g2m.empty:
+            group2_manifest_all.append(g2m)
+        if not g2c.empty:
+            group2_cmp_all.append(g2c)
+        if not g2mean.empty:
+            group2_mean_all.append(g2mean.assign(source=gsrc))
+        if not g2sig.empty:
+            group2_sig_all.append(g2sig)
+
+        # per-source files
+        src_tag = gsrc.lower()
+        g2c.to_csv(out / f"group2_comparisons_item_level_{src_tag}.csv", index=False, encoding="utf-8-sig")
+        g2mean.to_csv(out / f"group2_complexity_mean_table_{src_tag}.csv", index=False, encoding="utf-8-sig")
+        g2sig.to_csv(out / f"group2_complexity_delta_significance_{src_tag}.csv", index=False, encoding="utf-8-sig")
+
+    # merged files (both two-way splits together)
+    groups2_manifest = pd.concat(group2_manifest_all, ignore_index=True) if group2_manifest_all else pd.DataFrame()
+    group2_cmp = pd.concat(group2_cmp_all, ignore_index=True) if group2_cmp_all else pd.DataFrame()
+    group2_mean_df = pd.concat(group2_mean_all, ignore_index=True) if group2_mean_all else pd.DataFrame()
+    group2_sig_df = pd.concat(group2_sig_all, ignore_index=True) if group2_sig_all else pd.DataFrame()
+
+    groups2_manifest.to_csv(out / "groups" / "manifest_group2_all.csv", index=False, encoding="utf-8-sig")
     group2_cmp.to_csv(out / "group2_comparisons_item_level.csv", index=False, encoding="utf-8-sig")
-    group2_mean_df, group2_sig_df = group2_complexity_table(df, DVS, source=args.group2_source)
     group2_mean_df.to_csv(out / "group2_complexity_mean_table.csv", index=False, encoding="utf-8-sig")
     group2_sig_df.to_csv(out / "group2_complexity_delta_significance.csv", index=False, encoding="utf-8-sig")
 
@@ -847,7 +874,6 @@ def main():
         "dvs": DVS,
         "people_groups": groups_manifest.to_dict(orient="records") if isinstance(groups_manifest, pd.DataFrame) else [],
         "people_groups2": groups2_manifest.to_dict(orient="records") if isinstance(groups2_manifest, pd.DataFrame) else [],
-        "group2_source": args.group2_source,
         "outputs": [
             "table_fixed_effects_all_dv.csv",
             "table_angle1_effects_all_dv.csv",
@@ -861,7 +887,8 @@ def main():
             "round_icc_by_group.csv",
             "groups/manifest.csv",
             "groups/group_*.csv",
-            "groups/manifest_group2.csv",
+            "groups/manifest_group2_all.csv",
+            "groups/manifest_group2_*.csv",
             "groups/group2_*.csv",
             "group_comparisons_item_level.csv",
             "group2_comparisons_item_level.csv",
