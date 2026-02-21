@@ -80,6 +80,14 @@ def main():
             "--out-dir", str(out_diag),
         ])
 
+    # write provenance for reproducibility (packages, git commit, argv)
+    run([
+        args.python, "scripts/write_provenance.py",
+        "--results-root", str(args.out_root),
+        "--excel", str(args.excel),
+        "--sheet", str(args.sheet),
+    ])
+
     if not args.skip_bundle:
         # build one markdown bundle for easy sharing/review
         run([

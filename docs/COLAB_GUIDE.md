@@ -122,10 +122,11 @@ print("✅ 当前使用文件:", EXCEL_FILE)
 
 > 注意：如果文件名里有空格（例如 `...2026-02-17 .xlsx`），务必放在变量里并用引号传递（上面这种写法即可）。
 
-这一步会自动做三件事：
+这一步会自动做这些事情：
 1. 宽表 -> long + QC
-2. 基础论文表导出
-3. 扩展研究问题分析（角度1+角度2）
+2. 生成 `results/group_manifest.csv`（含 Order/Round/Pos/trial_key，用于眼动/EEG 对齐）
+3. 跑基础模型与研究分析（输出表/图）
+4. 生成 `results/provenance.json`（记录 git commit / python 包版本 / 参数，用于可复现与审稿）
 
 ---
 
