@@ -42,7 +42,7 @@ def main():
     run([
         args.python, "scripts/build_group_manifest.py",
         "--long-csv", str(out_long / "long_format.csv"),
-        "--out", "group_manifest.csv",
+        "--out", str(args.out_root / "group_manifest.csv"),
     ])
 
     if not args.skip_model:
