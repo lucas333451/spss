@@ -120,9 +120,27 @@ def _load_provenance(results_root: Path) -> dict | None:
         return None
 
 
+def _list_r_outputs(results_root: Path, max_files: int = 200) -> dict:
+    """Return a small summary of R re-run outputs under results/r_model/."""
+    rdir = results_root / "r_model"
+    if not rdir.exists() or not rdir.is_dir():
+        return {"present": False, "dir": str(rdir), "files": []}
+
+    files = sorted([p for p in rdir.rglob("*") if p.is_file()])
+    rels = [str(p.relative_to(results_root)) for p in files[:max_files]]
+    return {
+        "present": True,
+        "dir": str(rdir),
+        "n_files": len(files),
+        "files": rels,
+        "truncated": (len(files) > max_files),
+    }
+
+
 def build_key_report(results_root: Path, out_file: Path, max_rows: int) -> None:
     files, missing = _resolve_key_paths(results_root)
     prov = _load_provenance(results_root)
+    rsum = _list_r_outputs(results_root)
 
     lines: list[str] = []
     lines.append("# Analysis Key Report (for direct interpretation)")
@@ -163,6 +181,22 @@ def build_key_report(results_root: Path, out_file: Path, max_rows: int) -> None:
             lines.append("")
             lines.append("**Python packages (key):**")
             lines.append("- " + ", ".join(pairs))
+
+    # R re-run audit (presence + file list)
+    lines.append("")
+    lines.append("## R re-run audit (results/r_model)")
+    if not rsum.get("present", False):
+        lines.append(f"- R outputs not found: `{rsum.get('dir')}`")
+        lines.append("- If you installed R, re-run pipeline with `--with-r` to generate `results/r_model/`.")
+    else:
+        lines.append(f"- R outputs present: `{rsum.get('dir')}`")
+        lines.append(f"- n_files: {rsum.get('n_files')}")
+        lines.append("")
+        lines.append("Files:")
+        for f in rsum.get("files", []):
+            lines.append(f"- `{f}`")
+        if rsum.get("truncated"):
+            lines.append("- ... (truncated)")
 
     lines.append("")
 
