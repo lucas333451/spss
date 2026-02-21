@@ -139,6 +139,9 @@ def build_key_report(results_root: Path, out_file: Path, max_rows: int) -> None:
         is_clean = (prov.get("git") or {}).get("is_clean")
         pyv = (prov.get("python") or {}).get("version")
         inputs = prov.get("inputs") or {}
+        rver = (prov.get("r") or {}).get("version")
+        pkgs = prov.get("python_packages") or {}
+
         lines.append(f"- timestamp_utc: `{ts}`")
         lines.append(f"- git_commit: `{git_commit}`")
         lines.append(f"- git_clean: `{is_clean}`")
@@ -146,6 +149,20 @@ def build_key_report(results_root: Path, out_file: Path, max_rows: int) -> None:
         lines.append(f"- sheet: `{inputs.get('sheet')}`")
         if pyv:
             lines.append(f"- python: `{str(pyv).splitlines()[0]}`")
+        if rver:
+            lines.append(f"- R: `{str(rver).splitlines()[0]}`")
+
+        # Compact package list for easy reviewer/auditor checks
+        want = ["pandas","numpy","openpyxl","statsmodels","scipy","seaborn","matplotlib","pingouin"]
+        pairs = []
+        for w in want:
+            v = pkgs.get(w)
+            if v:
+                pairs.append(f"{w}=={v}")
+        if pairs:
+            lines.append("")
+            lines.append("**Python packages (key):**")
+            lines.append("- " + ", ".join(pairs))
 
     lines.append("")
 
