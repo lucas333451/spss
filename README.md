@@ -32,7 +32,7 @@
 - `scripts/analysis_groups.py` — shared people-group split/comparison utilities
 - `scripts/report_summary.py` — narrative summary for angle-1/angle-2 conclusions
 - `scripts/diagnostics_lmm.py` — diagnostics (interaction screening / random-structure sensitivity / repetition deep-dive)
-- `scripts/pipeline.py` — one-click end-to-end runner (supports skip flags)
+- `scripts/pipeline.py` — one-click end-to-end runner (supports skip flags + optional `--with-r` to re-fit in R)
 - `scripts/build_report_md.py` — build one-file markdown bundle from `results/` (full-index style)
 - `scripts/build_report_key_md.py` — build a detailed key-results markdown bundle for direct interpretation
 - `scripts/build_report_data_md.py` — build a data-first markdown report (key tables embedded directly, minimal index dependency)
@@ -228,6 +228,9 @@ Diagnostics script evaluates:
 ---
 
 ## 11. Colab Usage / Colab 使用
+
+- Recommended: `notebooks/colab_setup.ipynb`
+- If you installed R in Colab, you can run the pipeline with `--with-r` to automatically generate `results/r_model/` using lme4/lmerTest/emmeans.
 - Full guide: `docs/COLAB_GUIDE.md`
 - Ready notebook: `notebooks/spss_colab.ipynb`
 - Recommended: run pipeline once, then send `results/analysis_report_bundle.md`

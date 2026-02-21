@@ -8,9 +8,13 @@
 
 ## 数据流
 1. 原始 Excel（宽表）
-2. `transform_wide_to_long.py` → `long_format.csv`
-3. `run_analysis.py` → 基础论文结果表
-4. `analysis_s_items.py` + `analysis_b_items.py` + `report_summary.py` → 研究问题扩展分析（角度1+角度2 + 人群分组 + 自动叙事总结）
+2. `transform_wide_to_long.py` → `results/long/long_format.csv` + QC（`qc_summary.json` 等）
+3. `build_group_manifest.py` → `results/group_manifest.csv`（含 Order/Round/Pos/trial_key，用于眼动/EEG 对齐）
+4. `run_analysis.py` → `results/model/*`（Afford4 主模型、simple effects、论文表、图）
+5. `analysis_s_items.py` + `analysis_b_items.py` + `report_summary.py` → `results/research/*`（角度1/角度2 + 分组 + 场景级输出）
+6. `diagnostics_lmm.py` → `results/diagnostics/*`（交互筛查/随机结构敏感性/轮次诊断；带审计日志）
+7. `write_provenance.py` → `results/provenance.json`（git commit/包版本/参数，审稿可复现指纹）
+8. （可选）`run_analysis_R.R` → `results/r_model/*`（R: lme4/lmerTest/emmeans 投稿口径）
 
 ## 你最常用的两个命令
 - 先转长表：`transform_wide_to_long.py`

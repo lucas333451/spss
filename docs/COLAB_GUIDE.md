@@ -118,6 +118,9 @@ print("✅ 当前使用文件:", EXCEL_FILE)
 
 ```python
 !python scripts/pipeline.py --excel "$EXCEL_FILE" --sheet 0 --out-root results
+
+# 如果你已经安装了 R，并希望 pipeline 自动复算 R 版主模型（期刊口径更常见）：
+# !python scripts/pipeline.py --excel "$EXCEL_FILE" --sheet 0 --out-root results --with-r
 ```
 
 > 注意：如果文件名里有空格（例如 `...2026-02-17 .xlsx`），务必放在变量里并用引号传递（上面这种写法即可）。

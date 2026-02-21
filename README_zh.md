@@ -33,7 +33,7 @@
 - `scripts/analysis_groups.py`：四类人群拆分/对比的公共模块
 - `scripts/report_summary.py`：自动生成角度1/角度2叙事总结
 - `scripts/diagnostics_lmm.py`：诊断分析（交互来源/随机结构敏感性/Repetition）
-- `scripts/pipeline.py`：一键全流程执行（支持 skip 参数）
+- `scripts/pipeline.py`：一键全流程执行（支持 skip 参数；可选 `--with-r` 自动复算 R 版主模型并输出到 `results/r_model/`）
 - `scripts/build_report_md.py`：将结果目录汇总成一个 markdown（全量索引型）
 - `scripts/build_report_key_md.py`：生成关键结果详版 markdown（更适合直接发给我做解读）
 - `scripts/build_report_data_md.py`：生成“数据直写型”markdown（关键表格直接展开，不依赖索引跳转）
@@ -224,6 +224,9 @@ python scripts/pipeline.py \
 ---
 
 ## 11. Colab 部署
+
+- 推荐使用：`notebooks/colab_setup.ipynb`
+- 若你在 Colab 安装了 R，可在 pipeline 后加 `--with-r`，自动生成 `results/r_model/`（lme4/lmerTest/emmeans 口径）。
 - 详细指南：`docs/COLAB_GUIDE.md`
 - 现成 Notebook：`notebooks/spss_colab.ipynb`
 - 推荐直接跑 pipeline，再把 `results/analysis_report_bundle.md` 发给 Sam

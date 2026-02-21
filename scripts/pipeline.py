@@ -24,6 +24,13 @@ def main():
     ap.add_argument("--skip-research", action="store_true", help="Skip research modules")
     ap.add_argument("--skip-diagnostics", action="store_true", help="Skip scripts/diagnostics_lmm.py")
     ap.add_argument("--skip-bundle", action="store_true", help="Skip scripts/build_report_md.py")
+
+    # Optional R re-run (paper-ready inference)
+    ap.add_argument("--with-r", action="store_true", help="If Rscript is available, run scripts/run_analysis_R.R and write results under <out-root>/r_model")
+    ap.add_argument("--rscript", default="Rscript", help="Rscript executable name/path (default: Rscript)")
+    ap.add_argument("--r-df-method", default="Satterthwaite", help="Satterthwaite|Kenward-Roger")
+    ap.add_argument("--r-p-adjust", default="Holm", help="Holm|bonferroni|fdr|none")
+
     args = ap.parse_args()
 
     out_long = args.out_root / "long"
@@ -87,6 +94,26 @@ def main():
         "--excel", str(args.excel),
         "--sheet", str(args.sheet),
     ])
+
+    # Optional: re-run main model in R for paper-ready inference
+    if args.with_r:
+        rscript_path = None
+        try:
+            rscript_path = subprocess.check_output(["bash", "-lc", f"command -v {args.rscript}"], text=True).strip()
+        except Exception:
+            rscript_path = ""
+
+        if rscript_path:
+            run([
+                args.rscript,
+                "scripts/run_analysis_R.R",
+                "--long-csv", str(out_long / "long_format.csv"),
+                "--out-dir", str(args.out_root / "r_model"),
+                "--df-method", str(args.r_df_method),
+                "--p-adjust", str(args.r_p_adjust),
+            ])
+        else:
+            print("[pipeline] --with-r set but Rscript not found; skipping R re-run.")
 
     if not args.skip_bundle:
         # build one markdown bundle for easy sharing/review
