@@ -8,17 +8,7 @@ import re
 import numpy as np
 import pandas as pd
 
-# mapping[Order][Block][Position] = (WWR, Condition)
-MAPPING = {
-    1: {
-        1: {1: (45, "C1"), 2: (15, "C0"), 3: (75, "C1"), 4: (45, "C0"), 5: (15, "C1"), 6: (75, "C0")},
-        2: {1: (45, "C0"), 2: (45, "C1"), 3: (75, "C0"), 4: (75, "C1"), 5: (15, "C0"), 6: (15, "C1")},
-    },
-    2: {
-        1: {1: (45, "C1"), 2: (15, "C0"), 3: (75, "C1"), 4: (75, "C0"), 5: (15, "C1"), 6: (45, "C0")},
-        2: {1: (15, "C0"), 2: (15, "C1"), 3: (45, "C1"), 4: (75, "C0"), 5: (45, "C0"), 6: (75, "C1")},
-    },
-}
+from scene_mapping import get_wwr_cond, scene_id
 
 
 def q_num(block: int, pos: int) -> int:
@@ -158,9 +148,7 @@ def build_long(df: pd.DataFrame, col_idx: dict) -> pd.DataFrame:
             ]
 
             for pos in [1, 2, 3, 4, 5, 6]:
-                wwr, cond = (np.nan, None)
-                if order in MAPPING and block in MAPPING[order] and pos in MAPPING[order][block]:
-                    wwr, cond = MAPPING[order][block][pos]
+                wwr, cond = get_wwr_cond(order, block, pos)
 
                 s1 = to_num(r.get(col_idx.get(f"S_{block}_{pos}_1")))
                 s2 = to_num(r.get(col_idx.get(f"S_{block}_{pos}_2")))
@@ -179,7 +167,8 @@ def build_long(df: pd.DataFrame, col_idx: dict) -> pd.DataFrame:
                 # - B1~B3: 1-7
                 s5_7 = rescale_9_to_7(s5)
 
-                bmean = np.nanmean([b1, b2, b3])
+                # Avoid RuntimeWarning("Mean of empty slice") for design-missing B items in C0.
+                bmean = np.nan if (pd.isna(b1) and pd.isna(b2) and pd.isna(b3)) else float(np.nanmean([b1, b2, b3]))
                 complexity = 1 if cond == "C1" else 0 if cond == "C0" else np.nan
 
                 records.append({
@@ -206,7 +195,7 @@ def build_long(df: pd.DataFrame, col_idx: dict) -> pd.DataFrame:
                     "B2": b2,
                     "B3": b3,
                     "Bmean": bmean,
-                    "SceneID": f"WWR{int(wwr)}_{cond}" if not pd.isna(wwr) and cond else np.nan,
+                    "SceneID": scene_id(wwr, cond) if not pd.isna(wwr) and cond else np.nan,
                 })
 
     return pd.DataFrame(records)

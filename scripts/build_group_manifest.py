@@ -7,17 +7,7 @@ import json
 import pandas as pd
 
 
-# mapping[Order][Block][Position] = (WWR, Condition)
-MAPPING = {
-    1: {
-        1: {1: (45, "C1"), 2: (15, "C0"), 3: (75, "C1"), 4: (45, "C0"), 5: (15, "C1"), 6: (75, "C0")},
-        2: {1: (45, "C0"), 2: (45, "C1"), 3: (75, "C0"), 4: (75, "C1"), 5: (15, "C0"), 6: (15, "C1")},
-    },
-    2: {
-        1: {1: (45, "C1"), 2: (15, "C0"), 3: (75, "C1"), 4: (75, "C0"), 5: (15, "C1"), 6: (45, "C0")},
-        2: {1: (15, "C0"), 2: (15, "C1"), 3: (45, "C1"), 4: (75, "C0"), 5: (45, "C0"), 6: (75, "C1")},
-    },
-}
+from scene_mapping import get_wwr_cond, scene_id
 
 
 def build_manifest(long_csv: Path, out_csv: Path) -> pd.DataFrame:
@@ -62,13 +52,14 @@ def build_manifest(long_csv: Path, out_csv: Path) -> pd.DataFrame:
         }
 
         # Fill 12-trial scene sequence for known order
-        if isinstance(order, int) and order in MAPPING:
+        if isinstance(order, int):
             for t in range(1, 13):
                 block = 1 if t <= 6 else 2
                 pos = t if t <= 6 else (t - 6)
-                wwr, cond = MAPPING[order][block][pos]
-                scene = f"WWR{int(wwr)}_{cond}"
-                complexity = 1 if cond == "C1" else 0
+                wwr, cond = get_wwr_cond(order, block, pos)
+
+                scene = scene_id(wwr, cond) if (pd.notna(wwr) and cond) else "Unknown"
+                complexity = 1 if cond == "C1" else 0 if cond == "C0" else "Unknown"
 
                 tag = f"trial{t:02d}"
 
