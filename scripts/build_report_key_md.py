@@ -110,8 +110,19 @@ def _resolve_key_paths(results_root: Path) -> tuple[list[Path], list[str]]:
     return dedup, missing
 
 
+def _load_provenance(results_root: Path) -> dict | None:
+    p = results_root / "provenance.json"
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
 def build_key_report(results_root: Path, out_file: Path, max_rows: int) -> None:
     files, missing = _resolve_key_paths(results_root)
+    prov = _load_provenance(results_root)
 
     lines: list[str] = []
     lines.append("# Analysis Key Report (for direct interpretation)")
@@ -119,6 +130,23 @@ def build_key_report(results_root: Path, out_file: Path, max_rows: int) -> None:
     lines.append("This report only bundles key outputs needed for interpretation and discussion.")
     lines.append(f"Results root: `{results_root}`")
     lines.append(f"Included files: {len(files)}")
+
+    if prov:
+        lines.append("")
+        lines.append("## Provenance (reproducibility fingerprint)")
+        ts = prov.get("timestamp_utc")
+        git_commit = (prov.get("git") or {}).get("commit")
+        is_clean = (prov.get("git") or {}).get("is_clean")
+        pyv = (prov.get("python") or {}).get("version")
+        inputs = prov.get("inputs") or {}
+        lines.append(f"- timestamp_utc: `{ts}`")
+        lines.append(f"- git_commit: `{git_commit}`")
+        lines.append(f"- git_clean: `{is_clean}`")
+        lines.append(f"- excel: `{inputs.get('excel')}`")
+        lines.append(f"- sheet: `{inputs.get('sheet')}`")
+        if pyv:
+            lines.append(f"- python: `{str(pyv).splitlines()[0]}`")
+
     lines.append("")
 
     if missing:
