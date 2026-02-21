@@ -52,7 +52,19 @@
 %cd spss
 !pip -q install --upgrade pip
 !pip -q install -r requirements.txt
-print("✅ 环境准备完成")
+print("✅ Python 环境准备完成")
+```
+
+### （可选但推荐）安装 R + lme4/lmerTest/emmeans（期刊投稿更常见口径）
+如果你准备按 Building and Environment 等期刊常用写法，用 R 复算主模型，可加下面这个 cell：
+
+```python
+!apt-get -qq update
+!apt-get -qq install -y r-base
+
+# 安装 CRAN 包（可能需要几分钟）
+!R -q -e "install.packages(c('lme4','lmerTest','emmeans','broom.mixed','readr','dplyr','stringr','optparse','jsonlite'), repos='https://cloud.r-project.org')"
+print("✅ R 环境准备完成")
 ```
 
 执行时间：约 1~3 分钟。

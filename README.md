@@ -37,7 +37,8 @@
 - `scripts/build_report_key_md.py` — build a detailed key-results markdown bundle for direct interpretation
 - `scripts/build_report_data_md.py` — build a data-first markdown report (key tables embedded directly, minimal index dependency)
 - `docs/PROJECT_OVERVIEW.md` — concise orientation
-- `docs/COLAB_GUIDE.md` — Colab deployment guide
+- `docs/COLAB_GUIDE.md` — Colab deployment guide (Python + optional R)
+- `scripts/run_analysis_R.R` — optional R re-run (lme4/lmerTest/emmeans) for paper-ready inference
 - `RESULTS_MAP.md` — one-page map: for each research question, which 3 files to read first
 - `notebooks/spss_colab.ipynb` — ready-to-run Colab notebook
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 import argparse
 import json
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -49,9 +50,48 @@ def _extract_coef_table(fit, model_name: str) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _is_singular_fit(fit, tol: float = 1e-8) -> bool:
+    """Heuristic singular-fit detection for statsmodels MixedLM.
+
+    A fit is treated as singular if random-effect covariance is near-singular
+    (min eigenvalue <= tol) or any RE variance is ~0.
+
+    Note: statsmodels may still mark such fits as converged; we flag them for audit.
+    """
+    if fit is None:
+        return False
+    cov_re = getattr(fit, "cov_re", None)
+    if cov_re is None:
+        return False
+    try:
+        arr = np.asarray(cov_re, dtype=float)
+        if arr.ndim != 2 or arr.shape[0] == 0:
+            return False
+        # Diagonal variances ~ 0
+        if np.any(np.diag(arr) <= tol):
+            return True
+        # Eigenvalues
+        eig = np.linalg.eigvalsh(arr)
+        if np.min(eig) <= tol:
+            return True
+    except Exception:
+        return False
+    return False
+
+
 def _fit_with_fallback(data: pd.DataFrame, formula: str, re_formula: str | None):
-    # Prefer robust convergence: try requested random structure + multiple optimizers,
-    # then fallback to random intercept only when needed.
+    """Fit MixedLM with a conservative strategy.
+
+    Strategy:
+    - Try requested random structure with multiple optimizers.
+    - If fit is singular, treat it as unacceptable and continue searching.
+    - Fall back to random intercept-only if needed.
+
+    Returns:
+    - fit (or None)
+    - info dict (includes convergence/singularity + warning capture)
+    """
+
     attempts = [
         {"method": "lbfgs", "re_formula": re_formula},
         {"method": "powell", "re_formula": re_formula},
@@ -61,20 +101,40 @@ def _fit_with_fallback(data: pd.DataFrame, formula: str, re_formula: str | None)
     ]
 
     last_err = None
+    last_warn = ""
+
     for a in attempts:
         try:
-            mdl = mixedlm(formula=formula, data=data, groups=data["SubjectID"], re_formula=a["re_formula"])
-            fit = mdl.fit(reml=False, method=a["method"], maxiter=3500)
+            with warnings.catch_warnings(record=True) as wlist:
+                warnings.simplefilter("always")
+                mdl = mixedlm(formula=formula, data=data, groups=data["SubjectID"], re_formula=a["re_formula"])
+                fit = mdl.fit(reml=False, method=a["method"], maxiter=3500)
+
+            warn_msgs = sorted({str(w.message) for w in wlist})
+            warn_join = " | ".join(warn_msgs)[:500]
+
+            converged = bool(getattr(fit, "converged", True))
+            singular = _is_singular_fit(fit)
+
+            # Prefer non-singular solutions for audit cleanliness
+            if singular:
+                last_warn = warn_join or last_warn
+                last_err = "singular_random_effects"
+                continue
+
             return fit, {
                 "fit_method": a["method"],
                 "re_formula_used": a["re_formula"] if a["re_formula"] is not None else "1",
                 "fallback_to_random_intercept": a["re_formula"] is None,
-                "converged": bool(getattr(fit, "converged", True)),
+                "converged": converged,
+                "singular": singular,
+                "warnings": warn_join,
                 "AIC": float(fit.aic) if pd.notna(fit.aic) else np.nan,
                 "BIC": float(fit.bic) if pd.notna(fit.bic) else np.nan,
                 "LogLik": float(fit.llf) if pd.notna(fit.llf) else np.nan,
                 "df_modelwc": float(getattr(fit, "df_modelwc", np.nan)),
             }
+
         except Exception as e:
             last_err = str(e)
             continue
@@ -84,6 +144,8 @@ def _fit_with_fallback(data: pd.DataFrame, formula: str, re_formula: str | None)
         "re_formula_used": re_formula if re_formula is not None else "1",
         "fallback_to_random_intercept": re_formula is None,
         "converged": False,
+        "singular": True if last_err == "singular_random_effects" else False,
+        "warnings": last_warn,
         "AIC": np.nan,
         "BIC": np.nan,
         "LogLik": np.nan,
@@ -232,8 +294,11 @@ def main():
             "BIC": infos[k]["BIC"],
             "LogLik": infos[k]["LogLik"],
             "Converged": infos[k]["converged"],
+            "Singular": infos[k].get("singular", False),
             "FitMethod": infos[k]["fit_method"],
             "RandomUsed": infos[k]["re_formula_used"],
+            "Warnings": infos[k].get("warnings", ""),
+            "Error": infos[k].get("error", ""),
         }
         for k in formulas
     ]).sort_values("AIC", na_position="last").reset_index(drop=True)
@@ -281,10 +346,12 @@ def main():
             "RandomStructure": label,
             "Requested": re_f if re_f is not None else "1",
             "Converged": info["converged"],
+            "Singular": info.get("singular", False),
             "AIC": info["AIC"],
             "BIC": info["BIC"],
             "LogLik": info["LogLik"],
             "FitMethod": info["fit_method"],
+            "Warnings": info.get("warnings", ""),
             "Error": info.get("error", ""),
         })
 
