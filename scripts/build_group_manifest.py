@@ -71,6 +71,20 @@ def build_manifest(long_csv: Path, out_csv: Path) -> pd.DataFrame:
                 complexity = 1 if cond == "C1" else 0
 
                 tag = f"trial{t:02d}"
+
+                round_n = block  # block1->Round1, block2->Round2
+                pos_n = pos
+                round_label = f"group{round_n}"  # keep compatibility with your naming (group1=Round1)
+                cond_short = f"{cond}W{int(wwr)}"  # e.g., C1W45
+                label = f"O{int(order)}-R{round_n}-P{pos_n}-{cond_short}"
+                key = f"{sid}-" + label
+
+                row[f"{tag}_Round"] = int(round_n)
+                row[f"{tag}_RoundLabel"] = round_label
+                row[f"{tag}_Pos"] = int(pos_n)
+                row[f"{tag}_label"] = label
+                row[f"{tag}_key"] = key
+
                 row[f"{tag}_scene"] = scene
                 row[f"{tag}_WWR"] = int(wwr)
                 row[f"{tag}_Cond"] = cond
@@ -78,6 +92,12 @@ def build_manifest(long_csv: Path, out_csv: Path) -> pd.DataFrame:
         else:
             for t in range(1, 13):
                 tag = f"trial{t:02d}"
+                row[f"{tag}_Round"] = "Unknown"
+                row[f"{tag}_RoundLabel"] = "Unknown"
+                row[f"{tag}_Pos"] = "Unknown"
+                row[f"{tag}_label"] = "Unknown"
+                row[f"{tag}_key"] = "Unknown"
+
                 row[f"{tag}_scene"] = "Unknown"
                 row[f"{tag}_WWR"] = "Unknown"
                 row[f"{tag}_Cond"] = "Unknown"
