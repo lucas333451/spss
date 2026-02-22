@@ -30,6 +30,11 @@ def main():
     ap.add_argument("--rscript", default="Rscript", help="Rscript executable name/path (default: Rscript)")
     ap.add_argument("--r-df-method", default="Satterthwaite", help="Satterthwaite|Kenward-Roger")
     ap.add_argument("--r-p-adjust", default="Holm", help="Holm|bonferroni|fdr|none")
+    ap.add_argument(
+        "--with-r-robustness",
+        action="store_true",
+        help="If Rscript is available, run R re-fit twice (Satterthwaite + Kenward-Roger) and write a p-value comparison table",
+    )
 
     args = ap.parse_args()
 
@@ -96,29 +101,63 @@ def main():
     ])
 
     # Optional: re-run main model in R for paper-ready inference
-    if args.with_r:
+    if args.with_r or args.with_r_robustness:
         rscript_path = None
         try:
             rscript_path = subprocess.check_output(["bash", "-lc", f"command -v {args.rscript}"], text=True).strip()
         except Exception:
             rscript_path = ""
 
-        if rscript_path:
-            # Non-fatal: we don't want optional R failures to block Python results.
-            cmd = [
-                args.rscript,
-                "scripts/run_analysis_R.R",
-                "--long-csv", str(out_long / "long_format.csv"),
-                "--out-dir", str(args.out_root / "r_model"),
-                "--df-method", str(args.r_df_method),
-                "--p-adjust", str(args.r_p_adjust),
-            ]
-            print("$", " ".join(cmd))
-            p = subprocess.run(cmd)
-            if p.returncode != 0:
-                print(f"[pipeline] R re-run failed (returncode={p.returncode}). Continuing without R outputs.")
+        if not rscript_path:
+            print("[pipeline] Rscript not found; skipping R re-run.")
         else:
-            print("[pipeline] --with-r set but Rscript not found; skipping R re-run.")
+            def _run_r(out_dir: Path, df_method: str):
+                cmd = [
+                    args.rscript,
+                    "scripts/run_analysis_R.R",
+                    "--long-csv", str(out_long / "long_format.csv"),
+                    "--out-dir", str(out_dir),
+                    "--df-method", str(df_method),
+                    "--p-adjust", str(args.r_p_adjust),
+                ]
+                print("$", " ".join(cmd))
+                p = subprocess.run(cmd)
+                if p.returncode != 0:
+                    print(f"[pipeline] R re-run failed for df-method={df_method} (returncode={p.returncode}).")
+                return p.returncode
+
+            if args.with_r_robustness:
+                # Primary: Satterthwaite; Robustness: Kenward-Roger
+                rc1 = _run_r(args.out_root / "r_model", "Satterthwaite")
+                rc2 = _run_r(args.out_root / "r_model_KR", "Kenward-Roger")
+
+                # If both exist, write a simple p-value comparison table (fixed effects)
+                try:
+                    import pandas as pd
+
+                    p_sat = args.out_root / "r_model" / "fixed_effects_afford4.csv"
+                    p_kr = args.out_root / "r_model_KR" / "fixed_effects_afford4.csv"
+                    if p_sat.exists() and p_kr.exists():
+                        a = pd.read_csv(p_sat)
+                        b = pd.read_csv(p_kr)
+                        key = "term" if "term" in a.columns and "term" in b.columns else ("Term" if "Term" in a.columns and "Term" in b.columns else None)
+                        if key:
+                            aa = a[[c for c in a.columns if c in {key, "estimate", "std.error", "df", "statistic", "p.value", "conf.low", "conf.high"}]].copy()
+                            bb = b[[c for c in b.columns if c in {key, "estimate", "std.error", "df", "statistic", "p.value", "conf.low", "conf.high"}]].copy()
+                            aa = aa.rename(columns={"p.value": "p_sat", "df": "df_sat", "statistic": "t_sat"})
+                            bb = bb.rename(columns={"p.value": "p_kr", "df": "df_kr", "statistic": "t_kr"})
+                            m = aa.merge(bb[[key, "p_kr", "df_kr", "t_kr"]], on=key, how="outer")
+                            if "p_sat" in m.columns and "p_kr" in m.columns:
+                                m["p_delta_abs"] = (m["p_kr"] - m["p_sat"]).abs()
+                            m.to_csv(args.out_root / "r_model_pvalue_compare_fixed_effects_afford4.csv", index=False, encoding="utf-8-sig")
+                except Exception as e:
+                    print(f"[pipeline] Failed to write R p-value comparison table: {e}")
+
+                if rc1 != 0 or rc2 != 0:
+                    print("[pipeline] R robustness run had failures; continuing without blocking Python outputs.")
+
+            elif args.with_r:
+                _run_r(args.out_root / "r_model", str(args.r_df_method))
 
     if not args.skip_bundle:
         # build one markdown bundle for easy sharing/review

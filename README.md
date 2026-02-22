@@ -231,6 +231,7 @@ Diagnostics script evaluates:
 
 - Recommended: `notebooks/colab_setup.ipynb`
 - If you installed R in Colab, you can run the pipeline with `--with-r` to automatically generate `results/r_model/` using lme4/lmerTest/emmeans.
+- For robustness (recommended for journal submission), run `--with-r-robustness` to compute both Satterthwaite and Kenward–Roger and write a p-value comparison table.
 - Full guide: `docs/COLAB_GUIDE.md`
 - Ready notebook: `notebooks/spss_colab.ipynb`
 - Recommended: run pipeline once, then send `results/analysis_report_bundle.md`

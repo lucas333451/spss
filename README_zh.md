@@ -227,6 +227,7 @@ python scripts/pipeline.py \
 
 - 推荐使用：`notebooks/colab_setup.ipynb`
 - 若你在 Colab 安装了 R，可在 pipeline 后加 `--with-r`，自动生成 `results/r_model/`（lme4/lmerTest/emmeans 口径）。
+- 投稿稳健性建议：使用 `--with-r-robustness` 一次性跑 Satterthwaite + Kenward–Roger，并生成 p 值对比表。
 - 详细指南：`docs/COLAB_GUIDE.md`
 - 现成 Notebook：`notebooks/spss_colab.ipynb`
 - 推荐直接跑 pipeline，再把 `results/analysis_report_bundle.md` 发给 Sam
