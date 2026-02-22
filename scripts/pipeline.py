@@ -104,14 +104,19 @@ def main():
             rscript_path = ""
 
         if rscript_path:
-            run([
+            # Non-fatal: we don't want optional R failures to block Python results.
+            cmd = [
                 args.rscript,
                 "scripts/run_analysis_R.R",
                 "--long-csv", str(out_long / "long_format.csv"),
                 "--out-dir", str(args.out_root / "r_model"),
                 "--df-method", str(args.r_df_method),
                 "--p-adjust", str(args.r_p_adjust),
-            ])
+            ]
+            print("$", " ".join(cmd))
+            p = subprocess.run(cmd)
+            if p.returncode != 0:
+                print(f"[pipeline] R re-run failed (returncode={p.returncode}). Continuing without R outputs.")
         else:
             print("[pipeline] --with-r set but Rscript not found; skipping R re-run.")
 

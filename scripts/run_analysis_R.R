@@ -19,7 +19,11 @@ option_list <- list(
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
-out_dir <- opt$out_dir
+# optparse may keep names with hyphens; support both forms
+out_dir <- opt$`out-dir`
+if (is.null(out_dir)) out_dir <- opt$out_dir
+out_dir <- as.character(out_dir)[1]
+if (is.na(out_dir) || out_dir == "") out_dir <- "results/r_model"
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive=TRUE)
 
 # df-method handling
@@ -32,7 +36,11 @@ if (tolower(df_method) %in% c("kenward-roger", "kenwardroger", "kr")) {
 }
 
 # read data
-x <- read_csv(opt$`long-csv`, show_col_types = FALSE)
+long_csv <- opt$`long-csv`
+if (is.null(long_csv)) stop("--long-csv is required")
+long_csv <- as.character(long_csv)[1]
+
+x <- read_csv(long_csv, show_col_types = FALSE)
 
 # basic checks
 req <- c("SubjectID","S1","S2","S3","S4","WWR","Complexity","ExperienceGroup","SportFreqGroup","Repetition","Position")
@@ -88,7 +96,7 @@ meta <- list(
 )
 writeLines(jsonlite::toJSON(meta, auto_unbox=TRUE, pretty=TRUE), file.path(out_dir, "r_model_meta.json"))
 
-cat(jsonlite::toJSON(list(out_dir=out_dir, outputs=c(
+cat(jsonlite::toJSON(list(out_dir=out_dir, long_csv=long_csv, outputs=c(
   "fixed_effects_afford4.csv",
   "lmer_summary_afford4.txt",
   "simple_effects_complexity_by_wwr_afford4.csv",
