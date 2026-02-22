@@ -68,11 +68,13 @@ fit <- lmer(form, data=x, REML=FALSE)
 # Use lmerTest for df approximation
 # - Satterthwaite: default
 # - Kenward-Roger: requires pbkrtest
+# NOTE: Some lmerTest versions do not export summary() as lmerTest::summary.
+# Use the generic summary() (lmerTest provides methods + ddf handling).
 if (use_kr) {
-  sum_fit <- lmerTest::summary(fit, ddf = "Kenward-Roger")
+  sum_fit <- summary(fit, ddf = "Kenward-Roger")
   emmeans::emm_options(lmer.df = "kenward-roger")
 } else {
-  sum_fit <- lmerTest::summary(fit, ddf = "Satterthwaite")
+  sum_fit <- summary(fit, ddf = "Satterthwaite")
   emmeans::emm_options(lmer.df = "satterthwaite")
 }
 
