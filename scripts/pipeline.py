@@ -119,6 +119,8 @@ def main():
                     "--out-dir", str(out_dir),
                     "--df-method", str(df_method),
                     "--p-adjust", str(args.r_p_adjust),
+                    # KR requires REML=TRUE; for robustness we keep both runs on REML for comparability.
+                    "--reml", "TRUE" if ("Kenward" in str(df_method) or args.with_r_robustness) else "auto",
                 ]
                 print("$", " ".join(cmd))
                 p = subprocess.run(cmd)

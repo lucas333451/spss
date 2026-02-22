@@ -15,7 +15,8 @@ option_list <- list(
   make_option(c("--long-csv"), type="character", help="Path to results/long/long_format.csv"),
   make_option(c("--out-dir"), type="character", default="results/r_model", help="Output directory"),
   make_option(c("--df-method"), type="character", default="Satterthwaite", help="Satterthwaite|Kenward-Roger"),
-  make_option(c("--p-adjust"), type="character", default="Holm", help="Holm|bonferroni|fdr|none")
+  make_option(c("--p-adjust"), type="character", default="Holm", help="Holm|bonferroni|fdr|none"),
+  make_option(c("--reml"), type="character", default="auto", help="auto|TRUE|FALSE. Note: Kenward-Roger requires REML=TRUE")
 )
 opt <- parse_args(OptionParser(option_list=option_list))
 
@@ -35,6 +36,22 @@ if (use_kr) {
   if (!requireNamespace("pbkrtest", quietly = TRUE)) {
     stop("Kenward-Roger requested but pbkrtest is not installed. Install pbkrtest or use Satterthwaite.")
   }
+}
+
+# REML setting
+reml_opt <- tolower(as.character(opt$reml)[1])
+if (reml_opt == "auto") {
+  reml_flag <- if (use_kr) TRUE else FALSE
+} else if (reml_opt %in% c("true","t","1")) {
+  reml_flag <- TRUE
+} else if (reml_opt %in% c("false","f","0")) {
+  reml_flag <- FALSE
+} else {
+  stop("Invalid --reml. Use auto|TRUE|FALSE")
+}
+
+if (use_kr && !reml_flag) {
+  stop("Kenward-Roger requires REML=TRUE. Please run with --reml TRUE (or --reml auto).")
 }
 
 # read data
@@ -63,7 +80,7 @@ x <- x %>% mutate(
 
 # model
 form <- Afford4 ~ Complexity + WWR + ExperienceGroup + SportFreqGroup + Repetition + Position + (1 + Complexity | SubjectID)
-fit <- lmer(form, data=x, REML=FALSE)
+fit <- lmer(form, data=x, REML=reml_flag)
 
 # Use lmerTest for df approximation
 # - Satterthwaite: default
@@ -82,7 +99,8 @@ if (use_kr) {
 coef_mat <- as.data.frame(sum_fit$coefficients)
 coef_mat$term <- rownames(coef_mat)
 rownames(coef_mat) <- NULL
-names(coef_mat) <- gsub(" ", "_", names(coef_mat))
+# make names consistent across R versions/locales
+names(coef_mat) <- make.names(names(coef_mat))
 
 # Wald CI for fixed effects (fast)
 ci <- suppressMessages(confint(fit, method = "Wald"))
@@ -92,17 +110,24 @@ rownames(ci) <- NULL
 names(ci) <- c("conf_low", "conf_high", "term")
 
 # normalize column names from lmerTest summary
-# expected: Estimate, Std. Error, df, t value, Pr(>|t|)
+# expected after make.names(): Estimate, Std..Error, df, t.value, Pr...t..
+need <- c("Estimate","Std..Error","df","t.value")
+missing_cols <- setdiff(need, names(coef_mat))
+if (length(missing_cols) > 0) stop(paste("Unexpected coefficient columns:", paste(missing_cols, collapse=", ")))
+
+pcol <- grep("^Pr", names(coef_mat), value = TRUE)
+if (length(pcol) == 0) stop("p-value column not found in summary coefficients")
+
 fixef_tab <- coef_mat %>%
   transmute(
     term = term,
-    estimate = Estimate,
-    std.error = Std._Error,
-    df = df,
-    statistic = t_value,
-    p.value = Pr...t..
+    estimate = .data$Estimate,
+    std.error = .data$Std..Error,
+    df = .data$df,
+    statistic = .data$t.value,
+    p.value = .data[[pcol[1]]]
   ) %>%
-  left_join(ci %>% filter(term %in% term) %>% select(term, conf_low, conf_high), by = "term")
+  left_join(ci %>% select(term, conf_low, conf_high), by = "term")
 
 write_csv(fixef_tab, file.path(out_dir, "fixed_effects_afford4.csv"))
 
@@ -130,6 +155,7 @@ meta <- list(
   formula=deparse(form),
   df_method=df_method,
   p_adjust=padj,
+  reml=reml_flag,
   n_rows=nrow(x),
   n_subjects=length(unique(x$SubjectID))
 )

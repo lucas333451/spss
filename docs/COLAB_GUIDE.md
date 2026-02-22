@@ -123,6 +123,8 @@ print("✅ 当前使用文件:", EXCEL_FILE)
 # !python scripts/pipeline.py --excel "$EXCEL_FILE" --sheet 0 --out-root results --with-r
 #
 # 如果你希望按“主分析 Satterthwaite + 稳健性 Kenward–Roger”一次性跑完并生成 p 值对比表：
+# 需要确保你安装了 pbkrtest：
+# !R -q -e "install.packages('pbkrtest', repos='https://cloud.r-project.org')"
 # !python scripts/pipeline.py --excel "$EXCEL_FILE" --sheet 0 --out-root results --with-r-robustness
 ```
 
