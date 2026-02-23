@@ -13,6 +13,7 @@ suppressPackageStartupMessages({
 
 # optional packages (journal-friendly extras)
 .has_performance <- requireNamespace("performance", quietly = TRUE)
+.has_effectsize <- requireNamespace("effectsize", quietly = TRUE)
 
 option_list <- list(
   make_option(c("--long-csv"), type="character", help="Path to results/long/long_format.csv"),
@@ -134,6 +135,27 @@ fixef_tab <- coef_mat %>%
 
 write_csv(fixef_tab, file.path(out_dir, "fixed_effects_afford4.csv"))
 
+# Effect sizes (journal-friendly)
+# 1) Standardized fixed-effect parameters
+if (.has_effectsize) {
+  stdp <- try(effectsize::standardize_parameters(fit, method = "refit"), silent = TRUE)
+  if (!inherits(stdp, "try-error")) {
+    write_csv(as.data.frame(stdp), file.path(out_dir, "effectsize_standardized_parameters_afford4.csv"))
+  }
+}
+
+# 2) Partial eta^2 from Type III ANOVA table (lmerTest)
+# Note: This is a common journal-friendly summary; interpret with care.
+if (.has_effectsize) {
+  a3 <- try(lmerTest::anova(fit, type = 3, ddf = if (use_kr) "Kenward-Roger" else "Satterthwaite"), silent = TRUE)
+  if (!inherits(a3, "try-error")) {
+    et <- try(effectsize::eta_squared(a3, partial = TRUE), silent = TRUE)
+    if (!inherits(et, "try-error")) {
+      write_csv(as.data.frame(et), file.path(out_dir, "effectsize_eta_squared_partial_afford4.csv"))
+    }
+  }
+}
+
 # model summary (text)
 out_txt <- capture.output(sum_fit)
 writeLines(out_txt, file.path(out_dir, "lmer_summary_afford4.txt"))
@@ -216,5 +238,7 @@ outs <- c(
   "r_model_meta.json"
 )
 if (file.exists(file.path(out_dir, "r2_nakagawa_afford4.csv"))) outs <- c(outs, "r2_nakagawa_afford4.csv")
+if (file.exists(file.path(out_dir, "effectsize_standardized_parameters_afford4.csv"))) outs <- c(outs, "effectsize_standardized_parameters_afford4.csv")
+if (file.exists(file.path(out_dir, "effectsize_eta_squared_partial_afford4.csv"))) outs <- c(outs, "effectsize_eta_squared_partial_afford4.csv")
 
 cat(jsonlite::toJSON(list(out_dir=out_dir, long_csv=long_csv, outputs=outs), auto_unbox=TRUE))
