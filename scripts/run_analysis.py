@@ -159,7 +159,7 @@ def _fit_with_fallback(data: pd.DataFrame, formula: str, re_formula: str | None)
     raise RuntimeError(f"MixedLM fit failed for formula={formula}; last_error={last_err}")
 
 
-def _build_model_comparison(model_df: pd.DataFrame, dv_col: str = "Afford4") -> tuple[pd.DataFrame, dict]:
+def _build_model_comparison(model_df: pd.DataFrame, dv_col: str = "Afford4") -> tuple[pd.DataFrame, dict, dict]:
     # A: compact main effects
     f_a = f"{dv_col} ~ C(Complexity) + C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)"
     # B: key interaction
@@ -174,7 +174,7 @@ def _build_model_comparison(model_df: pd.DataFrame, dv_col: str = "Afford4") -> 
     ]
 
     rows = []
-    fitted = {}
+    fitted: dict[str, tuple[object, dict]] = {}
     for name, formula in models:
         fit, info = _fit_with_fallback(model_df, formula, re_formula="1 + C(Complexity)")
         rows.append({
@@ -194,18 +194,32 @@ def _build_model_comparison(model_df: pd.DataFrame, dv_col: str = "Afford4") -> 
         fitted[name] = (fit, info)
 
     cmp_df = pd.DataFrame(rows).sort_values(["AIC", "BIC"], na_position="last").reset_index(drop=True)
+
     best_name = cmp_df.iloc[0]["Model"]
     best_fit, best_info = fitted[best_name]
 
+    # Primary vs exploratory (journal-friendly):
+    # - Primary model is the compact main-effects model (Model_A_compact)
+    # - Other models are treated as exploratory/sensitivity checks.
+    primary_name = "Model_A_compact"
+    if primary_name not in fitted:
+        primary_name = best_name
+
+    cmp_df["Role"] = np.where(cmp_df["Model"].eq(primary_name), "Primary", "Exploratory")
+
     pick = {
-        "recommended_model": best_name,
-        "recommended_formula": cmp_df.iloc[0]["Formula"],
-        "random_structure_used": cmp_df.iloc[0]["RandomStructureUsed"],
-        "fit_method": cmp_df.iloc[0]["FitMethod"],
-        "aic": float(cmp_df.iloc[0]["AIC"]),
-        "bic": float(cmp_df.iloc[0]["BIC"]),
+        "primary_model": primary_name,
+        "primary_formula": next((r["Formula"] for r in rows if r["Model"] == primary_name), None),
+        "recommended_model_by_aic": best_name,
+        "recommended_formula_by_aic": cmp_df.iloc[0]["Formula"],
+        "random_structure_used": next((r["RandomStructureUsed"] for r in rows if r["Model"] == primary_name), cmp_df.iloc[0]["RandomStructureUsed"]),
+        "fit_method": next((r["FitMethod"] for r in rows if r["Model"] == primary_name), cmp_df.iloc[0]["FitMethod"]),
+        "aic_best": float(cmp_df.iloc[0]["AIC"]),
+        "bic_best": float(cmp_df.iloc[0]["BIC"]),
     }
-    return cmp_df, {"fit": best_fit, "info": best_info, **pick}
+
+    primary_fit, primary_info = fitted[primary_name]
+    return cmp_df, {"fit": primary_fit, "info": primary_info, **pick}, fitted
 
 
 def _paired_cohens_d(a: np.ndarray, b: np.ndarray) -> float:
@@ -293,7 +307,8 @@ def _auto_results_draft_zh(best: dict, infer_df: pd.DataFrame, simple_df: pd.Dat
         "# 论文结果段草稿（自动生成，中文）",
         "",
         "## 模型说明",
-        f"采用线性混合模型（LMM），推荐模型为：`{best['recommended_formula']}`。",
+        f"采用线性混合模型（LMM），主模型（Primary）为：`{best['primary_formula']}`。",
+        f"AIC 最优模型（Exploratory/Sensitivity）为：`{best['recommended_formula_by_aic']}`。",
         f"随机结构使用：`{best['random_structure_used']}`（拟合方法：{best['fit_method']}）。",
         "",
         "## 主要结果（固定效应）",
@@ -369,7 +384,7 @@ def main():
         model_df[c] = model_df[c].astype(str)
 
     # model selection (A/B/C)
-    cmp_df, best = _build_model_comparison(model_df, dv_col=dv_col)
+    cmp_df, best, fitted_models = _build_model_comparison(model_df, dv_col=dv_col)
     fit = best["fit"]
     fit_info = best["info"]
 
@@ -392,7 +407,8 @@ def main():
 
     # save outputs
     (out / "lmm_summary.txt").write_text(str(fit.summary()), encoding="utf-8")
-    (out / "model_formula.txt").write_text(str(best["recommended_formula"]), encoding="utf-8")
+    (out / "model_formula.txt").write_text(str(best["primary_formula"]), encoding="utf-8")
+    (out / "model_formula_recommended_by_aic.txt").write_text(str(best["recommended_formula_by_aic"]), encoding="utf-8")
     cmp_df.to_csv(out / "model_comparison.csv", index=False, encoding="utf-8-sig")
     desc_df.to_csv(out / "table_descriptives.csv", index=False, encoding="utf-8-sig")
     fixed_df.to_csv(out / "table_fixed_effects.csv", index=False, encoding="utf-8-sig")
@@ -421,8 +437,10 @@ def main():
         "",
         f"Reliability (Cronbach's alpha, S1-S4): {alpha:.3f}" if not np.isnan(alpha) else "Reliability: NA",
         "",
-        f"Recommended model: {best['recommended_model']}",
-        f"Formula: {best['recommended_formula']}",
+        f"Primary model (pre-registered style): {best['primary_model']}",
+        f"Formula (primary): {best['primary_formula']}",
+        f"Recommended by AIC (exploratory/sensitivity): {best['recommended_model_by_aic']}",
+        f"Formula (AIC-best): {best['recommended_formula_by_aic']}",
         f"Random structure used: {best['random_structure_used']}",
     ]
     (out / "paper_tables.md").write_text("\n".join(md_lines), encoding="utf-8")
@@ -436,8 +454,11 @@ def main():
         "n_subjects": int(model_df["SubjectID"].nunique()),
         "cronbach_alpha_s1_s4": None if np.isnan(alpha) else float(alpha),
         "dv_used": dv_col,
-        "recommended_model": best["recommended_model"],
-        "formula": best["recommended_formula"],
+        "modeling_note": "Primary model is fixed to Model_A_compact (main effects) for journal-friendly main-text reporting; AIC-best model is reported as exploratory/sensitivity.",
+        "primary_model": best["primary_model"],
+        "primary_formula": best["primary_formula"],
+        "recommended_model_by_aic": best["recommended_model_by_aic"],
+        "recommended_formula_by_aic": best["recommended_formula_by_aic"],
         "random_structure_requested": "(1 + Complexity | Subject)",
         "random_structure_used": best["random_structure_used"],
         "fit_method": best["fit_method"],

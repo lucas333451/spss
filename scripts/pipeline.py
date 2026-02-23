@@ -92,6 +92,13 @@ def main():
             "--out-dir", str(out_diag),
         ])
 
+        # One-page, journal-style residual diagnostics for the primary model
+        run([
+            args.python, "scripts/report_model_diagnostics.py",
+            "--long-csv", str(out_long / "long_format.csv"),
+            "--out-dir", str(out_diag),
+        ])
+
     # write provenance for reproducibility (packages, git commit, argv)
     run([
         args.python, "scripts/write_provenance.py",

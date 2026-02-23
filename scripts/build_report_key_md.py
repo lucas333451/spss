@@ -182,6 +182,14 @@ def build_key_report(results_root: Path, out_file: Path, max_rows: int) -> None:
             lines.append("**Python packages (key):**")
             lines.append("- " + ", ".join(pairs))
 
+    # Model diagnostics (Supplement-style)
+    md_diag = results_root / "diagnostics" / "model_diagnostics.md"
+    if md_diag.exists():
+        lines.append("")
+        lines.append("## Model diagnostics (Supplement)")
+        lines.append("- A one-page residual diagnostics report is available:")
+        lines.append(f"  - `{md_diag.relative_to(results_root)}`")
+
     # R re-run audit (presence + file list)
     lines.append("")
     lines.append("## R re-run audit (results/r_model)")

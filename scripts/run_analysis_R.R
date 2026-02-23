@@ -11,6 +11,9 @@ suppressPackageStartupMessages({
   library(broom.mixed)
 })
 
+# optional packages (journal-friendly extras)
+.has_performance <- requireNamespace("performance", quietly = TRUE)
+
 option_list <- list(
   make_option(c("--long-csv"), type="character", help="Path to results/long/long_format.csv"),
   make_option(c("--out-dir"), type="character", default="results/r_model", help="Output directory"),
@@ -159,11 +162,29 @@ meta <- list(
   n_rows=nrow(x),
   n_subjects=length(unique(x$SubjectID))
 )
+# Add journal-friendly fit indices
+meta$aic <- AIC(fit)
+meta$bic <- BIC(fit)
+meta$logLik <- as.numeric(logLik(fit))
+
+# Nakagawa R^2 (marginal/conditional) if available
+if (.has_performance) {
+  r2 <- try(performance::r2_nakagawa(fit), silent = TRUE)
+  if (!inherits(r2, "try-error")) {
+    # typical columns: R2_marginal, R2_conditional
+    write_csv(as.data.frame(r2), file.path(out_dir, "r2_nakagawa_afford4.csv"))
+    meta$r2_nakagawa <- as.list(as.data.frame(r2)[1, , drop=TRUE])
+  }
+}
+
 writeLines(jsonlite::toJSON(meta, auto_unbox=TRUE, pretty=TRUE), file.path(out_dir, "r_model_meta.json"))
 
-cat(jsonlite::toJSON(list(out_dir=out_dir, long_csv=long_csv, outputs=c(
+outs <- c(
   "fixed_effects_afford4.csv",
   "lmer_summary_afford4.txt",
   "simple_effects_complexity_by_wwr_afford4.csv",
   "r_model_meta.json"
-)), auto_unbox=TRUE))
+)
+if (file.exists(file.path(out_dir, "r2_nakagawa_afford4.csv"))) outs <- c(outs, "r2_nakagawa_afford4.csv")
+
+cat(jsonlite::toJSON(list(out_dir=out_dir, long_csv=long_csv, outputs=outs), auto_unbox=TRUE))
