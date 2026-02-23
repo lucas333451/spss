@@ -16,6 +16,7 @@ Notes
 from pathlib import Path
 import argparse
 import json
+import subprocess
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -151,14 +152,34 @@ def main():
 
     (out / "model_diagnostics.md").write_text("\n".join(md), encoding="utf-8")
 
+    outputs = [
+        "model_diagnostics.md",
+        "model_diagnostics_meta.json",
+        "figures/resid_qq.png",
+        "figures/resid_fitted.png",
+    ]
+
+    # Optional: render HTML/PDF via pandoc if available (best-effort; non-fatal)
+    try:
+        p = subprocess.run(["bash", "-lc", "command -v pandoc"], capture_output=True, text=True)
+        if p.returncode == 0:
+            md_path = out / "model_diagnostics.md"
+            html_path = out / "model_diagnostics.html"
+            subprocess.run(["pandoc", str(md_path), "-o", str(html_path), "--standalone"], check=False)
+            if html_path.exists():
+                outputs.append("model_diagnostics.html")
+
+            pdf_path = out / "model_diagnostics.pdf"
+            # PDF may fail if LaTeX is missing; keep best-effort
+            subprocess.run(["pandoc", str(md_path), "-o", str(pdf_path)], check=False)
+            if pdf_path.exists():
+                outputs.append("model_diagnostics.pdf")
+    except Exception:
+        pass
+
     print(json.dumps({
         "out_dir": str(out),
-        "outputs": [
-            "model_diagnostics.md",
-            "model_diagnostics_meta.json",
-            "figures/resid_qq.png",
-            "figures/resid_fitted.png",
-        ],
+        "outputs": outputs,
     }, ensure_ascii=False))
 
 

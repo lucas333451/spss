@@ -189,6 +189,12 @@ def build_key_report(results_root: Path, out_file: Path, max_rows: int) -> None:
         lines.append("## Model diagnostics (Supplement)")
         lines.append("- A one-page residual diagnostics report is available:")
         lines.append(f"  - `{md_diag.relative_to(results_root)}`")
+        html_diag = results_root / "diagnostics" / "model_diagnostics.html"
+        pdf_diag = results_root / "diagnostics" / "model_diagnostics.pdf"
+        if html_diag.exists():
+            lines.append(f"  - `{html_diag.relative_to(results_root)}`")
+        if pdf_diag.exists():
+            lines.append(f"  - `{pdf_diag.relative_to(results_root)}`")
 
     # R re-run audit (presence + file list)
     lines.append("")
