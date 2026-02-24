@@ -70,9 +70,13 @@ req <- c("SubjectID","S1","S2","S3","S4","WWR","Complexity","ExperienceGroup","S
 miss <- setdiff(req, names(x))
 if (length(miss) > 0) stop(paste("Missing columns:", paste(miss, collapse=", ")))
 
-# build Afford4
+# build Afford4 with explicit missing-item rule
+# default: require >=3/4 valid items; otherwise set NA
+min_items <- 3
 x <- x %>% mutate(
-  Afford4 = rowMeans(across(c(S1,S2,S3,S4)), na.rm=TRUE),
+  Afford4_n_valid = rowSums(!is.na(across(c(S1,S2,S3,S4)))),
+  Afford4_lenient = rowMeans(across(c(S1,S2,S3,S4)), na.rm=TRUE),
+  Afford4 = ifelse(Afford4_n_valid >= min_items, Afford4_lenient, NA),
   SubjectID = as.factor(SubjectID),
   WWR = as.factor(WWR),
   Complexity = as.factor(Complexity),
@@ -206,6 +210,7 @@ meta <- list(
   df_method=df_method,
   p_adjust=padj,
   reml=reml_flag,
+  afford4_min_items=min_items,
   n_rows=nrow(x),
   n_subjects=length(unique(x$SubjectID))
 )

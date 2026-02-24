@@ -348,6 +348,7 @@ def main():
     ap = argparse.ArgumentParser(description="Run LMM on long-format questionnaire data and export paper-ready tables")
     ap.add_argument("--long-csv", type=Path, required=True)
     ap.add_argument("--out-dir", type=Path, default=Path("results/model"))
+    ap.add_argument("--afford4-min-items", type=int, default=3, help="Minimum valid items among S1-S4 required to compute Afford4 (default: 3)")
     args = ap.parse_args()
 
     out = args.out_dir
@@ -358,8 +359,12 @@ def main():
     # Construct-specific composites:
     # - Main construct: Afford4 = mean(S1..S4)
     # - S5 (1-9) is supplementary and reported separately (not merged into Afford4)
-    if "Afford4" not in df.columns and all(c in df.columns for c in ["S1", "S2", "S3", "S4"]):
-        df["Afford4"] = df[["S1", "S2", "S3", "S4"]].mean(axis=1)
+    # Main DV: Afford4 (mean of S1-S4) with explicit missing-item rule.
+    # Default rule: require >=3/4 valid items; otherwise mark as NA (row excluded from LMM).
+    afford_min_items = int(args.afford4_min_items)
+    df["Afford4_n_valid"] = df[["S1", "S2", "S3", "S4"]].notna().sum(axis=1).astype(int)
+    df["Afford4_lenient"] = df[["S1", "S2", "S3", "S4"]].mean(axis=1, skipna=True)
+    df["Afford4"] = df["Afford4_lenient"].where(df["Afford4_n_valid"] >= afford_min_items, np.nan)
 
     dv_col = "Afford4"
     if dv_col not in df.columns:
@@ -369,6 +374,10 @@ def main():
 
     if "ExperienceGroup" not in df.columns:
         raise SystemExit("Missing ExperienceGroup in long CSV. Please re-run transform_wide_to_long.py with latest version.")
+
+    # S5 explicit naming (preferred): SAM_Valence (1-9). Keep backward compatibility.
+    if "SAM_Valence" not in df.columns and "S5" in df.columns:
+        df["SAM_Valence"] = df["S5"]
     if "SportFreqGroup" not in df.columns:
         raise SystemExit("Missing SportFreqGroup in long CSV. Please re-run transform_wide_to_long.py with latest version.")
 
@@ -394,6 +403,24 @@ def main():
     # simple effects under each WWR
     simple_df = _simple_effects_by_wwr(model_df, dv_col=dv_col)
 
+    # Sensitivity: compare primary (min-items rule) vs lenient (available-item mean) DV definition
+    sens_out = None
+    try:
+        model_df_lenient = df.dropna(subset=["Afford4_lenient", "WWR", "Complexity", "ExperienceGroup", "SportFreqGroup", "Repetition", "Position"]).copy()
+        cmp_lenient, best_lenient, _ = _build_model_comparison(model_df_lenient, dv_col="Afford4_lenient")
+        fit_lenient = best_lenient["fit"]
+        coef_primary = _extract_coef_table(fit)
+        coef_lenient = _extract_coef_table(fit_lenient)
+        m = coef_primary[["Term","Coef","SE","z","p"]].merge(
+            coef_lenient[["Term","Coef","SE","z","p"]], on="Term", how="outer", suffixes=("_primary","_lenient")
+        )
+        m["delta_coef"] = m["Coef_lenient"] - m["Coef_primary"]
+        m["delta_p"] = m["p_lenient"] - m["p_primary"]
+        m["afford4_min_items"] = afford_min_items
+        sens_out = m
+    except Exception:
+        sens_out = None
+
     # interaction plot with repetition as style
     plt.figure(figsize=(9, 5))
     pdat = model_df.copy()
@@ -414,6 +441,8 @@ def main():
     fixed_df.to_csv(out / "table_fixed_effects.csv", index=False, encoding="utf-8-sig")
     infer_df.to_csv(out / "table_main_interactions.csv", index=False, encoding="utf-8-sig")
     simple_df.to_csv(out / "table_simple_effects_complexity_by_wwr.csv", index=False, encoding="utf-8-sig")
+    if sens_out is not None:
+        sens_out.to_csv(out / "afford4_missing_sensitivity.csv", index=False, encoding="utf-8-sig")
 
     md_lines = [
         "# Paper-ready Results Tables",
@@ -469,6 +498,7 @@ def main():
             "table_fixed_effects_csv": str(out / "table_fixed_effects.csv"),
             "table_main_interactions_csv": str(out / "table_main_interactions.csv"),
             "table_simple_effects_csv": str(out / "table_simple_effects_complexity_by_wwr.csv"),
+            "afford4_missing_sensitivity_csv": str(out / "afford4_missing_sensitivity.csv") if (sens_out is not None) else None,
             "paper_tables_md": str(out / "paper_tables.md"),
             "results_draft_zh_md": str(out / "results_draft_zh.md"),
             "figure_wwr_complexity": str(out / "figures" / "wwr_complexity_afford4.png"),

@@ -52,7 +52,23 @@ def main():
         print(json.dumps(payload, ensure_ascii=False))
         return
 
-    bdf = df[df["Complexity"] == 1].copy() if "Complexity" in df.columns else df.copy()
+    # B-items are defined as end-of-round ratings for C1 scenes only.
+    # Enforce intended subset and fail loudly if structure is violated.
+    if "Complexity" in df.columns:
+        # C0 rows should have NA B values (enforced in transform_wide_to_long.py). If not, raise.
+        c0 = df[df["Complexity"] == 0]
+        if not c0.empty:
+            c0_has_b = c0[c0[[c for c in ["B1", "B2", "B3", "Bmean"] if c in df.columns]].notna().any(axis=1)]
+            if len(c0_has_b) > 0:
+                raise SystemExit(f"B-items found in Complexity==0 rows (should be NA). rows={len(c0_has_b)}")
+
+        bdf = df[df["Complexity"] == 1].copy()
+        if bdf.empty:
+            raise SystemExit("No C1 rows found for B-item analysis (Complexity==1).")
+    else:
+        # If Complexity missing, proceed but warn by restricting to all rows.
+        bdf = df.copy()
+
     bdf = bdf.dropna(subset=["SubjectID", "WWR", "Repetition", "ExperienceGroup", "SportFreqGroup"], how="any")
     b_long = bdf.melt(
         id_vars=["SubjectID", "WWR", "Repetition", "ExperienceGroup", "SportFreqGroup", "PeopleGroup4"],

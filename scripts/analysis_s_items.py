@@ -18,6 +18,7 @@ from analysis_groups import split_tables_by_people_group, compare_people_groups_
 
 warnings.filterwarnings("ignore")
 
+# S5 is a 1-9 emotional-experience item; keep legacy name S5 but prefer explicit SAM_Valence when present.
 DVS = ["S1", "S2", "S3", "S4", "S5"]
 
 
@@ -873,7 +874,10 @@ def main():
     (out / "figures").mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(args.long_csv)
-    required = ["SubjectID", "WWR", "Complexity", "Position", "S1", "S2", "S3", "S4", "S5"]
+    required = ["SubjectID", "WWR", "Complexity", "Position", "S1", "S2", "S3", "S4"]
+    if "S5" not in df.columns and "SAM_Valence" in df.columns:
+        df["S5"] = df["SAM_Valence"]
+    required.append("S5")
     for c in required:
         if c not in df.columns:
             raise SystemExit(f"Missing required column: {c}")

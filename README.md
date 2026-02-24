@@ -119,7 +119,8 @@ It also outputs grouped factors used in analysis:
 
 Scale note:
 - S1~S4 are 7-point and define the main affordance construct
-- S5 is 9-point and treated as supplementary emotional-experience item
+- Afford4 is computed from S1–S4 with an explicit missing-item rule (default: require ≥3/4 valid items; see `--afford4-min-items`)
+- S5 is 9-point and treated as supplementary emotional-experience item (also exported as `SAM_Valence` to avoid scale confusion)
 - Do not average S1~S5 into a single primary composite
 
 ---

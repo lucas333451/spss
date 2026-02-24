@@ -116,7 +116,8 @@ python scripts/transform_wide_to_long.py \
 
 量表说明：
 - S1~S4：7分，构成“感知可供性”主构念
-- S5：9分，作为“情感体验”补充指标（不并入 S1~S4 主构念）
+- Afford4：由 S1–S4 合成，带缺失条目规则（默认要求 ≥3/4 条目有效才计算；见 `--afford4-min-items`）
+- S5：9分，作为“情感体验”补充指标（不并入 S1~S4 主构念；在 long 表中也会输出为 `SAM_Valence` 以避免与 7 分条目混淆）
 - B1~B3：7分
 
 ---

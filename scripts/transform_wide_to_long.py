@@ -171,6 +171,9 @@ def build_long(df: pd.DataFrame, col_idx: dict) -> pd.DataFrame:
                 bmean = np.nan if (pd.isna(b1) and pd.isna(b2) and pd.isna(b3)) else float(np.nanmean([b1, b2, b3]))
                 complexity = 1 if cond == "C1" else 0 if cond == "C0" else np.nan
 
+                # audit columns for construct composition
+                afford4_n_valid = int(sum([pd.notna(s1), pd.notna(s2), pd.notna(s3), pd.notna(s4)]))
+
                 records.append({
                     "SubjectID": subject,
                     "Order": order,
@@ -191,6 +194,10 @@ def build_long(df: pd.DataFrame, col_idx: dict) -> pd.DataFrame:
                     "S4": s4,
                     "S5": s5,
                     "S5_7": s5_7,
+                    # Explicit naming to avoid 7-pt vs 9-pt confusion
+                    "SAM_Valence": s5,
+                    "SAM_Valence_7": s5_7,
+                    "Afford4_n_valid": afford4_n_valid,
                     "B1": b1,
                     "B2": b2,
                     "B3": b3,

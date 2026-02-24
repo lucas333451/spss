@@ -60,7 +60,7 @@
 
 ---
 
-## Q9. B题（B1-B3）在 C1 下的人群差异
+## Q9. B题（B1-B3 / Bmean）在 C1 下的人群差异（操纵检验/补充）
 1. `results/research/b_items_group_comparisons.csv`
 2. `results/research/b_items_condition_means.csv`
 3. `results/research/b_items_long_c1.csv`
