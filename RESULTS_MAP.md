@@ -79,6 +79,12 @@
 2. `results/research/analysis2_scene_stage_gap_wide_<SceneID>.csv`
 3. `results/research/analysis2_scene_stage_gap_figures/scene_<SceneID>.png`
 
+## Q12. Analysis-2/task1b：B1–B3（C1-only）两阶段（Round1/2）评分差距在人群间是否不同？
+1. `results/research/analysis2_b_stage_gap_long.csv`
+2. `results/research/analysis2_b_stage_gap_figures/B1.png`
+3. `results/research/analysis2_b_stage_gap_figures/B2.png`
+4. `results/research/analysis2_b_stage_gap_figures/B3.png`
+
 ---
 
 ## 最快交付（给导师/合作者）

@@ -181,6 +181,7 @@ python scripts/pipeline.py \
 - `results/research/figures/group_complexity_delta_S*.png`（各人群 C1-C0 条形图）
 - `results/research/b_items_long_c1.csv`、`b_items_condition_means.csv`、`b_items_group_comparisons.csv`（B1~B3 专项：主要针对 C1）
 - `results/research/analysis2_scene_stage_gap_long.csv` + `analysis2_scene_stage_gap_wide_<SceneID>.csv` + `analysis2_scene_stage_gap_figures/scene_<SceneID>.png`（analysis-2/task1：同场景 Round2-Round1 差异；S1–S5 每题都有；输出 p、sr、dz；按人群分层；每个场景一张图，共约 6 张）
+- `results/research/analysis2_b_stage_gap_long.csv` + `analysis2_b_stage_gap_figures/B1.png|B2.png|B3.png`（analysis-2/task1b：B1–B3 Round2-Round1 差异；输出 p、sr、dz；按人群分层；总共 3 张图）
 - `results/research/analysis_narrative.md`（角度1/角度2自动叙事总结）
 - `results/research/angle1_c1_minus_c0_by_group.csv`（直接回答“C1是否普遍更低、降幅是否一致”）
 - `results/research/angle2_round_diff_by_group.csv`（各人群 Round2-Round1）

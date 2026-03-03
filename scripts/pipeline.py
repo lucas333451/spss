@@ -86,6 +86,14 @@ def main():
             "--group-col", "PeopleGroup4",
         ])
 
+        # analysis-2 / task1b: B1-B3 stage gap (C1-only), 3 figures total
+        run([
+            args.python, "scripts/analysis2_b_stage_gap.py",
+            "--long-csv", str(out_long / "long_format.csv"),
+            "--out-dir", str(out_research),
+            "--group-col", "PeopleGroup4",
+        ])
+
         run([
             args.python, "scripts/report_summary.py",
             "--long-csv", str(out_long / "long_format.csv"),
