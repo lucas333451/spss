@@ -77,6 +77,15 @@ def main():
             "--long-csv", str(out_long / "long_format.csv"),
             "--out-dir", str(out_research),
         ])
+
+        # analysis-2 / task1: within-scene stage (Repetition) gap (S1-S5), stratified by PeopleGroup4
+        run([
+            args.python, "scripts/analysis2_scene_stage_gap.py",
+            "--long-csv", str(out_long / "long_format.csv"),
+            "--out-dir", str(out_research),
+            "--group-col", "PeopleGroup4",
+        ])
+
         run([
             args.python, "scripts/report_summary.py",
             "--long-csv", str(out_long / "long_format.csv"),

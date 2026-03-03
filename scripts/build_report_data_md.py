@@ -74,6 +74,9 @@ def build(results_root: Path, out: Path, max_rows: int) -> None:
     lines.append(csv_md(r / "research/group_complexity_delta_round_shift.csv", max_rows))
     lines.append("\n### 4.4 一致性ICC")
     lines.append(csv_md(r / "research/round_icc_by_group.csv", max_rows))
+
+    lines.append("\n### 4.5 Analysis-2/task1：同场景两阶段（Round2-Round1）差异（S1–S5，按人群分层）")
+    lines.append(csv_md(r / "research/analysis2_scene_stage_gap_long.csv", max_rows))
     lines.append("\n---\n")
 
     # 5) Groups

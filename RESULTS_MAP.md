@@ -74,6 +74,13 @@
 
 ---
 
+## Q11. Analysis-2/task1：同一场景两阶段（Round1/2）评分差距（S1–S5）在人群间是否不同？
+1. `results/research/analysis2_scene_stage_gap_long.csv`
+2. `results/research/analysis2_scene_stage_gap_wide_<SceneID>.csv`
+3. `results/research/analysis2_scene_stage_gap_figures/scene_<SceneID>.png`
+
+---
+
 ## 最快交付（给导师/合作者）
 - 首选：`results/analysis_report_bundle.md`
 - 再补：`results/research/analysis_narrative.md`
