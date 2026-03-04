@@ -23,6 +23,7 @@ import json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import warnings
 from scipy.stats import ttest_rel, wilcoxon, norm
 
 from analysis_groups import make_people_group4
@@ -164,11 +165,18 @@ def main():
             diff = pairs["diff_R2_minus_R1"].to_numpy(dtype=float)
             sign = float(np.nanmean(diff))
 
-            try:
-                w = wilcoxon(pairs["R2"], pairs["R1"], zero_method="wilcox", correction=False, alternative="two-sided")
-                p_w = float(w.pvalue)
-            except Exception:
+            if np.isfinite(diff).sum() == 0:
                 p_w = np.nan
+            elif np.allclose(diff[np.isfinite(diff)], 0.0):
+                p_w = 1.0
+            else:
+                try:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", RuntimeWarning)
+                        w = wilcoxon(diff, zero_method="wilcox", correction=False, alternative="two-sided")
+                    p_w = float(w.pvalue) if np.isfinite(w.pvalue) else 1.0
+                except Exception:
+                    p_w = np.nan
 
             try:
                 tt = ttest_rel(pairs["R2"], pairs["R1"], nan_policy="omit")
@@ -187,7 +195,11 @@ def main():
                 "mean_diff_R2_minus_R1": float(np.mean(diff)),
                 "p": p_w,
                 "p_holm": np.nan,
-                "sr": _signed_rank_r_from_p(p_w, n=n, sign=sign),
+                "sr": _signed_rank_r_from_p(
+                    p_w,
+                    n=max(int(np.sum(np.isfinite(diff) & (np.abs(diff) > 0))), 1),
+                    sign=sign,
+                ),
                 "dz": _cohens_dz(diff),
                 "p_t": p_t,
                 "t": t_stat,

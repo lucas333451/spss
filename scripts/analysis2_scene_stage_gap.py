@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import warnings
 from scipy.stats import ttest_rel, wilcoxon, norm
 
 from analysis_groups import make_people_group4
@@ -182,11 +183,19 @@ def main():
                 sign = float(np.nanmean(diff))
 
                 # Wilcoxon signed-rank (robust p)
-                try:
-                    w = wilcoxon(pairs["R2"], pairs["R1"], zero_method="wilcox", correction=False, alternative="two-sided")
-                    p_w = float(w.pvalue)
-                except Exception:
+                # Guard edge cases (all-zero/tie-heavy diffs) to avoid invalid z/se warnings.
+                if np.isfinite(diff).sum() == 0:
                     p_w = np.nan
+                elif np.allclose(diff[np.isfinite(diff)], 0.0):
+                    p_w = 1.0
+                else:
+                    try:
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore", RuntimeWarning)
+                            w = wilcoxon(diff, zero_method="wilcox", correction=False, alternative="two-sided")
+                        p_w = float(w.pvalue) if np.isfinite(w.pvalue) else 1.0
+                    except Exception:
+                        p_w = np.nan
 
                 # paired t-test (for dz + reference)
                 try:
@@ -197,7 +206,8 @@ def main():
                     p_t, t_stat = np.nan, np.nan
 
                 dz = _cohens_dz(diff)
-                sr = _signed_rank_r_from_p(p_w, n=n, sign=sign)
+                n_eff = int(np.sum(np.isfinite(diff) & (np.abs(diff) > 0)))
+                sr = _signed_rank_r_from_p(p_w, n=max(n_eff, 1), sign=sign)
 
                 rows.append({
                     "SceneID": scene,
@@ -264,7 +274,7 @@ def main():
         pivot_dz = pivot_dz.reindex(columns=[dv for dv in DVS if dv in pivot_dz.columns])
         pivot_p = pivot_p.reindex(columns=[dv for dv in DVS if dv in pivot_p.columns])
 
-        annot = pivot_p.copy()
+        annot = pivot_p.copy().astype(object)
         pivot_sr = sub.pivot_table(index="Group", columns="DV", values="sr", aggfunc="first")
         pivot_sr = pivot_sr.reindex(columns=[dv for dv in DVS if dv in pivot_sr.columns])
 
