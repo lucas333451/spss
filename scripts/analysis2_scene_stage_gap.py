@@ -90,12 +90,23 @@ def _within_subject_pairs(df: pd.DataFrame, dv: str) -> pd.DataFrame:
     return piv
 
 
+def _exclude_subjects(df: pd.DataFrame, text: str) -> pd.DataFrame:
+    if not text:
+        return df
+    names = [x.strip() for x in str(text).split(",") if x.strip()]
+    if not names or "SubjectID" not in df.columns:
+        return df
+    sid = df["SubjectID"].astype(str).str.strip()
+    return df.loc[~sid.isin(set(names))].copy()
+
+
 def main():
     ap = argparse.ArgumentParser(description="Analysis-2 Task1: within-scene stage gap (Repetition 2 - 1) for S1-S5")
     ap.add_argument("--long-csv", type=Path, required=True)
     ap.add_argument("--out-dir", type=Path, default=Path("results/research"))
     ap.add_argument("--group-col", default="PeopleGroup4", help="Grouping column (default: PeopleGroup4)")
     ap.add_argument("--min-n", type=int, default=3, help="Minimum paired subjects required to run tests")
+    ap.add_argument("--exclude-subjects", default="", help="Comma-separated SubjectID list for QC exclusion")
     args = ap.parse_args()
 
     apply_bae_style()
@@ -106,6 +117,7 @@ def main():
     fig_dir.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(args.long_csv)
+    df = _exclude_subjects(df, args.exclude_subjects)
 
     # Basic required columns
     req = ["SubjectID", "SceneID", "Repetition"] + [c for c in DVS if c in df.columns]

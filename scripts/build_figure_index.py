@@ -7,11 +7,11 @@ import argparse
 
 def infer_topic(p: Path) -> str:
     s = str(p).lower()
-    if "task1_stage_gap" in s and "scene_" in p.name.lower():
+    if "analysis-2/task1" in s and "scene_" in p.name.lower():
         return "Analysis-2 Task1: within-scene Round2-Round1 gap (S-items)"
-    if "task1_stage_gap" in s and p.name.lower().startswith("b"):
+    if "analysis-2/task1" in s and p.name.lower().startswith("b"):
         return "Analysis-2 Task1b: Round2-Round1 gap (B-items, C1-only)"
-    if "task2_core_imm_suite" in s:
+    if "analysis-2/task2" in s:
         return "Analysis-2 Task2: core_imm_suite LMM"
     if "diagnostics" in s:
         return "Diagnostics / robustness"

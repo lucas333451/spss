@@ -461,11 +461,22 @@ def _s1_s4_reliability(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _exclude_subjects(df: pd.DataFrame, text: str) -> pd.DataFrame:
+    if not text:
+        return df
+    names = [x.strip() for x in str(text).split(",") if x.strip()]
+    if not names or "SubjectID" not in df.columns:
+        return df
+    sid = df["SubjectID"].astype(str).str.strip()
+    return df.loc[~sid.isin(set(names))].copy()
+
+
 def main():
     ap = argparse.ArgumentParser(description="Analysis-2 Task2 core_Imm_suite: layered LMM for S1-S5 and B1-B3")
     ap.add_argument("--long-csv", type=Path, required=True)
     ap.add_argument("--out-dir", type=Path, default=Path("results/research"))
     ap.add_argument("--group-col", default="PeopleGroup4", help="Group column for factor_Group")
+    ap.add_argument("--exclude-subjects", default="", help="Comma-separated SubjectID list to exclude for QC branch")
     args = ap.parse_args()
 
     apply_bae_style()
@@ -474,6 +485,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(args.long_csv)
+    df = _exclude_subjects(df, args.exclude_subjects)
 
     # ensure common fields
     if "SubjectID" not in df.columns:

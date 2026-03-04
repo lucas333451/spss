@@ -81,27 +81,33 @@ def main():
         # analysis-2 / task1 + task1b + task2
         # current policy: only 2-way group stratifications (ExperienceGroup / SportFreqGroup),
         # no 4-cell cross interaction group (PeopleGroup4) at this stage.
+        qc_exclude = "孙校聪,康少勇,张钰鹏,杨可,洪婷婷,陈韬,高梓楠,赵国宏"
+
         for group_tag, group_col in [("experience", "ExperienceGroup"), ("sportfreq", "SportFreqGroup")]:
-            run([
-                args.python, "scripts/analysis2_scene_stage_gap.py",
-                "--long-csv", str(out_long / "long_format.csv"),
-                "--out-dir", str(out_research / "analysis-2" / "task1" / group_tag),
-                "--group-col", group_col,
-            ])
+            for branch_tag, exclude in [("raw", ""), ("qc", qc_exclude)]:
+                run([
+                    args.python, "scripts/analysis2_scene_stage_gap.py",
+                    "--long-csv", str(out_long / "long_format.csv"),
+                    "--out-dir", str(out_research / "analysis-2" / "task1" / group_tag / branch_tag),
+                    "--group-col", group_col,
+                    "--exclude-subjects", exclude,
+                ])
 
-            run([
-                args.python, "scripts/analysis2_b_stage_gap.py",
-                "--long-csv", str(out_long / "long_format.csv"),
-                "--out-dir", str(out_research / "analysis-2" / "task1" / group_tag),
-                "--group-col", group_col,
-            ])
+                run([
+                    args.python, "scripts/analysis2_b_stage_gap.py",
+                    "--long-csv", str(out_long / "long_format.csv"),
+                    "--out-dir", str(out_research / "analysis-2" / "task1" / group_tag / branch_tag),
+                    "--group-col", group_col,
+                    "--exclude-subjects", exclude,
+                ])
 
-            run([
-                args.python, "scripts/analysis2_core_imm_suite.py",
-                "--long-csv", str(out_long / "long_format.csv"),
-                "--out-dir", str(out_research / "analysis-2" / "task2" / group_tag),
-                "--group-col", group_col,
-            ])
+                run([
+                    args.python, "scripts/analysis2_core_imm_suite.py",
+                    "--long-csv", str(out_long / "long_format.csv"),
+                    "--out-dir", str(out_research / "analysis-2" / "task2" / group_tag / branch_tag),
+                    "--group-col", group_col,
+                    "--exclude-subjects", exclude,
+                ])
 
         run([
             args.python, "scripts/report_summary.py",

@@ -20,21 +20,21 @@ def _stat_hint(fig_name: str, results_root: Path) -> str:
     n = fig_name.lower()
     # lightweight hints from key result tables
     if "task2_s_model_aic" in n:
-        f = results_root / "research/task2_core_imm_suite/analysis2_core_imm_suite_s_models.csv"
+        f = results_root / "research/analysis-2/task2/experience/qc/analysis2_core_imm_suite_s_models.csv"
         df = _safe_read_csv(f)
         if df is not None and not df.empty and "AIC" in df.columns:
             ok = df[df.get("Status", "ok") == "ok"] if "Status" in df.columns else df
             if not ok.empty:
                 return f"AIC range across shown models: {ok['AIC'].min():.2f} to {ok['AIC'].max():.2f}."
     if "task2_b_model_aic" in n:
-        f = results_root / "research/task2_core_imm_suite/analysis2_core_imm_suite_b_models.csv"
+        f = results_root / "research/analysis-2/task2/experience/qc/analysis2_core_imm_suite_b_models.csv"
         df = _safe_read_csv(f)
         if df is not None and not df.empty and "AIC" in df.columns:
             ok = df[df.get("Status", "ok") == "ok"] if "Status" in df.columns else df
             if not ok.empty:
                 return f"AIC range across shown models: {ok['AIC'].min():.2f} to {ok['AIC'].max():.2f}."
     if "task1_scene" in n:
-        f = results_root / "research/task1_stage_gap/analysis2_scene_stage_gap_long.csv"
+        f = results_root / "research/analysis-2/task1/experience/qc/analysis2_scene_stage_gap_long.csv"
         df = _safe_read_csv(f)
         if df is not None and not df.empty and "p_holm" in df.columns:
             sig = int((pd.to_numeric(df["p_holm"], errors="coerce") < 0.05).fillna(False).sum())

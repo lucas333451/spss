@@ -77,12 +77,23 @@ def _pairs(df: pd.DataFrame, dv: str) -> pd.DataFrame:
     return piv
 
 
+def _exclude_subjects(df: pd.DataFrame, text: str) -> pd.DataFrame:
+    if not text:
+        return df
+    names = [x.strip() for x in str(text).split(",") if x.strip()]
+    if not names or "SubjectID" not in df.columns:
+        return df
+    sid = df["SubjectID"].astype(str).str.strip()
+    return df.loc[~sid.isin(set(names))].copy()
+
+
 def main():
     ap = argparse.ArgumentParser(description="Analysis-2 Task1b: B1-B3 Round2-Round1 gap by people group (C1-only)")
     ap.add_argument("--long-csv", type=Path, required=True)
     ap.add_argument("--out-dir", type=Path, default=Path("results/research"))
     ap.add_argument("--group-col", default="PeopleGroup4")
     ap.add_argument("--min-n", type=int, default=3)
+    ap.add_argument("--exclude-subjects", default="", help="Comma-separated SubjectID list for QC exclusion")
     args = ap.parse_args()
 
     apply_bae_style()
@@ -93,6 +104,7 @@ def main():
     fig_dir.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(args.long_csv)
+    df = _exclude_subjects(df, args.exclude_subjects)
 
     for c in ["SubjectID", "Repetition"]:
         if c not in df.columns:
