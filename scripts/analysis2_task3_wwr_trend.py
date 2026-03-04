@@ -9,7 +9,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import warnings
 from statsmodels.formula.api import mixedlm, ols
+from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 from analysis_groups import make_people_group4
 from plot_style import apply_bae_style
@@ -49,7 +51,20 @@ def _fit_trend(sub: pd.DataFrame):
         return None
 
     try:
-        fit = mixedlm("score ~ w + w2", data=d, groups=d["SubjectID"]).fit(reml=False, method="lbfgs", maxiter=2000)
+        with warnings.catch_warnings(record=True) as ws:
+            warnings.simplefilter("always")
+            fit = mixedlm("score ~ w + w2", data=d, groups=d["SubjectID"]).fit(reml=False, method="lbfgs", maxiter=2000)
+
+        bad_warn = False
+        for wmsg in ws:
+            txt = str(wmsg.message).lower()
+            if ("singular" in txt) or isinstance(wmsg.message, ConvergenceWarning):
+                bad_warn = True
+                break
+
+        if (not getattr(fit, "converged", True)) or bad_warn:
+            raise RuntimeError("mixedlm_singular_or_boundary")
+
         return {
             "method": "mixedlm",
             "coef_linear": float(fit.params.get("w", np.nan)),
@@ -59,7 +74,7 @@ def _fit_trend(sub: pd.DataFrame):
             "aic": float(fit.aic) if pd.notna(fit.aic) else np.nan,
         }
     except Exception:
-        # fallback for tiny/unbalanced cells
+        # fallback for tiny/unbalanced cells or singular random-effects covariance
         ff = ols("score ~ w + w2 + C(SubjectID)", data=d).fit()
         return {
             "method": "ols_subject_fe",
