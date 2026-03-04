@@ -201,6 +201,13 @@ def main():
             "--out", str(args.out_root / "FIGURE_INDEX.md"),
         ])
 
+        # package a main-paper 6-8 figure set
+        run([
+            args.python, "scripts/build_main_paper_figures.py",
+            "--results-root", str(args.out_root),
+            "--out-dir", str(args.out_root / "figures_main_paper"),
+        ])
+
         # build one markdown bundle for easy sharing/review
         run([
             args.python, "scripts/build_report_md.py",
