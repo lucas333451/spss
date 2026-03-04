@@ -216,17 +216,21 @@ def main():
         plt.barh(y, x, color="#4c78a8", alpha=0.85)
         plt.yticks(y, sub["Group"].astype(str))
         plt.xlabel("Mean diff (Round2 - Round1)")
-        plt.title(f"B item stage gap by group (C1-only): {dv}\nWilcoxon p (Holm within group), dz shown")
+        plt.title(f"B item stage gap by group (C1-only): {dv}\nWilcoxon p (Holm within group), dz + sr shown")
 
         # annotate p/dz
         for i, row in sub.iterrows():
             p = row.get("p_holm")
             dz = row.get("dz")
+            sr = row.get("sr")
             n = row.get("n_pairs")
             if pd.isna(p) or pd.isna(dz) or pd.isna(row.get("mean_diff_R2_minus_R1")):
                 txt = f"n={int(n) if pd.notna(n) else 0}"
             else:
-                txt = f"n={int(n)}  p={p:.3f}  dz={dz:.2f}{row.get('sig_holm','')}"
+                if pd.isna(sr):
+                    txt = f"n={int(n)}  p={p:.3f}  dz={dz:.2f}{row.get('sig_holm','')}"
+                else:
+                    txt = f"n={int(n)}  p={p:.3f}  dz={dz:.2f}  sr={sr:.2f}{row.get('sig_holm','')}"
             xx = row["mean_diff_R2_minus_R1"]
             if pd.isna(xx):
                 xx = 0

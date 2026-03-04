@@ -250,14 +250,21 @@ def main():
         pivot_p = pivot_p.reindex(columns=[dv for dv in DVS if dv in pivot_p.columns])
 
         annot = pivot_p.copy()
+        pivot_sr = sub.pivot_table(index="Group", columns="DV", values="sr", aggfunc="first")
+        pivot_sr = pivot_sr.reindex(columns=[dv for dv in DVS if dv in pivot_sr.columns])
+
         for r in annot.index:
             for c in annot.columns:
                 p = annot.loc[r, c]
                 dzv = pivot_dz.loc[r, c]
+                srv = pivot_sr.loc[r, c] if (r in pivot_sr.index and c in pivot_sr.columns) else np.nan
                 if pd.isna(p) or pd.isna(dzv):
                     annot.loc[r, c] = ""
                 else:
-                    annot.loc[r, c] = f"dz={dzv:.2f}\np={p:.3f}"
+                    if pd.isna(srv):
+                        annot.loc[r, c] = f"dz={dzv:.2f}\np={p:.3f}"
+                    else:
+                        annot.loc[r, c] = f"dz={dzv:.2f}\nsr={srv:.2f}\np={p:.3f}"
 
         plt.figure(figsize=(10, max(2.6, 0.5 * len(pivot_dz.index) + 1.2)))
         sns.heatmap(
@@ -270,7 +277,7 @@ def main():
             linecolor="#dddddd",
             cbar_kws={"label": "Cohen's dz (R2 - R1)"},
         )
-        plt.title(f"Scene stage gap (Repetition2 - Repetition1) — {scene} — group={group_col}\nWilcoxon p (Holm within group), dz shown")
+        plt.title(f"Scene stage gap (Repetition2 - Repetition1) — {scene} — group={group_col}\nWilcoxon p (Holm within group), dz + sr shown")
         plt.xlabel("DV")
         plt.ylabel(group_col)
         plt.tight_layout()
