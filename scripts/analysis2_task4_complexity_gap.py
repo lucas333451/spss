@@ -72,6 +72,64 @@ def _pairs_complexity(df: pd.DataFrame, dv: str) -> pd.DataFrame:
     return piv
 
 
+def _plot_p_heatmap(df_long: pd.DataFrame, out_png: Path) -> bool:
+    if df_long.empty:
+        return False
+    x = df_long.copy()
+    x["Cell"] = x["DV"].astype(str) + " | R" + x["Repetition"].astype(str)
+    mat = x.pivot_table(index="Group", columns="Cell", values="p_holm", aggfunc="first")
+    if mat.empty:
+        return False
+
+    annot = mat.copy().astype(object)
+    for r in annot.index:
+        for c in annot.columns:
+            p = annot.loc[r, c]
+            annot.loc[r, c] = "" if pd.isna(p) else f"p={float(p):.4g}{_sigstar(float(p))}"
+
+    plt.figure(figsize=(max(8, 0.65 * len(mat.columns) + 2), max(2.8, 0.52 * len(mat.index) + 1.2)))
+    sns.heatmap(
+        -np.log10(mat.astype(float)),
+        cmap="Blues",
+        annot=annot,
+        fmt="",
+        linewidths=0.6,
+        linecolor="#efefef",
+        cbar_kws={"label": "-log10(p_holm)"},
+    )
+    plt.title("Task4 complexity-gap significance map by Group × (DV,Round)")
+    plt.xlabel("DV | Round")
+    plt.ylabel("Group")
+    plt.tight_layout()
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(out_png, dpi=230)
+    plt.close()
+    return True
+
+
+def _plot_dz_rank(df_long: pd.DataFrame, out_png: Path, top_n: int = 20) -> bool:
+    if df_long.empty or "dz" not in df_long.columns:
+        return False
+    x = df_long.dropna(subset=["dz"]).copy()
+    if x.empty:
+        return False
+    x["abs_dz"] = x["dz"].abs()
+    x["Label"] = x["DV"].astype(str) + " | R" + x["Repetition"].astype(str) + " | " + x["Group"].astype(str)
+    x = x.sort_values("abs_dz", ascending=False).head(top_n).sort_values("dz")
+
+    plt.figure(figsize=(10, max(3.2, 0.34 * len(x) + 1.5)))
+    plt.axvline(0, color="#666", lw=1)
+    plt.barh(np.arange(len(x)), x["dz"], color="#4E79A7")
+    plt.yticks(np.arange(len(x)), x["Label"].astype(str), fontsize=8)
+    plt.xlabel("Cohen's dz (C1 - C0)")
+    plt.title("Task4 strongest complexity effects (|dz| rank)")
+    plt.tight_layout()
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(out_png, dpi=230)
+    plt.close()
+    return True
+
+
 def main():
     ap = argparse.ArgumentParser(description="Analysis-2 Task4: Complexity gap (C1-C0) for S1-S5 by round and group")
     ap.add_argument("--long-csv", type=Path, required=True)
@@ -229,6 +287,14 @@ def main():
         plt.savefig(p, dpi=230)
         plt.close()
         outputs.append(str(p.relative_to(out)))
+
+    pmap_png = fig_dir / "task4_complexity_gap_p_heatmap.png"
+    if _plot_p_heatmap(out_long, pmap_png):
+        outputs.append(str(pmap_png.relative_to(out)))
+
+    dz_png = fig_dir / "task4_complexity_gap_dz_rank.png"
+    if _plot_dz_rank(out_long, dz_png):
+        outputs.append(str(dz_png.relative_to(out)))
 
     payload = {
         "task": "analysis-2/task4 complexity gap",
