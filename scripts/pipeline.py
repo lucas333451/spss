@@ -94,11 +94,11 @@ def main():
             "--group-col", "PeopleGroup4",
         ])
 
-        # analysis-2 / task2: core_Imm_suite layered LMM (WWR/Complexity/Group)
+        # analysis-2 / task3: core_lmm_suite layered LMM (WWR/Complexity/Group)
         run([
             args.python, "scripts/analysis2_core_imm_suite.py",
             "--long-csv", str(out_long / "long_format.csv"),
-            "--out-dir", str(out_research / "task2_core_imm_suite"),
+            "--out-dir", str(out_research / "task3_core_lmm_suite"),
             "--group-col", "PeopleGroup4",
         ])
 

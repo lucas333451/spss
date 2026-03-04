@@ -85,16 +85,16 @@
 3. `results/research/task1_stage_gap/analysis2_b_stage_gap_figures/B2.png`
 4. `results/research/task1_stage_gap/analysis2_b_stage_gap_figures/B3.png`
 
-## Q13. Analysis-2/task2 core_Imm_suite：围绕 WWR（及 Complexity、Group）的核心 LMM 主效应/交互结果
-1. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_s_models.csv`
-2. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_s_effects.csv`
-3. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_b_models.csv`
-4. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_b_effects.csv`
-5. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_figures/task2_s_model_aic.png`
-6. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_figures/task2_s_top_effects_forest.png`
-7. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_figures/task2_b_model_aic.png`
-8. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_figures/task2_b_top_effects_forest.png`
-9. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_figures/task2_b_means_B1.png`（B2/B3 同路径）
+## Q13. Analysis-2/task3 core_lmm_suite：围绕 WWR（及 Complexity、Group）的问卷评分核心 LMM 主效应/交互结果
+1. `results/research/task3_core_lmm_suite/analysis2_core_imm_suite_s_models.csv`
+2. `results/research/task3_core_lmm_suite/analysis2_core_imm_suite_s_effects.csv`
+3. `results/research/task3_core_lmm_suite/analysis2_core_imm_suite_b_models.csv`
+4. `results/research/task3_core_lmm_suite/analysis2_core_imm_suite_b_effects.csv`
+5. `results/research/task3_core_lmm_suite/analysis2_core_imm_suite_figures/task3_s_model_aic.png`
+6. `results/research/task3_core_lmm_suite/analysis2_core_imm_suite_figures/task3_s_top_effects_forest.png`
+7. `results/research/task3_core_lmm_suite/analysis2_core_imm_suite_figures/task3_b_model_aic.png`
+8. `results/research/task3_core_lmm_suite/analysis2_core_imm_suite_figures/task3_b_top_effects_forest.png`
+9. `results/research/task3_core_lmm_suite/analysis2_core_imm_suite_figures/task3_b_means_B1.png`（B2/B3 同路径）
 
 ---
 

@@ -298,11 +298,11 @@ def _plot_b_group_means(df_b_c1: pd.DataFrame, group_col: str, out_dir: Path) ->
         sub["WWR"] = sub["WWR"].astype(str)
         plt.figure(figsize=(8, 5))
         sns.pointplot(data=sub, x="WWR", y=dv, hue=group_col, errorbar="se", dodge=True)
-        plt.title(f"Task2 B-item means by WWR × {group_col} (C1-only): {dv}")
+        plt.title(f"Task3 B-item means by WWR × {group_col} (C1-only): {dv}")
         plt.xlabel("WWR")
         plt.ylabel(dv)
         plt.tight_layout()
-        p = out_dir / f"task2_b_means_{dv}.png"
+        p = out_dir / f"task3_b_means_{dv}.png"
         p.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(p, dpi=220)
         plt.close()
@@ -400,27 +400,27 @@ def main():
     fig_dir.mkdir(parents=True, exist_ok=True)
     png_outputs = []
 
-    s_aic_png = fig_dir / "task2_s_model_aic.png"
-    if _plot_model_fit_bars(s_models, s_aic_png, "Task2 S-suite: Model AIC by DV"):
+    s_aic_png = fig_dir / "task3_s_model_aic.png"
+    if _plot_model_fit_bars(s_models, s_aic_png, "Task3 S-suite: Model AIC by DV"):
         png_outputs.append(str(s_aic_png.relative_to(out)))
 
-    b_aic_png = fig_dir / "task2_b_model_aic.png"
-    if _plot_model_fit_bars(b_models, b_aic_png, "Task2 B-suite: Model AIC by DV (C1-only)"):
+    b_aic_png = fig_dir / "task3_b_model_aic.png"
+    if _plot_model_fit_bars(b_models, b_aic_png, "Task3 B-suite: Model AIC by DV (C1-only)"):
         png_outputs.append(str(b_aic_png.relative_to(out)))
 
-    s_forest_png = fig_dir / "task2_s_top_effects_forest.png"
-    if _plot_top_effects_forest(s_eff, s_forest_png, "Task2 S-suite: Top fixed effects (Holm-corrected)"):
+    s_forest_png = fig_dir / "task3_s_top_effects_forest.png"
+    if _plot_top_effects_forest(s_eff, s_forest_png, "Task3 S-suite: Top fixed effects (Holm-corrected)"):
         png_outputs.append(str(s_forest_png.relative_to(out)))
 
-    b_forest_png = fig_dir / "task2_b_top_effects_forest.png"
-    if _plot_top_effects_forest(b_eff, b_forest_png, "Task2 B-suite: Top fixed effects (Holm-corrected)"):
+    b_forest_png = fig_dir / "task3_b_top_effects_forest.png"
+    if _plot_top_effects_forest(b_eff, b_forest_png, "Task3 B-suite: Top fixed effects (Holm-corrected)"):
         png_outputs.append(str(b_forest_png.relative_to(out)))
 
     b_means_pngs = _plot_b_group_means(b_df, args.group_col, fig_dir)
     png_outputs.extend([str(Path(p).relative_to(out)) for p in b_means_pngs])
 
     summary = {
-        "task": "analysis-2/task2 core_imm_suite",
+        "task": "analysis-2/task3 core_lmm_suite",
         "group_col": args.group_col,
         "s_dvs": [dv for dv in S_DVS if dv in df.columns],
         "b_dvs": [dv for dv in B_DVS if dv in df.columns],
