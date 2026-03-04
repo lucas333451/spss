@@ -16,7 +16,7 @@ Goal (journal-friendly / auditable):
 Outputs (under out-dir, default results/research):
 - analysis2_scene_stage_gap_long.csv
 - analysis2_scene_stage_gap_wide_<SceneID>.csv (one per scene)
-- analysis2_scene_stage_gap_figures/scene_<SceneID>.png (one per scene)
+- task1_scene_stage_gap_figures/scene_<SceneID>.png (one per scene)
 
 Assumptions:
 - Two stages correspond to Repetition 1/2 (Round1/2).
@@ -102,7 +102,7 @@ def main():
 
     out = args.out_dir
     out.mkdir(parents=True, exist_ok=True)
-    fig_dir = out / "analysis2_scene_stage_gap_figures"
+    fig_dir = out / "task1_scene_stage_gap_figures"
     fig_dir.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(args.long_csv)

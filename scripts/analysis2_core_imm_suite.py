@@ -548,7 +548,7 @@ def main():
     b_models.to_csv(b_models_path, index=False, encoding="utf-8-sig")
 
     # Task2 visualization outputs (PNG)
-    fig_dir = out / "analysis2_core_imm_suite_figures"
+    fig_dir = out / "task2_core_imm_suite_figures"
     fig_dir.mkdir(parents=True, exist_ok=True)
     png_outputs = []
 

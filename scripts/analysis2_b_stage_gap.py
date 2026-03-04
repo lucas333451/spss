@@ -12,7 +12,7 @@ Rationale:
 
 Outputs (under out-dir, default results/research):
 - analysis2_b_stage_gap_long.csv
-- analysis2_b_stage_gap_figures/B1.png, B2.png, B3.png
+- task1b_b_stage_gap_figures/B1.png, B2.png, B3.png
 - analysis2_b_stage_gap_summary.json
 """
 
@@ -89,7 +89,7 @@ def main():
 
     out = args.out_dir
     out.mkdir(parents=True, exist_ok=True)
-    fig_dir = out / "analysis2_b_stage_gap_figures"
+    fig_dir = out / "task1b_b_stage_gap_figures"
     fig_dir.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(args.long_csv)
