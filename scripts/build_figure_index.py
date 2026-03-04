@@ -13,6 +13,10 @@ def infer_topic(p: Path) -> str:
         return "Analysis-2 Task1b: Round2-Round1 gap (B-items, C1-only)"
     if "analysis-2/task2" in s:
         return "Analysis-2 Task2: core_imm_suite LMM"
+    if "analysis-2/task3" in s:
+        return "Analysis-2 Task3: WWR trend (linear/quadratic) by round & group"
+    if "analysis-2/task4" in s:
+        return "Analysis-2 Task4: Complexity gap (C1-C0) by round & group"
     if "diagnostics" in s:
         return "Diagnostics / robustness"
     if "group_complexity" in p.name.lower():

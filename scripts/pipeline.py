@@ -109,6 +109,22 @@ def main():
                     "--exclude-subjects", exclude,
                 ])
 
+                run([
+                    args.python, "scripts/analysis2_task3_wwr_trend.py",
+                    "--long-csv", str(out_long / "long_format.csv"),
+                    "--out-dir", str(out_research / "analysis-2" / "task3" / group_tag / branch_tag),
+                    "--group-col", group_col,
+                    "--exclude-subjects", exclude,
+                ])
+
+                run([
+                    args.python, "scripts/analysis2_task4_complexity_gap.py",
+                    "--long-csv", str(out_long / "long_format.csv"),
+                    "--out-dir", str(out_research / "analysis-2" / "task4" / group_tag / branch_tag),
+                    "--group-col", group_col,
+                    "--exclude-subjects", exclude,
+                ])
+
         run([
             args.python, "scripts/report_summary.py",
             "--long-csv", str(out_long / "long_format.csv"),
