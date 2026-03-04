@@ -34,6 +34,7 @@ import seaborn as sns
 from scipy.stats import ttest_rel, wilcoxon, norm
 
 from analysis_groups import make_people_group4
+from plot_style import apply_bae_style
 
 
 DVS = ["S1", "S2", "S3", "S4", "S5"]
@@ -96,6 +97,8 @@ def main():
     ap.add_argument("--group-col", default="PeopleGroup4", help="Grouping column (default: PeopleGroup4)")
     ap.add_argument("--min-n", type=int, default=3, help="Minimum paired subjects required to run tests")
     args = ap.parse_args()
+
+    apply_bae_style()
 
     out = args.out_dir
     out.mkdir(parents=True, exist_ok=True)

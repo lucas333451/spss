@@ -15,6 +15,7 @@ from statsmodels.formula.api import mixedlm
 from statsmodels.stats.multitest import multipletests
 
 from analysis_groups import split_tables_by_people_group, compare_people_groups_subject_mean, make_people_group4
+from plot_style import apply_bae_style
 
 warnings.filterwarnings("ignore")
 
@@ -868,6 +869,8 @@ def main():
     ap.add_argument("--long-csv", type=Path, required=True)
     ap.add_argument("--out-dir", type=Path, default=Path("results/research"))
     args = ap.parse_args()
+
+    apply_bae_style()
 
     out = args.out_dir
     out.mkdir(parents=True, exist_ok=True)

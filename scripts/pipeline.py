@@ -194,6 +194,13 @@ def main():
                 _run_r(args.out_root / "r_model", str(args.r_df_method))
 
     if not args.skip_bundle:
+        # build figure index (PNG-first navigation)
+        run([
+            args.python, "scripts/build_figure_index.py",
+            "--results-root", str(args.out_root),
+            "--out", str(args.out_root / "FIGURE_INDEX.md"),
+        ])
+
         # build one markdown bundle for easy sharing/review
         run([
             args.python, "scripts/build_report_md.py",

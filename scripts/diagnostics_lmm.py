@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 from scipy.stats import chi2
 from statsmodels.formula.api import mixedlm
 
+from plot_style import apply_bae_style
+
 
 # -----------------------------
 # helpers
@@ -236,6 +238,8 @@ def main():
     ap.add_argument("--long-csv", type=Path, required=True)
     ap.add_argument("--out-dir", type=Path, default=Path("results/diagnostics"))
     args = ap.parse_args()
+
+    apply_bae_style()
 
     out = args.out_dir
     fig_dir = out / "figures"

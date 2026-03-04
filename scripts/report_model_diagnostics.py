@@ -23,6 +23,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from statsmodels.formula.api import mixedlm
 
+from plot_style import apply_bae_style
+
 
 def _safe(x):
     return "NA" if x is None or (isinstance(x, float) and np.isnan(x)) else x
@@ -59,6 +61,8 @@ def main():
     ap.add_argument("--long-csv", type=Path, required=True)
     ap.add_argument("--out-dir", type=Path, default=Path("results/diagnostics"))
     args = ap.parse_args()
+
+    apply_bae_style()
 
     out = args.out_dir
     fig = out / "figures"

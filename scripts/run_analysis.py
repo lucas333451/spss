@@ -18,6 +18,8 @@ from numpy.linalg import LinAlgError
 
 warnings.filterwarnings("ignore")
 
+from plot_style import apply_bae_style
+
 
 def cronbach_alpha(df: pd.DataFrame) -> float:
     x = df.dropna()
@@ -350,6 +352,8 @@ def main():
     ap.add_argument("--out-dir", type=Path, default=Path("results/model"))
     ap.add_argument("--afford4-min-items", type=int, default=3, help="Minimum valid items among S1-S4 required to compute Afford4 (default: 3)")
     args = ap.parse_args()
+
+    apply_bae_style()
 
     out = args.out_dir
     out.mkdir(parents=True, exist_ok=True)

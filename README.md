@@ -204,6 +204,7 @@ python scripts/pipeline.py \
 - `results/diagnostics/subject_round_diff_distribution.csv`
 - `results/diagnostics/repetition_complexity_interaction_terms.csv`
 
+- `results/FIGURE_INDEX.md` (PNG-first figure map: figure name → topic → path)
 - `results/analysis_report_bundle.md` (one-file markdown bundle for easy sharing)
 
 ---

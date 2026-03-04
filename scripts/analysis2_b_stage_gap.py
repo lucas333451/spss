@@ -26,6 +26,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import ttest_rel, wilcoxon, norm
 
 from analysis_groups import make_people_group4
+from plot_style import apply_bae_style
 
 
 B_DVS = ["B1", "B2", "B3"]
@@ -83,6 +84,8 @@ def main():
     ap.add_argument("--group-col", default="PeopleGroup4")
     ap.add_argument("--min-n", type=int, default=3)
     args = ap.parse_args()
+
+    apply_bae_style()
 
     out = args.out_dir
     out.mkdir(parents=True, exist_ok=True)
