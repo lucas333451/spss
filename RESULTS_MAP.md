@@ -75,15 +75,21 @@
 ---
 
 ## Q11. Analysis-2/task1：同一场景两阶段（Round1/2）评分差距（S1–S5）在人群间是否不同？
-1. `results/research/analysis2_scene_stage_gap_long.csv`
-2. `results/research/analysis2_scene_stage_gap_wide_<SceneID>.csv`
-3. `results/research/analysis2_scene_stage_gap_figures/scene_<SceneID>.png`
+1. `results/research/task1_stage_gap/analysis2_scene_stage_gap_long.csv`
+2. `results/research/task1_stage_gap/analysis2_scene_stage_gap_wide_<SceneID>.csv`
+3. `results/research/task1_stage_gap/analysis2_scene_stage_gap_figures/scene_<SceneID>.png`
 
 ## Q12. Analysis-2/task1b：B1–B3（C1-only）两阶段（Round1/2）评分差距在人群间是否不同？
-1. `results/research/analysis2_b_stage_gap_long.csv`
-2. `results/research/analysis2_b_stage_gap_figures/B1.png`
-3. `results/research/analysis2_b_stage_gap_figures/B2.png`
-4. `results/research/analysis2_b_stage_gap_figures/B3.png`
+1. `results/research/task1_stage_gap/analysis2_b_stage_gap_long.csv`
+2. `results/research/task1_stage_gap/analysis2_b_stage_gap_figures/B1.png`
+3. `results/research/task1_stage_gap/analysis2_b_stage_gap_figures/B2.png`
+4. `results/research/task1_stage_gap/analysis2_b_stage_gap_figures/B3.png`
+
+## Q13. Analysis-2/task2 core_Imm_suite：围绕 WWR（及 Complexity、Group）的核心 LMM 主效应/交互结果
+1. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_s_models.csv`
+2. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_s_effects.csv`
+3. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_b_models.csv`
+4. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_b_effects.csv`
 
 ---
 

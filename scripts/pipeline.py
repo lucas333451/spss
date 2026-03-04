@@ -82,7 +82,7 @@ def main():
         run([
             args.python, "scripts/analysis2_scene_stage_gap.py",
             "--long-csv", str(out_long / "long_format.csv"),
-            "--out-dir", str(out_research),
+            "--out-dir", str(out_research / "task1_stage_gap"),
             "--group-col", "PeopleGroup4",
         ])
 
@@ -90,7 +90,7 @@ def main():
         run([
             args.python, "scripts/analysis2_b_stage_gap.py",
             "--long-csv", str(out_long / "long_format.csv"),
-            "--out-dir", str(out_research),
+            "--out-dir", str(out_research / "task1_stage_gap"),
             "--group-col", "PeopleGroup4",
         ])
 
@@ -98,7 +98,7 @@ def main():
         run([
             args.python, "scripts/analysis2_core_imm_suite.py",
             "--long-csv", str(out_long / "long_format.csv"),
-            "--out-dir", str(out_research),
+            "--out-dir", str(out_research / "task2_core_imm_suite"),
             "--group-col", "PeopleGroup4",
         ])
 
