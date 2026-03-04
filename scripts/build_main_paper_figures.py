@@ -17,22 +17,22 @@ def _candidates(results_root: Path) -> list[tuple[str, str, str]]:
         ),
         (
             "Fig02_task2_s_model_aic",
-            "research/task2_core_imm_suite/experience/task2_core_imm_suite_figures/task2_s_model_aic.png",
+            "research/analysis-2/task2/experience/task2_core_imm_suite_figures/task2_s_model_aic.png",
             "Model selection evidence for S-items (AIC).",
         ),
         (
             "Fig03_task2_s_effects_forest",
-            "research/task2_core_imm_suite/experience/task2_core_imm_suite_figures/task2_s_top_effects_forest.png",
+            "research/analysis-2/task2/experience/task2_core_imm_suite_figures/task2_s_top_effects_forest.png",
             "Key fixed-effect directions and confidence intervals (S-items).",
         ),
         (
             "Fig04_task2_b_model_aic",
-            "research/task2_core_imm_suite/experience/task2_core_imm_suite_figures/task2_b_model_aic.png",
+            "research/analysis-2/task2/experience/task2_core_imm_suite_figures/task2_b_model_aic.png",
             "Model selection evidence for B-items (C1-only).",
         ),
         (
             "Fig05_task2_b_effects_forest",
-            "research/task2_core_imm_suite/experience/task2_core_imm_suite_figures/task2_b_top_effects_forest.png",
+            "research/analysis-2/task2/experience/task2_core_imm_suite_figures/task2_b_top_effects_forest.png",
             "Key fixed-effect directions and confidence intervals (B-items).",
         ),
         (
@@ -47,7 +47,7 @@ def _candidates(results_root: Path) -> list[tuple[str, str, str]]:
         ),
         (
             "Fig08_task1_scene_example",
-            "research/task1_stage_gap/experience/task1_scene_stage_gap_figures/scene_S01.png",
+            "research/analysis-2/task1/experience/task1_scene_stage_gap_figures/scene_S01.png",
             "Within-scene stage-gap matrix (if SceneID naming includes S01).",
         ),
     ]
@@ -71,7 +71,7 @@ def main():
         if not src.exists():
             # fallback for scene figure: pick first scene_*.png
             if label == "Fig08_task1_scene_example":
-                pool = sorted((root / "research/task1_stage_gap/experience/task1_scene_stage_gap_figures").glob("scene_*.png"))
+                pool = sorted((root / "research/analysis-2/task1/experience/task1_scene_stage_gap_figures").glob("scene_*.png"))
                 if pool:
                     src = pool[0]
                 else:

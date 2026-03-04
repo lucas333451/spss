@@ -85,21 +85,21 @@ def main():
             run([
                 args.python, "scripts/analysis2_scene_stage_gap.py",
                 "--long-csv", str(out_long / "long_format.csv"),
-                "--out-dir", str(out_research / "task1_stage_gap" / group_tag),
+                "--out-dir", str(out_research / "analysis-2" / "task1" / group_tag),
                 "--group-col", group_col,
             ])
 
             run([
                 args.python, "scripts/analysis2_b_stage_gap.py",
                 "--long-csv", str(out_long / "long_format.csv"),
-                "--out-dir", str(out_research / "task1_stage_gap" / group_tag),
+                "--out-dir", str(out_research / "analysis-2" / "task1" / group_tag),
                 "--group-col", group_col,
             ])
 
             run([
                 args.python, "scripts/analysis2_core_imm_suite.py",
                 "--long-csv", str(out_long / "long_format.csv"),
-                "--out-dir", str(out_research / "task2_core_imm_suite" / group_tag),
+                "--out-dir", str(out_research / "analysis-2" / "task2" / group_tag),
                 "--group-col", group_col,
             ])
 

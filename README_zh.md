@@ -180,9 +180,9 @@ python scripts/pipeline.py \
 - `results/research/figures/group_complexity_heatmap_S*.png`（人群×复杂度热图）
 - `results/research/figures/group_complexity_delta_S*.png`（各人群 C1-C0 条形图）
 - `results/research/b_items_long_c1.csv`、`b_items_condition_means.csv`、`b_items_group_comparisons.csv`（B1~B3 专项：主要针对 C1）
-- `results/research/task1_stage_gap/<experience|sportfreq>/analysis2_scene_stage_gap_long.csv` + `analysis2_scene_stage_gap_wide_<SceneID>.csv` + `task1_scene_stage_gap_figures/scene_<SceneID>.png`（analysis-2/task1：同场景 Round2-Round1 差异；S1–S5 每题都有；输出 p、sr、dz；按人群分层；每个场景一张图，共约 6 张）
-- `results/research/task1_stage_gap/<experience|sportfreq>/analysis2_b_stage_gap_long.csv` + `task1b_b_stage_gap_figures/B1.png|B2.png|B3.png`（analysis-2/task1b：B1–B3 Round2-Round1 差异；输出 p、sr、dz；按人群分层；总共 3 张图）
-- `results/research/task2_core_imm_suite/<experience|sportfreq>/analysis2_core_imm_suite_s_effects.csv` + `analysis2_core_imm_suite_s_models.csv` + `analysis2_core_imm_suite_b_effects.csv` + `analysis2_core_imm_suite_b_models.csv` + `analysis2_core_imm_suite_group_focus.csv` + `analysis2_core_imm_suite_posthoc_s_wwr_by_group.csv` + `analysis2_measurement_reliability_s1_s4.csv` + `task2_core_imm_suite_figures/*.png`（analysis-2/task2 core_Imm_suite：围绕 WWR/Complexity/Group 的问卷评分分层 LMM；补充人群相关项汇总、S题 WWR 事后比较、S1-S4 信度指标，并输出可视化 PNG）
+- `results/research/analysis-2/task1/<experience|sportfreq>/analysis2_scene_stage_gap_long.csv` + `analysis2_scene_stage_gap_wide_<SceneID>.csv` + `task1_scene_stage_gap_figures/scene_<SceneID>.png`（analysis-2/task1：同场景 Round2-Round1 差异；S1–S5 每题都有；输出 p、sr、dz；按人群分层；每个场景一张图，共约 6 张）
+- `results/research/analysis-2/task1/<experience|sportfreq>/analysis2_b_stage_gap_long.csv` + `task1b_b_stage_gap_figures/B1.png|B2.png|B3.png`（analysis-2/task1b：B1–B3 Round2-Round1 差异；输出 p、sr、dz；按人群分层；总共 3 张图）
+- `results/research/analysis-2/task2/<experience|sportfreq>/analysis2_core_imm_suite_s_effects.csv` + `analysis2_core_imm_suite_s_models.csv` + `analysis2_core_imm_suite_b_effects.csv` + `analysis2_core_imm_suite_b_models.csv` + `analysis2_core_imm_suite_group_focus.csv` + `analysis2_core_imm_suite_posthoc_s_wwr_by_group.csv` + `analysis2_measurement_reliability_s1_s4.csv` + `task2_core_imm_suite_figures/*.png`（analysis-2/task2 core_Imm_suite：围绕 WWR/Complexity/Group 的问卷评分分层 LMM；补充人群相关项汇总、S题 WWR 事后比较、S1-S4 信度指标，并输出可视化 PNG）
 - `results/research/analysis_narrative.md`（角度1/角度2自动叙事总结）
 - `results/research/angle1_c1_minus_c0_by_group.csv`（直接回答“C1是否普遍更低、降幅是否一致”）
 - `results/research/angle2_round_diff_by_group.csv`（各人群 Round2-Round1）
