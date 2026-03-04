@@ -31,6 +31,8 @@ import warnings
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 from statsmodels.formula.api import mixedlm
 from statsmodels.stats.multitest import multipletests
 
@@ -223,6 +225,92 @@ def _run_suite(
     return eff_df, mdl_df
 
 
+def _plot_model_fit_bars(models: pd.DataFrame, out_png: Path, title: str):
+    ok = models[models["Status"] == "ok"].copy() if (not models.empty and "Status" in models.columns) else pd.DataFrame()
+    if ok.empty:
+        return False
+
+    # One bar per DV×Model using AIC (lower better)
+    ok["DV_Model"] = ok["DV"].astype(str) + " | " + ok["Model"].astype(str)
+    ok = ok.sort_values(["DV", "AIC"], na_position="last")
+
+    plt.figure(figsize=(10, max(3.2, 0.28 * len(ok) + 1.4)))
+    sns.barplot(data=ok, y="DV_Model", x="AIC", color="#4C78A8")
+    plt.title(title)
+    plt.xlabel("AIC (lower is better)")
+    plt.ylabel("DV | Model")
+    plt.tight_layout()
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(out_png, dpi=220)
+    plt.close()
+    return True
+
+
+def _plot_top_effects_forest(effects: pd.DataFrame, out_png: Path, title: str, top_n: int = 30):
+    if effects.empty:
+        return False
+
+    x = effects.copy()
+    x = x[(x["Term"] != "Intercept") & x["p_holm"].notna()].copy()
+    if x.empty:
+        return False
+
+    # pick strongest by corrected p then abs(z)
+    x["abs_z"] = x["z"].abs()
+    x = x.sort_values(["p_holm", "abs_z"], ascending=[True, False]).head(top_n)
+    x["Label"] = x["DV"].astype(str) + " | " + x["Model"].astype(str) + " | " + x["Term"].astype(str)
+    x = x.sort_values("Coef")
+
+    plt.figure(figsize=(12, max(3.5, 0.3 * len(x) + 1.5)))
+    plt.axvline(0, color="#666666", linewidth=1)
+    plt.errorbar(
+        x=x["Coef"],
+        y=np.arange(len(x)),
+        xerr=[x["Coef"] - x["CI95_low"], x["CI95_high"] - x["Coef"]],
+        fmt="o",
+        color="#2A9D8F",
+        ecolor="#2A9D8F",
+        elinewidth=1,
+        capsize=2,
+    )
+    plt.yticks(np.arange(len(x)), x["Label"].astype(str), fontsize=8)
+    plt.xlabel("Coefficient (95% CI)")
+    plt.title(title)
+    plt.tight_layout()
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(out_png, dpi=220)
+    plt.close()
+    return True
+
+
+def _plot_b_group_means(df_b_c1: pd.DataFrame, group_col: str, out_dir: Path) -> list[str]:
+    made = []
+    if df_b_c1.empty:
+        return made
+
+    for dv in B_DVS:
+        if dv not in df_b_c1.columns:
+            continue
+        sub = df_b_c1.dropna(subset=[dv, "WWR", group_col]).copy()
+        if sub.empty:
+            continue
+
+        sub["WWR"] = sub["WWR"].astype(str)
+        plt.figure(figsize=(8, 5))
+        sns.pointplot(data=sub, x="WWR", y=dv, hue=group_col, errorbar="se", dodge=True)
+        plt.title(f"Task2 B-item means by WWR × {group_col} (C1-only): {dv}")
+        plt.xlabel("WWR")
+        plt.ylabel(dv)
+        plt.tight_layout()
+        p = out_dir / f"task2_b_means_{dv}.png"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(p, dpi=220)
+        plt.close()
+        made.append(str(p))
+
+    return made
+
+
 def main():
     ap = argparse.ArgumentParser(description="Analysis-2 Task2 core_Imm_suite: layered LMM for S1-S5 and B1-B3")
     ap.add_argument("--long-csv", type=Path, required=True)
@@ -307,6 +395,30 @@ def main():
     b_eff.to_csv(b_eff_path, index=False, encoding="utf-8-sig")
     b_models.to_csv(b_models_path, index=False, encoding="utf-8-sig")
 
+    # Task2 visualization outputs (PNG)
+    fig_dir = out / "analysis2_core_imm_suite_figures"
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    png_outputs = []
+
+    s_aic_png = fig_dir / "task2_s_model_aic.png"
+    if _plot_model_fit_bars(s_models, s_aic_png, "Task2 S-suite: Model AIC by DV"):
+        png_outputs.append(str(s_aic_png.relative_to(out)))
+
+    b_aic_png = fig_dir / "task2_b_model_aic.png"
+    if _plot_model_fit_bars(b_models, b_aic_png, "Task2 B-suite: Model AIC by DV (C1-only)"):
+        png_outputs.append(str(b_aic_png.relative_to(out)))
+
+    s_forest_png = fig_dir / "task2_s_top_effects_forest.png"
+    if _plot_top_effects_forest(s_eff, s_forest_png, "Task2 S-suite: Top fixed effects (Holm-corrected)"):
+        png_outputs.append(str(s_forest_png.relative_to(out)))
+
+    b_forest_png = fig_dir / "task2_b_top_effects_forest.png"
+    if _plot_top_effects_forest(b_eff, b_forest_png, "Task2 B-suite: Top fixed effects (Holm-corrected)"):
+        png_outputs.append(str(b_forest_png.relative_to(out)))
+
+    b_means_pngs = _plot_b_group_means(b_df, args.group_col, fig_dir)
+    png_outputs.extend([str(Path(p).relative_to(out)) for p in b_means_pngs])
+
     summary = {
         "task": "analysis-2/task2 core_imm_suite",
         "group_col": args.group_col,
@@ -317,7 +429,7 @@ def main():
             str(s_models_path.relative_to(out)),
             str(b_eff_path.relative_to(out)),
             str(b_models_path.relative_to(out)),
-        ],
+        ] + png_outputs,
         "notes": [
             "S-items: Model1/2/3 include WWR, Complexity, Group (up to 3-way interaction).",
             "B-items are C1-only by design; adjusted to WWR + Group models.",

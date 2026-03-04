@@ -186,7 +186,7 @@ python scripts/pipeline.py \
 - `results/research/b_items_long_c1.csv`, `b_items_condition_means.csv`, `b_items_group_comparisons.csv` (B1~B3 focused outputs, mainly C1)
 - `results/research/task1_stage_gap/analysis2_scene_stage_gap_long.csv` + `analysis2_scene_stage_gap_wide_<SceneID>.csv` + `analysis2_scene_stage_gap_figures/scene_<SceneID>.png` (analysis-2/task1: within-scene Round2-Round1 gaps for S1–S5 by people group)
 - `results/research/task1_stage_gap/analysis2_b_stage_gap_long.csv` + `analysis2_b_stage_gap_figures/B1.png|B2.png|B3.png` (analysis-2/task1b: B1–B3 Round2-Round1 gaps by people group; 3 figures total)
-- `results/research/task2_core_imm_suite/analysis2_core_imm_suite_s_effects.csv` + `analysis2_core_imm_suite_s_models.csv` + `analysis2_core_imm_suite_b_effects.csv` + `analysis2_core_imm_suite_b_models.csv` (analysis-2/task2 core_Imm_suite: layered LMM around WWR/Complexity/Group; B-items adjusted for C1-only design)
+- `results/research/task2_core_imm_suite/analysis2_core_imm_suite_s_effects.csv` + `analysis2_core_imm_suite_s_models.csv` + `analysis2_core_imm_suite_b_effects.csv` + `analysis2_core_imm_suite_b_models.csv` + `analysis2_core_imm_suite_figures/*.png` (analysis-2/task2 core_Imm_suite: layered LMM around WWR/Complexity/Group; B-items adjusted for C1-only design; includes visualization PNGs)
 - `results/research/analysis_narrative.md` (auto narrative summary for Angle1/Angle2)
 - `results/research/angle1_c1_minus_c0_by_group.csv` (directly answers “all groups lower in C1?” and “same or different drop magnitudes?”)
 - `results/research/angle2_round_diff_by_group.csv` (Round2-Round1 by group)
