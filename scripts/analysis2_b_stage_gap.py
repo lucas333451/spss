@@ -255,9 +255,9 @@ def main():
                 txt = f"n={int(n) if pd.notna(n) else 0}"
             else:
                 if pd.isna(sr):
-                    txt = f"n={int(n)}  p={p:.3f}  dz={dz:.2f}{row.get('sig_holm','')}"
+                    txt = f"n={int(n)}  p={p:.3f}{row.get('sig_holm','')}  dz={dz:.2f}"
                 else:
-                    txt = f"n={int(n)}  p={p:.3f}  dz={dz:.2f}  sr={sr:.2f}{row.get('sig_holm','')}"
+                    txt = f"n={int(n)}  p={p:.3f}{row.get('sig_holm','')}  dz={dz:.2f}  sr={sr:.2f}"
             xx = row["mean_diff_R2_minus_R1"]
             if pd.isna(xx):
                 xx = 0

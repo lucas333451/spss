@@ -286,10 +286,11 @@ def main():
                 if pd.isna(p) or pd.isna(dzv):
                     annot.loc[r, c] = ""
                 else:
+                    p_txt = f"p={p:.3f}{_sigstar(float(p))}"
                     if pd.isna(srv):
-                        annot.loc[r, c] = f"dz={dzv:.2f}\np={p:.3f}"
+                        annot.loc[r, c] = f"{p_txt}\ndz={dzv:.2f}"
                     else:
-                        annot.loc[r, c] = f"dz={dzv:.2f}\nsr={srv:.2f}\np={p:.3f}"
+                        annot.loc[r, c] = f"{p_txt}\ndz={dzv:.2f}\nsr={srv:.2f}"
 
         plt.figure(figsize=(10, max(2.6, 0.5 * len(pivot_dz.index) + 1.2)))
         sns.heatmap(
