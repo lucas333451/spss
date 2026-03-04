@@ -269,6 +269,7 @@ def main():
         # figure: heatmap of dz, annotate with p_holm
         pivot_dz = sub.pivot_table(index="Group", columns="DV", values="dz", aggfunc="first")
         pivot_p = sub.pivot_table(index="Group", columns="DV", values="p_holm", aggfunc="first")
+        pivot_delta = sub.pivot_table(index="Group", columns="DV", values="mean_diff_R2_minus_R1", aggfunc="first")
 
         # enforce DV order
         pivot_dz = pivot_dz.reindex(columns=[dv for dv in DVS if dv in pivot_dz.columns])
@@ -277,20 +278,23 @@ def main():
         annot = pivot_p.copy().astype(object)
         pivot_sr = sub.pivot_table(index="Group", columns="DV", values="sr", aggfunc="first")
         pivot_sr = pivot_sr.reindex(columns=[dv for dv in DVS if dv in pivot_sr.columns])
+        pivot_delta = pivot_delta.reindex(columns=[dv for dv in DVS if dv in pivot_delta.columns])
 
         for r in annot.index:
             for c in annot.columns:
                 p = annot.loc[r, c]
                 dzv = pivot_dz.loc[r, c]
                 srv = pivot_sr.loc[r, c] if (r in pivot_sr.index and c in pivot_sr.columns) else np.nan
+                dlt = pivot_delta.loc[r, c] if (r in pivot_delta.index and c in pivot_delta.columns) else np.nan
                 if pd.isna(p) or pd.isna(dzv):
                     annot.loc[r, c] = ""
                 else:
                     p_txt = f"p={p:.3f}{_sigstar(float(p))}"
+                    d_txt = f"Δ={dlt:.2f}" if pd.notna(dlt) else ""
                     if pd.isna(srv):
-                        annot.loc[r, c] = f"{p_txt}\ndz={dzv:.2f}"
+                        annot.loc[r, c] = f"{p_txt}\n{d_txt}\ndz={dzv:.2f}" if d_txt else f"{p_txt}\ndz={dzv:.2f}"
                     else:
-                        annot.loc[r, c] = f"{p_txt}\ndz={dzv:.2f}\nsr={srv:.2f}"
+                        annot.loc[r, c] = f"{p_txt}\n{d_txt}\ndz={dzv:.2f}\nsr={srv:.2f}" if d_txt else f"{p_txt}\ndz={dzv:.2f}\nsr={srv:.2f}"
 
         plt.figure(figsize=(10, max(2.6, 0.5 * len(pivot_dz.index) + 1.2)))
         sns.heatmap(

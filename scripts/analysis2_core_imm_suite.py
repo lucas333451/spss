@@ -336,11 +336,10 @@ def _plot_factor_overview(effects: pd.DataFrame, group_col: str, domain: str, ou
     x["p_use"] = pd.to_numeric(x[p_col], errors="coerce")
     x.loc[~np.isfinite(x["p_use"]), "p_use"] = pd.to_numeric(x.get("p", np.nan), errors="coerce")
 
-    agg = (
-        x.groupby(["DV", "Effect"], as_index=False)["p_use"]
-        .min()
-        .rename(columns={"p_use": "p_min"})
-    )
+    # pick one representative coefficient per DV×Effect: the term with minimal corrected p
+    idx = x.groupby(["DV", "Effect"], as_index=False)["p_use"].idxmin()["p_use"].tolist()
+    agg = x.loc[idx, ["DV", "Effect", "p_use", "Coef"]].copy()
+    agg = agg.rename(columns={"p_use": "p_min", "Coef": "coef_rep"})
     if agg.empty:
         return False
 
@@ -358,11 +357,13 @@ def _plot_factor_overview(effects: pd.DataFrame, group_col: str, domain: str, ou
     agg["tier"] = agg["p_min"].apply(tier)
     mat = agg.pivot_table(index="DV", columns="Effect", values="tier", aggfunc="first")
     pmat = agg.pivot_table(index="DV", columns="Effect", values="p_min", aggfunc="first")
+    cmat = agg.pivot_table(index="DV", columns="Effect", values="coef_rep", aggfunc="first")
 
     # stable order
     dv_order = [dv for dv in (S_DVS if domain == "S" else B_DVS) if dv in mat.index]
     mat = mat.reindex(index=dv_order, columns=[e for e in effect_order if e in mat.columns])
     pmat = pmat.reindex(index=mat.index, columns=mat.columns)
+    cmat = cmat.reindex(index=mat.index, columns=mat.columns)
     if mat.empty:
         return False
 
@@ -370,10 +371,13 @@ def _plot_factor_overview(effects: pd.DataFrame, group_col: str, domain: str, ou
     for r in annot.index:
         for c in annot.columns:
             p = annot.loc[r, c]
+            b = cmat.loc[r, c] if (r in cmat.index and c in cmat.columns) else np.nan
             if pd.isna(p):
                 annot.loc[r, c] = ""
             else:
-                annot.loc[r, c] = f"p={float(p):.4g}{_sigstar(float(p))}"
+                ptxt = f"p={float(p):.4g}{_sigstar(float(p))}"
+                btxt = f"β={float(b):.2f}" if pd.notna(b) else ""
+                annot.loc[r, c] = f"{ptxt}\n{btxt}" if btxt else ptxt
 
     plt.figure(figsize=(11 if domain == "S" else 8.5, max(2.8, 0.62 * len(mat.index) + 1.2)))
     sns.heatmap(
@@ -387,7 +391,7 @@ def _plot_factor_overview(effects: pd.DataFrame, group_col: str, domain: str, ou
         linecolor="#efefef",
         cbar_kws={"label": "significance tier (0=ns, 1=<.05, 2=<.01, 3=<.001)"},
     )
-    plt.title(f"Task2 factor overview | {domain}-items | group={group_col}")
+    plt.title(f"Task2 factor overview | {domain}-items | group={group_col}\nCell labels: corrected p + representative β")
     plt.xlabel("Effect")
     plt.ylabel("DV")
     plt.tight_layout()
