@@ -135,14 +135,20 @@ def _plot_p_heatmap(models: pd.DataFrame, out_png: Path, p_col: str, title: str)
     for r in annot.index:
         for c in annot.columns:
             p = annot.loc[r, c]
-            annot.loc[r, c] = "" if pd.isna(p) else f"p={float(p):.4g}{_sigstar(float(p))}"
+            if pd.isna(p):
+                annot.loc[r, c] = ""
+            else:
+                pv = float(p)
+                ptxt = f"{pv:.3f}".lstrip("0")
+                annot.loc[r, c] = f"p{ptxt}{_sigstar(pv)}"
 
-    plt.figure(figsize=(max(8, 0.65 * len(mat.columns) + 2), max(2.8, 0.52 * len(mat.index) + 1.4)))
+    plt.figure(figsize=(max(11, 0.9 * len(mat.columns) + 3), max(3.0, 0.58 * len(mat.index) + 1.2)))
     sns.heatmap(
         -np.log10(mat.astype(float)),
         cmap="Blues",
         annot=annot,
         fmt="",
+        annot_kws={"fontsize": 9},
         linewidths=0.6,
         linecolor="#efefef",
         cbar_kws={"label": "-log10(p)"},
@@ -150,6 +156,7 @@ def _plot_p_heatmap(models: pd.DataFrame, out_png: Path, p_col: str, title: str)
     plt.title(title)
     plt.xlabel("DV | Round")
     plt.ylabel("Group")
+    plt.xticks(rotation=25, ha="right")
     plt.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(out_png, dpi=230)
