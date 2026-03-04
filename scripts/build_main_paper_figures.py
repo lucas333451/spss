@@ -7,8 +7,9 @@ import shutil
 import json
 
 
-def _candidates(results_root: Path) -> list[tuple[str, str, str]]:
+def _candidates(results_root: Path, branch: str) -> list[tuple[str, str, str]]:
     """(label, relative source path, purpose) candidates in priority order."""
+    b = branch
     return [
         (
             "Fig01_afford4_main",
@@ -17,22 +18,22 @@ def _candidates(results_root: Path) -> list[tuple[str, str, str]]:
         ),
         (
             "Fig02_task2_s_model_aic",
-            "research/analysis-2/task2/experience/qc/task2_core_imm_suite_figures/task2_s_model_aic.png",
+            f"research/analysis-2/task2/experience/{b}/task2_core_imm_suite_figures/task2_s_model_aic.png",
             "Model selection evidence for S-items (AIC).",
         ),
         (
             "Fig03_task2_s_effects_forest",
-            "research/analysis-2/task2/experience/qc/task2_core_imm_suite_figures/task2_s_top_effects_forest.png",
+            f"research/analysis-2/task2/experience/{b}/task2_core_imm_suite_figures/task2_s_top_effects_forest.png",
             "Key fixed-effect directions and confidence intervals (S-items).",
         ),
         (
             "Fig04_task2_b_model_aic",
-            "research/analysis-2/task2/experience/qc/task2_core_imm_suite_figures/task2_b_model_aic.png",
+            f"research/analysis-2/task2/experience/{b}/task2_core_imm_suite_figures/task2_b_model_aic.png",
             "Model selection evidence for B-items (C1-only).",
         ),
         (
             "Fig05_task2_b_effects_forest",
-            "research/analysis-2/task2/experience/qc/task2_core_imm_suite_figures/task2_b_top_effects_forest.png",
+            f"research/analysis-2/task2/experience/{b}/task2_core_imm_suite_figures/task2_b_top_effects_forest.png",
             "Key fixed-effect directions and confidence intervals (B-items).",
         ),
         (
@@ -47,31 +48,23 @@ def _candidates(results_root: Path) -> list[tuple[str, str, str]]:
         ),
         (
             "Fig08_task1_scene_example",
-            "research/analysis-2/task1/experience/qc/task1_scene_stage_gap_figures/scene_S01.png",
+            f"research/analysis-2/task1/experience/{b}/task1_scene_stage_gap_figures/scene_S01.png",
             "Within-scene stage-gap matrix (if SceneID naming includes S01).",
         ),
     ]
 
 
-def main():
-    ap = argparse.ArgumentParser(description="Select and package 6-8 main-paper figures")
-    ap.add_argument("--results-root", type=Path, default=Path("results"))
-    ap.add_argument("--out-dir", type=Path, default=Path("results/figures_main_paper"))
-    args = ap.parse_args()
-
-    root = args.results_root
-    out = args.out_dir
+def _build_one_branch(root: Path, out: Path, branch: str) -> dict:
     out.mkdir(parents=True, exist_ok=True)
-
     rows = []
     missing = []
 
-    for label, rel, purpose in _candidates(root):
+    for label, rel, purpose in _candidates(root, branch=branch):
         src = root / rel
         if not src.exists():
             # fallback for scene figure: pick first scene_*.png
             if label == "Fig08_task1_scene_example":
-                pool = sorted((root / "research/analysis-2/task1/experience/qc/task1_scene_stage_gap_figures").glob("scene_*.png"))
+                pool = sorted((root / f"research/analysis-2/task1/experience/{branch}/task1_scene_stage_gap_figures").glob("scene_*.png"))
                 if pool:
                     src = pool[0]
                 else:
@@ -90,9 +83,8 @@ def main():
             "purpose": purpose,
         })
 
-    # markdown index + caption draft
     md = [
-        "# Main Paper Figures (6-8)",
+        f"# Main Paper Figures (6-8) - {branch}",
         "",
         "Auto-packed figures for manuscript main text.",
         "",
@@ -101,17 +93,36 @@ def main():
     ]
     for r in rows:
         md.append(f"| {r['label']} | `{r['file']}` | `{r['source']}` | {r['purpose']} |")
-
     (out / "FIGURES_MAIN_INDEX.md").write_text("\n".join(md), encoding="utf-8")
 
     payload = {
+        "branch": branch,
         "out_dir": str(out),
         "n_selected": len(rows),
         "selected": rows,
         "missing": missing,
     }
     (out / "figures_main_manifest.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps(payload, ensure_ascii=False))
+    return payload
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Select and package 6-8 main-paper figures")
+    ap.add_argument("--results-root", type=Path, default=Path("results"))
+    ap.add_argument("--out-dir", type=Path, default=Path("results/figures_main_paper"))
+    args = ap.parse_args()
+
+    root = args.results_root
+    out = args.out_dir
+    out.mkdir(parents=True, exist_ok=True)
+
+    summary = {
+        "raw": _build_one_branch(root, out / "raw", branch="raw"),
+        "qc": _build_one_branch(root, out / "qc", branch="qc"),
+    }
+
+    (out / "figures_main_manifest_all.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(json.dumps({"out_dir": str(out), "branches": ["raw", "qc"]}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
