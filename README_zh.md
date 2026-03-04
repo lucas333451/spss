@@ -201,7 +201,7 @@ python scripts/pipeline.py \
 - `results/diagnostics/repetition_complexity_interaction_terms.csv`
 
 - `results/FIGURE_INDEX.md`（PNG优先图索引：图名→问题→路径）
-- `results/figures_main_paper/`（自动打包主文 6-8 张核心图 + 索引 + manifest）
+- `results/figures_main_paper/`（自动打包主文 6-8 张核心图 + 索引 + 双语caption草稿 + manifest）
 - `results/analysis_report_bundle.md`（将所有结果汇总成一个 markdown）
 
 ---

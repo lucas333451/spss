@@ -208,6 +208,13 @@ def main():
             "--out-dir", str(args.out_root / "figures_main_paper"),
         ])
 
+        # generate bilingual caption drafts for main-paper figures
+        run([
+            args.python, "scripts/build_main_paper_captions.py",
+            "--results-root", str(args.out_root),
+            "--fig-dir", str(args.out_root / "figures_main_paper"),
+        ])
+
         # build one markdown bundle for easy sharing/review
         run([
             args.python, "scripts/build_report_md.py",

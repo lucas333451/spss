@@ -205,7 +205,7 @@ python scripts/pipeline.py \
 - `results/diagnostics/repetition_complexity_interaction_terms.csv`
 
 - `results/FIGURE_INDEX.md` (PNG-first figure map: figure name → topic → path)
-- `results/figures_main_paper/` (auto-packed 6-8 main-text figures + `FIGURES_MAIN_INDEX.md` + manifest)
+- `results/figures_main_paper/` (auto-packed 6-8 main-text figures + `FIGURES_MAIN_INDEX.md` + `FIGURES_MAIN_CAPTIONS.md` + manifest)
 - `results/analysis_report_bundle.md` (one-file markdown bundle for easy sharing)
 
 ---
