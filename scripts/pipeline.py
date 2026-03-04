@@ -78,29 +78,30 @@ def main():
             "--out-dir", str(out_research),
         ])
 
-        # analysis-2 / task1: within-scene stage (Repetition) gap (S1-S5), stratified by PeopleGroup4
-        run([
-            args.python, "scripts/analysis2_scene_stage_gap.py",
-            "--long-csv", str(out_long / "long_format.csv"),
-            "--out-dir", str(out_research / "task1_stage_gap"),
-            "--group-col", "PeopleGroup4",
-        ])
+        # analysis-2 / task1 + task1b + task2
+        # current policy: only 2-way group stratifications (ExperienceGroup / SportFreqGroup),
+        # no 4-cell cross interaction group (PeopleGroup4) at this stage.
+        for group_tag, group_col in [("experience", "ExperienceGroup"), ("sportfreq", "SportFreqGroup")]:
+            run([
+                args.python, "scripts/analysis2_scene_stage_gap.py",
+                "--long-csv", str(out_long / "long_format.csv"),
+                "--out-dir", str(out_research / "task1_stage_gap" / group_tag),
+                "--group-col", group_col,
+            ])
 
-        # analysis-2 / task1b: B1-B3 stage gap (C1-only), 3 figures total
-        run([
-            args.python, "scripts/analysis2_b_stage_gap.py",
-            "--long-csv", str(out_long / "long_format.csv"),
-            "--out-dir", str(out_research / "task1_stage_gap"),
-            "--group-col", "PeopleGroup4",
-        ])
+            run([
+                args.python, "scripts/analysis2_b_stage_gap.py",
+                "--long-csv", str(out_long / "long_format.csv"),
+                "--out-dir", str(out_research / "task1_stage_gap" / group_tag),
+                "--group-col", group_col,
+            ])
 
-        # analysis-2 / task2: core_imm_suite layered LMM (WWR/Complexity/Group)
-        run([
-            args.python, "scripts/analysis2_core_imm_suite.py",
-            "--long-csv", str(out_long / "long_format.csv"),
-            "--out-dir", str(out_research / "task2_core_imm_suite"),
-            "--group-col", "PeopleGroup4",
-        ])
+            run([
+                args.python, "scripts/analysis2_core_imm_suite.py",
+                "--long-csv", str(out_long / "long_format.csv"),
+                "--out-dir", str(out_research / "task2_core_imm_suite" / group_tag),
+                "--group-col", group_col,
+            ])
 
         run([
             args.python, "scripts/report_summary.py",

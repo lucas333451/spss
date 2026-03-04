@@ -75,29 +75,29 @@
 ---
 
 ## Q11. Analysis-2/task1：同一场景两阶段（Round1/2）评分差距（S1–S5）在人群间是否不同？
-1. `results/research/task1_stage_gap/analysis2_scene_stage_gap_long.csv`
+1. `results/research/task1_stage_gap/<experience|sportfreq>/analysis2_scene_stage_gap_long.csv`
 2. `results/research/task1_stage_gap/analysis2_scene_stage_gap_wide_<SceneID>.csv`
-3. `results/research/task1_stage_gap/task1_scene_stage_gap_figures/scene_<SceneID>.png`
+3. `results/research/task1_stage_gap/<experience|sportfreq>/task1_scene_stage_gap_figures/scene_<SceneID>.png`
 
 ## Q12. Analysis-2/task1b：B1–B3（C1-only）两阶段（Round1/2）评分差距在人群间是否不同？
-1. `results/research/task1_stage_gap/analysis2_b_stage_gap_long.csv`
-2. `results/research/task1_stage_gap/task1b_b_stage_gap_figures/B1.png`
-3. `results/research/task1_stage_gap/task1b_b_stage_gap_figures/B2.png`
-4. `results/research/task1_stage_gap/task1b_b_stage_gap_figures/B3.png`
+1. `results/research/task1_stage_gap/<experience|sportfreq>/analysis2_b_stage_gap_long.csv`
+2. `results/research/task1_stage_gap/<experience|sportfreq>/task1b_b_stage_gap_figures/B1.png`
+3. `results/research/task1_stage_gap/<experience|sportfreq>/task1b_b_stage_gap_figures/B2.png`
+4. `results/research/task1_stage_gap/<experience|sportfreq>/task1b_b_stage_gap_figures/B3.png`
 
 ## Q13. Analysis-2/task2 core_Imm_suite：围绕 WWR（及 Complexity、Group）的问卷评分核心 LMM 主效应/交互结果
-1. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_s_models.csv`
-2. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_s_effects.csv`
-3. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_b_models.csv`
-4. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_b_effects.csv`
-5. `results/research/task2_core_imm_suite/task2_core_imm_suite_figures/task2_s_model_aic.png`
-6. `results/research/task2_core_imm_suite/task2_core_imm_suite_figures/task2_s_top_effects_forest.png`
-7. `results/research/task2_core_imm_suite/task2_core_imm_suite_figures/task2_b_model_aic.png`
-8. `results/research/task2_core_imm_suite/task2_core_imm_suite_figures/task2_b_top_effects_forest.png`
-9. `results/research/task2_core_imm_suite/task2_core_imm_suite_figures/task2_b_means_B1.png`（B2/B3 同路径）
-10. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_group_focus.csv`（仅保留 Group/交互相关项）
-11. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_posthoc_s_wwr_by_group.csv`（S题 WWR 事后配对比较）
-12. `results/research/task2_core_imm_suite/analysis2_measurement_reliability_s1_s4.csv`（S1-S4 信度：alpha/omega）
+1. `results/research/task2_core_imm_suite/<experience|sportfreq>/analysis2_core_imm_suite_s_models.csv`
+2. `results/research/task2_core_imm_suite/<experience|sportfreq>/analysis2_core_imm_suite_s_effects.csv`
+3. `results/research/task2_core_imm_suite/<experience|sportfreq>/analysis2_core_imm_suite_b_models.csv`
+4. `results/research/task2_core_imm_suite/<experience|sportfreq>/analysis2_core_imm_suite_b_effects.csv`
+5. `results/research/task2_core_imm_suite/<experience|sportfreq>/task2_core_imm_suite_figures/task2_s_model_aic.png`
+6. `results/research/task2_core_imm_suite/<experience|sportfreq>/task2_core_imm_suite_figures/task2_s_top_effects_forest.png`
+7. `results/research/task2_core_imm_suite/<experience|sportfreq>/task2_core_imm_suite_figures/task2_b_model_aic.png`
+8. `results/research/task2_core_imm_suite/<experience|sportfreq>/task2_core_imm_suite_figures/task2_b_top_effects_forest.png`
+9. `results/research/task2_core_imm_suite/<experience|sportfreq>/task2_core_imm_suite_figures/task2_b_means_B1.png`（B2/B3 同路径）
+10. `results/research/task2_core_imm_suite/<experience|sportfreq>/analysis2_core_imm_suite_group_focus.csv`（仅保留 Group/交互相关项）
+11. `results/research/task2_core_imm_suite/<experience|sportfreq>/analysis2_core_imm_suite_posthoc_s_wwr_by_group.csv`（S题 WWR 事后配对比较）
+12. `results/research/task2_core_imm_suite/<experience|sportfreq>/analysis2_measurement_reliability_s1_s4.csv`（S1-S4 信度：alpha/omega）
 
 ---
 

@@ -429,7 +429,7 @@ def _omega_total_pca(df_items: pd.DataFrame) -> float:
     return float(num / den)
 
 
-def _s1_s4_reliability(df: pd.DataFrame) -> pd.DataFrame:
+def _s1_s4_reliability(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
     items = [c for c in ["S1", "S2", "S3", "S4"] if c in df.columns]
     if len(items) < 2:
         return pd.DataFrame()
@@ -447,11 +447,11 @@ def _s1_s4_reliability(df: pd.DataFrame) -> pd.DataFrame:
         "omega_total_approx": _omega_total_pca(d_over),
     })
 
-    if "PeopleGroup4" in base.columns:
-        for g, dg in base.groupby("PeopleGroup4", dropna=False):
+    if group_col in base.columns:
+        for g, dg in base.groupby(group_col, dropna=False):
             dd = dg[items].dropna(how="any")
             rows.append({
-                "Scope": "PeopleGroup4",
+                "Scope": group_col,
                 "Group": g,
                 "n_rows_complete": int(len(dd)),
                 "alpha": _cronbach_alpha(dd),
@@ -583,7 +583,7 @@ def main():
     posthoc_path = out / "analysis2_core_imm_suite_posthoc_s_wwr_by_group.csv"
     posthoc.to_csv(posthoc_path, index=False, encoding="utf-8-sig")
 
-    rel = _s1_s4_reliability(df)
+    rel = _s1_s4_reliability(df, args.group_col)
     rel_path = out / "analysis2_measurement_reliability_s1_s4.csv"
     rel.to_csv(rel_path, index=False, encoding="utf-8-sig")
 
