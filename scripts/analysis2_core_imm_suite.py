@@ -33,6 +33,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scipy.stats import ttest_rel
 from statsmodels.formula.api import mixedlm
 from statsmodels.stats.multitest import multipletests
 
@@ -311,6 +312,154 @@ def _plot_b_group_means(df_b_c1: pd.DataFrame, group_col: str, out_dir: Path) ->
     return made
 
 
+def _extract_group_focus(effects: pd.DataFrame, group_col: str) -> pd.DataFrame:
+    if effects.empty:
+        return pd.DataFrame()
+    token = f"C({group_col})"
+    out = effects[effects["Term"].astype(str).str.contains(token, regex=False, na=False)].copy()
+    if not out.empty:
+        out = out.sort_values(["Domain", "DV", "Model", "p_holm", "p"], na_position="last").reset_index(drop=True)
+    return out
+
+
+def _posthoc_s_wwr_by_group(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
+    """Simple posthoc: within each DV x Group, paired contrasts across WWR (15/45/75).
+
+    Subject-level means are computed at each WWR, then paired t-tests are used for
+    15 vs 45, 45 vs 75, 15 vs 75. Holm correction within each DV x Group.
+    """
+    rows = []
+    pairs = [(15, 45), (45, 75), (15, 75)]
+
+    for dv in S_DVS:
+        if dv not in df.columns:
+            continue
+
+        sub = df.dropna(subset=["SubjectID", group_col, "WWR", dv]).copy()
+        if sub.empty:
+            continue
+
+        sub["WWR_num"] = pd.to_numeric(sub["WWR"], errors="coerce")
+        sub = sub[sub["WWR_num"].isin([15, 45, 75])].copy()
+        if sub.empty:
+            continue
+
+        subj = sub.groupby(["SubjectID", group_col, "WWR_num"], as_index=False)[dv].mean()
+
+        for g, dg in subj.groupby(group_col, dropna=False):
+            piv = dg.pivot_table(index="SubjectID", columns="WWR_num", values=dv, aggfunc="mean")
+            pvals_idx = []
+            for a, b in pairs:
+                if a not in piv.columns or b not in piv.columns:
+                    continue
+                dd = piv[[a, b]].dropna()
+                n = int(len(dd))
+                if n < 3:
+                    t, p = np.nan, np.nan
+                    mean_diff = np.nan
+                else:
+                    tt = ttest_rel(dd[b], dd[a], nan_policy="omit")
+                    t, p = float(tt.statistic), float(tt.pvalue)
+                    mean_diff = float((dd[b] - dd[a]).mean())
+
+                idx = len(rows)
+                pvals_idx.append(idx)
+                rows.append({
+                    "DV": dv,
+                    "Group": g,
+                    "Contrast": f"{b}-{a}",
+                    "n_pairs": n,
+                    "mean_diff": mean_diff,
+                    "t": t,
+                    "p": p,
+                    "p_holm": np.nan,
+                    "sig_holm": "",
+                })
+
+            # Holm within DV x Group
+            if pvals_idx:
+                pv = np.array([rows[i]["p"] for i in pvals_idx], dtype=float)
+                ok = np.isfinite(pv)
+                if ok.any():
+                    _, corr, _, _ = multipletests(pv[ok], method="holm")
+                    it = iter(corr.tolist())
+                    for i in pvals_idx:
+                        if pd.isna(rows[i]["p"]):
+                            continue
+                        ph = float(next(it))
+                        rows[i]["p_holm"] = ph
+                        rows[i]["sig_holm"] = _sigstar(ph)
+
+    out = pd.DataFrame(rows)
+    if not out.empty:
+        out = out.sort_values(["DV", "Group", "p_holm", "p"], na_position="last").reset_index(drop=True)
+    return out
+
+
+def _cronbach_alpha(df_items: pd.DataFrame) -> float:
+    x = df_items.dropna(axis=0, how="any").to_numpy(dtype=float)
+    n, k = x.shape if x.ndim == 2 else (0, 0)
+    if n < 3 or k < 2:
+        return np.nan
+    item_var = x.var(axis=0, ddof=1)
+    total_var = x.sum(axis=1).var(ddof=1)
+    if total_var <= 0:
+        return np.nan
+    return float((k / (k - 1)) * (1 - item_var.sum() / total_var))
+
+
+def _omega_total_pca(df_items: pd.DataFrame) -> float:
+    """Approximate omega total via first PC loadings on complete cases.
+    Lightweight no-extra-deps approximation for reporting consistency.
+    """
+    x = df_items.dropna(axis=0, how="any").to_numpy(dtype=float)
+    n, k = x.shape if x.ndim == 2 else (0, 0)
+    if n < 3 or k < 2:
+        return np.nan
+    x = (x - x.mean(axis=0)) / x.std(axis=0, ddof=1)
+    c = np.corrcoef(x, rowvar=False)
+    vals, vecs = np.linalg.eigh(c)
+    idx = np.argmax(vals)
+    load = vecs[:, idx] * np.sqrt(max(vals[idx], 0))
+    num = float(np.sum(load) ** 2)
+    den = num + float(np.sum(np.clip(1 - load ** 2, 0, None)))
+    if den <= 0:
+        return np.nan
+    return float(num / den)
+
+
+def _s1_s4_reliability(df: pd.DataFrame) -> pd.DataFrame:
+    items = [c for c in ["S1", "S2", "S3", "S4"] if c in df.columns]
+    if len(items) < 2:
+        return pd.DataFrame()
+
+    base = df.dropna(subset=items, how="all").copy()
+    rows = []
+
+    # overall
+    d_over = base[items].dropna(how="any")
+    rows.append({
+        "Scope": "overall",
+        "Group": "ALL",
+        "n_rows_complete": int(len(d_over)),
+        "alpha": _cronbach_alpha(d_over),
+        "omega_total_approx": _omega_total_pca(d_over),
+    })
+
+    if "PeopleGroup4" in base.columns:
+        for g, dg in base.groupby("PeopleGroup4", dropna=False):
+            dd = dg[items].dropna(how="any")
+            rows.append({
+                "Scope": "PeopleGroup4",
+                "Group": g,
+                "n_rows_complete": int(len(dd)),
+                "alpha": _cronbach_alpha(dd),
+                "omega_total_approx": _omega_total_pca(dd),
+            })
+
+    return pd.DataFrame(rows)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Analysis-2 Task2 core_Imm_suite: layered LMM for S1-S5 and B1-B3")
     ap.add_argument("--long-csv", type=Path, required=True)
@@ -419,6 +568,22 @@ def main():
     b_means_pngs = _plot_b_group_means(b_df, args.group_col, fig_dir)
     png_outputs.extend([str(Path(p).relative_to(out)) for p in b_means_pngs])
 
+    # Additional non-overlapping supplements for submission readiness
+    group_focus = pd.concat([
+        _extract_group_focus(s_eff, args.group_col),
+        _extract_group_focus(b_eff, args.group_col),
+    ], ignore_index=True) if (not s_eff.empty or not b_eff.empty) else pd.DataFrame()
+    group_focus_path = out / "analysis2_core_imm_suite_group_focus.csv"
+    group_focus.to_csv(group_focus_path, index=False, encoding="utf-8-sig")
+
+    posthoc = _posthoc_s_wwr_by_group(df, args.group_col)
+    posthoc_path = out / "analysis2_core_imm_suite_posthoc_s_wwr_by_group.csv"
+    posthoc.to_csv(posthoc_path, index=False, encoding="utf-8-sig")
+
+    rel = _s1_s4_reliability(df)
+    rel_path = out / "analysis2_measurement_reliability_s1_s4.csv"
+    rel.to_csv(rel_path, index=False, encoding="utf-8-sig")
+
     summary = {
         "task": "analysis-2/task2 core_imm_suite",
         "group_col": args.group_col,
@@ -429,6 +594,9 @@ def main():
             str(s_models_path.relative_to(out)),
             str(b_eff_path.relative_to(out)),
             str(b_models_path.relative_to(out)),
+            str(group_focus_path.relative_to(out)),
+            str(posthoc_path.relative_to(out)),
+            str(rel_path.relative_to(out)),
         ] + png_outputs,
         "notes": [
             "S-items: Model1/2/3 include WWR, Complexity, Group (up to 3-way interaction).",

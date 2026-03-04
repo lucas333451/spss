@@ -95,6 +95,9 @@
 7. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_figures/task2_b_model_aic.png`
 8. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_figures/task2_b_top_effects_forest.png`
 9. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_figures/task2_b_means_B1.png`（B2/B3 同路径）
+10. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_group_focus.csv`（仅保留 Group/交互相关项）
+11. `results/research/task2_core_imm_suite/analysis2_core_imm_suite_posthoc_s_wwr_by_group.csv`（S题 WWR 事后配对比较）
+12. `results/research/task2_core_imm_suite/analysis2_measurement_reliability_s1_s4.csv`（S1-S4 信度：alpha/omega）
 
 ---
 
