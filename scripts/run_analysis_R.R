@@ -167,7 +167,7 @@ writeLines(out_txt, file.path(out_dir, "lmer_summary_afford4.txt"))
 padj <- opt$`p-adjust`
 
 # emmeans helpers
-_write_emm_pairs <- function(obj, out_path, extra_cols=list()) {
+write_emm_pairs <- function(obj, out_path, extra_cols=list()) {
   s <- summary(obj, infer=c(TRUE, TRUE), adjust=ifelse(tolower(padj)!="none", padj, "none"))
   df <- as.data.frame(s)
   for (nm in names(extra_cols)) {
@@ -186,22 +186,22 @@ write_csv(contr_df, file.path(out_dir, "simple_effects_complexity_by_wwr_afford4
 # WWR pairwise within each Complexity
 emm_w_by_c <- emmeans(fit, ~ WWR | Complexity)
 pairs_w_by_c <- pairs(emm_w_by_c)
-_write_emm_pairs(pairs_w_by_c, file.path(out_dir, "emmeans_pairs_wwr_within_complexity_afford4.csv"))
+write_emm_pairs(pairs_w_by_c, file.path(out_dir, "emmeans_pairs_wwr_within_complexity_afford4.csv"))
 
 # Complexity pairwise within each WWR (redundant with simple_effects, but in standard emmeans format)
 pairs_c_by_w <- pairs(emm_c_by_w)
-_write_emm_pairs(pairs_c_by_w, file.path(out_dir, "emmeans_pairs_complexity_within_wwr_afford4.csv"))
+write_emm_pairs(pairs_c_by_w, file.path(out_dir, "emmeans_pairs_complexity_within_wwr_afford4.csv"))
 
 # Main-effect pairwise tables (collapsed over other fixed effects)
 # (Binary groups: still exported for paper-ready reporting)
 emm_wwr <- emmeans(fit, ~ WWR)
-_write_emm_pairs(pairs(emm_wwr), file.path(out_dir, "emmeans_pairs_wwr_main_afford4.csv"))
+write_emm_pairs(pairs(emm_wwr), file.path(out_dir, "emmeans_pairs_wwr_main_afford4.csv"))
 
 emm_exp <- emmeans(fit, ~ ExperienceGroup)
-_write_emm_pairs(pairs(emm_exp), file.path(out_dir, "emmeans_pairs_experiencegroup_main_afford4.csv"))
+write_emm_pairs(pairs(emm_exp), file.path(out_dir, "emmeans_pairs_experiencegroup_main_afford4.csv"))
 
 emm_sf <- emmeans(fit, ~ SportFreqGroup)
-_write_emm_pairs(pairs(emm_sf), file.path(out_dir, "emmeans_pairs_sportfreqgroup_main_afford4.csv"))
+write_emm_pairs(pairs(emm_sf), file.path(out_dir, "emmeans_pairs_sportfreqgroup_main_afford4.csv"))
 
 # metadata json
 meta <- list(
