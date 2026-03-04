@@ -134,6 +134,10 @@ def main():
     (out / "model_diagnostics_meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
     md = []
+    md.append("---")
+    md.append("title: \"Model diagnostics\"")
+    md.append("---")
+    md.append("")
     md.append("# Model diagnostics (Supplement)")
     md.append("")
     md.append("This page provides basic, journal-style diagnostics for the **primary** LMM (Afford4).")
@@ -169,13 +173,36 @@ def main():
         if p.returncode == 0:
             md_path = out / "model_diagnostics.md"
             html_path = out / "model_diagnostics.html"
-            subprocess.run(["pandoc", str(md_path), "-o", str(html_path), "--standalone"], check=False)
+            subprocess.run(
+                [
+                    "pandoc",
+                    str(md_path.name),
+                    "-o",
+                    str(html_path.name),
+                    "--standalone",
+                    "--resource-path",
+                    str(out),
+                ],
+                check=False,
+                cwd=str(out),
+            )
             if html_path.exists():
                 outputs.append("model_diagnostics.html")
 
             pdf_path = out / "model_diagnostics.pdf"
             # PDF may fail if LaTeX is missing; keep best-effort
-            subprocess.run(["pandoc", str(md_path), "-o", str(pdf_path)], check=False)
+            subprocess.run(
+                [
+                    "pandoc",
+                    str(md_path.name),
+                    "-o",
+                    str(pdf_path.name),
+                    "--resource-path",
+                    str(out),
+                ],
+                check=False,
+                cwd=str(out),
+            )
             if pdf_path.exists():
                 outputs.append("model_diagnostics.pdf")
     except Exception:
