@@ -191,11 +191,9 @@ def main():
 
         # means for plotting
         m = (
-            subj.groupby(["Group", "Repetition", "WWR"], as_index=False)["score"]
-            .agg(["mean", "std", "count"])
-            .reset_index()
+            subj.groupby(["Group", "Repetition", "WWR"], as_index=False)
+            .agg(mean=("score", "mean"), std=("score", "std"), n=("score", "count"))
         )
-        m.columns = ["Group", "Repetition", "WWR", "mean", "std", "n"]
         m["se"] = m["std"] / np.sqrt(m["n"].clip(lower=1))
         m["DV"] = dv
         mean_rows.append(m)
