@@ -285,6 +285,118 @@ def _plot_top_effects_forest(effects: pd.DataFrame, out_png: Path, title: str, t
     return True
 
 
+def _effect_bucket(term: str, group_col: str) -> str | None:
+    t = str(term)
+    tok_w = "C(WWR)"
+    tok_c = "C(Complexity)"
+    tok_g = f"C({group_col})"
+
+    has_w = tok_w in t
+    has_c = tok_c in t
+    has_g = tok_g in t
+
+    if has_w and has_c and has_g:
+        return "3-way"
+    if has_w and has_c:
+        return "WWR×Complexity"
+    if has_w and has_g:
+        return "WWR×Group"
+    if has_c and has_g:
+        return "Complexity×Group"
+    if has_w:
+        return "WWR"
+    if has_c:
+        return "Complexity"
+    if has_g:
+        return "Group"
+    return None
+
+
+def _plot_factor_overview(effects: pd.DataFrame, group_col: str, domain: str, out_png: Path) -> bool:
+    if effects.empty:
+        return False
+
+    if domain == "S":
+        model_name = "Model3_three_way"
+        effect_order = ["WWR", "Complexity", "Group", "WWR×Complexity", "WWR×Group", "Complexity×Group", "3-way"]
+    else:
+        model_name = "Model2_two_way_adj"
+        effect_order = ["WWR", "Group", "WWR×Group"]
+
+    x = effects[effects["Model"].astype(str) == model_name].copy()
+    if x.empty:
+        return False
+
+    x["Effect"] = x["Term"].apply(lambda s: _effect_bucket(s, group_col))
+    x = x[x["Effect"].notna()].copy()
+    if x.empty:
+        return False
+
+    p_col = "p_holm" if "p_holm" in x.columns else "p"
+    x["p_use"] = pd.to_numeric(x[p_col], errors="coerce")
+    x.loc[~np.isfinite(x["p_use"]), "p_use"] = pd.to_numeric(x.get("p", np.nan), errors="coerce")
+
+    agg = (
+        x.groupby(["DV", "Effect"], as_index=False)["p_use"]
+        .min()
+        .rename(columns={"p_use": "p_min"})
+    )
+    if agg.empty:
+        return False
+
+    def tier(p):
+        if not np.isfinite(p):
+            return np.nan
+        if p < 0.001:
+            return 3
+        if p < 0.01:
+            return 2
+        if p < 0.05:
+            return 1
+        return 0
+
+    agg["tier"] = agg["p_min"].apply(tier)
+    mat = agg.pivot_table(index="DV", columns="Effect", values="tier", aggfunc="first")
+    pmat = agg.pivot_table(index="DV", columns="Effect", values="p_min", aggfunc="first")
+
+    # stable order
+    dv_order = [dv for dv in (S_DVS if domain == "S" else B_DVS) if dv in mat.index]
+    mat = mat.reindex(index=dv_order, columns=[e for e in effect_order if e in mat.columns])
+    pmat = pmat.reindex(index=mat.index, columns=mat.columns)
+    if mat.empty:
+        return False
+
+    annot = pmat.copy().astype(object)
+    for r in annot.index:
+        for c in annot.columns:
+            p = annot.loc[r, c]
+            if pd.isna(p):
+                annot.loc[r, c] = ""
+            else:
+                annot.loc[r, c] = f"p={float(p):.4g}{_sigstar(float(p))}"
+
+    plt.figure(figsize=(11 if domain == "S" else 8.5, max(2.8, 0.62 * len(mat.index) + 1.2)))
+    sns.heatmap(
+        mat,
+        cmap=sns.color_palette(["#B5523D", "#E8D5CE", "#AFC1DA", "#4E79A7"], as_cmap=True),
+        vmin=0,
+        vmax=3,
+        annot=annot,
+        fmt="",
+        linewidths=0.8,
+        linecolor="#efefef",
+        cbar_kws={"label": "significance tier (0=ns, 1=<.05, 2=<.01, 3=<.001)"},
+    )
+    plt.title(f"Task2 factor overview | {domain}-items | group={group_col}")
+    plt.xlabel("Effect")
+    plt.ylabel("DV")
+    plt.tight_layout()
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(out_png, dpi=240)
+    plt.close()
+    return True
+
+
 def _plot_b_group_means(df_b_c1: pd.DataFrame, group_col: str, out_dir: Path) -> list[str]:
     made = []
     if df_b_c1.empty:
@@ -579,6 +691,14 @@ def main():
     b_forest_png = fig_dir / "task2_b_top_effects_forest.png"
     if _plot_top_effects_forest(b_eff, b_forest_png, "Task2 B-suite: Top fixed effects (Holm-corrected)"):
         png_outputs.append(str(b_forest_png.relative_to(out)))
+
+    s_overview_png = fig_dir / "task2_s_factor_overview_heatmap.png"
+    if _plot_factor_overview(s_eff, args.group_col, domain="S", out_png=s_overview_png):
+        png_outputs.append(str(s_overview_png.relative_to(out)))
+
+    b_overview_png = fig_dir / "task2_b_factor_overview_heatmap.png"
+    if _plot_factor_overview(b_eff, args.group_col, domain="B", out_png=b_overview_png):
+        png_outputs.append(str(b_overview_png.relative_to(out)))
 
     b_means_pngs = _plot_b_group_means(b_df, args.group_col, fig_dir)
     png_outputs.extend([str(Path(p).relative_to(out)) for p in b_means_pngs])

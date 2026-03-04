@@ -17,9 +17,9 @@ def _candidates(results_root: Path, branch: str) -> list[tuple[str, str, str]]:
             "Primary interaction overview on Afford4 (WWR × Complexity).",
         ),
         (
-            "Fig02_task2_s_model_aic",
-            f"research/analysis-2/task2/experience/{b}/task2_core_imm_suite_figures/task2_s_model_aic.png",
-            "Model selection evidence for S-items (AIC).",
+            "Fig02_task2_s_factor_overview",
+            f"research/analysis-2/task2/experience/{b}/task2_core_imm_suite_figures/task2_s_factor_overview_heatmap.png",
+            "Task2 S-items factor overview heatmap (WWR/Complexity/Group + interactions; p-tier encoded).",
         ),
         (
             "Fig03_task2_s_effects_forest",
@@ -27,9 +27,9 @@ def _candidates(results_root: Path, branch: str) -> list[tuple[str, str, str]]:
             "Key fixed-effect directions and confidence intervals (S-items).",
         ),
         (
-            "Fig04_task2_b_model_aic",
-            f"research/analysis-2/task2/experience/{b}/task2_core_imm_suite_figures/task2_b_model_aic.png",
-            "Model selection evidence for B-items (C1-only).",
+            "Fig04_task2_b_factor_overview",
+            f"research/analysis-2/task2/experience/{b}/task2_core_imm_suite_figures/task2_b_factor_overview_heatmap.png",
+            "Task2 B-items factor overview heatmap (C1-only; WWR/Group and interaction).",
         ),
         (
             "Fig05_task2_b_effects_forest",
