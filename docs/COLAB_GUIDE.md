@@ -123,7 +123,9 @@ print("✅ 当前使用文件:", EXCEL_FILE)
 # !python scripts/pipeline.py --excel "$EXCEL_FILE" --sheet 0 --out-root results --with-r
 #
 # 如果你希望按“主分析 Satterthwaite + 稳健性 Kenward–Roger”一次性跑完并生成 p 值对比表：
-# 需要确保你安装了 pbkrtest（KR 必需），建议同时装 performance（用于 Nakagawa R² 输出）和 effectsize（用于标准化参数/partial η²）：
+# 需要确保你安装了 pbkrtest（KR 必需），建议同时装 performance（用于 Nakagawa R² 输出）和 effectsize（用于标准化参数/partial η²）。
+# 跑完后优先查看：results/r_model/effectsize_eta_squared_partial_afford4.csv
+# 如果这个文件没生成，再看：results/r_model/effectsize_eta_squared_partial_status.txt
 # !R -q -e "install.packages(c('pbkrtest','performance','effectsize'), repos='https://cloud.r-project.org')"
 # !python scripts/pipeline.py --excel "$EXCEL_FILE" --sheet 0 --out-root results --with-r-robustness
 ```

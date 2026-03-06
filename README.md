@@ -38,7 +38,7 @@
 - `scripts/build_report_data_md.py` — build a data-first markdown report (key tables embedded directly, minimal index dependency)
 - `docs/PROJECT_OVERVIEW.md` — concise orientation
 - `docs/COLAB_GUIDE.md` — Colab deployment guide (Python + optional R)
-- `scripts/run_analysis_R.R` — optional R re-run (lme4/lmerTest/emmeans) for paper-ready inference
+- `scripts/run_analysis_R.R` — optional R re-run (lme4/lmerTest/emmeans/effectsize) for paper-ready inference + partial eta² export
 - `RESULTS_MAP.md` — one-page map: for each research question, which 3 files to read first
 - `notebooks/spss_colab.ipynb` — ready-to-run Colab notebook
 
@@ -208,6 +208,10 @@ python scripts/pipeline.py \
 - `results/FIGURE_INDEX.md` (PNG-first figure map: figure name → topic → path)
 - `results/figures_main_paper/raw/` and `results/figures_main_paper/qc/` (two main-text figure sets, each with index + bilingual captions + manifest)
 - `results/analysis_report_bundle.md` (one-file markdown bundle for easy sharing)
+- `results/r_model/anova_type3_afford4.csv` (Type III ANOVA table from lmerTest; basis for partial eta² export)
+- `results/r_model/effectsize_eta_squared_partial_afford4.csv` (partial eta² table; preferred file for reporting WWR / Complexity / group effect sizes)
+- `results/r_model/effectsize_eta_squared_partial_summary_afford4.csv` (simplified summary: term, partial eta², magnitude)
+- `results/r_model/effectsize_eta_squared_partial_status.txt` (written only when partial eta² export is unavailable; explains why)
 
 ---
 

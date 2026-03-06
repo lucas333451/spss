@@ -204,6 +204,10 @@ python scripts/pipeline.py \
 - `results/FIGURE_INDEX.md`（PNG优先图索引：图名→问题→路径）
 - `results/figures_main_paper/raw/` 与 `results/figures_main_paper/qc/`（主文 6-8 张核心图两套输出，各自含索引 + 双语caption草稿 + manifest）
 - `results/analysis_report_bundle.md`（将所有结果汇总成一个 markdown）
+- `results/r_model/anova_type3_afford4.csv`（lmerTest 的 Type III ANOVA 表；partial η² 的基础表）
+- `results/r_model/effectsize_eta_squared_partial_afford4.csv`（partial η² 主表；回答 WWR / Complexity / 分组效应量时优先查看）
+- `results/r_model/effectsize_eta_squared_partial_summary_afford4.csv`（简化汇总：term、partial η²、量级）
+- `results/r_model/effectsize_eta_squared_partial_status.txt`（仅在 partial η² 未成功导出时生成，说明失败原因）
 
 ---
 

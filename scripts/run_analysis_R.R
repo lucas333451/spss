@@ -150,14 +150,59 @@ if (.has_effectsize) {
 
 # 2) Partial eta^2 from Type III ANOVA table (lmerTest)
 # Note: This is a common journal-friendly summary; interpret with care.
-if (.has_effectsize) {
-  a3 <- try(lmerTest::anova(fit, type = 3, ddf = if (use_kr) "Kenward-Roger" else "Satterthwaite"), silent = TRUE)
-  if (!inherits(a3, "try-error")) {
+eta_status <- list(ok = FALSE, reason = NULL)
+a3 <- try(lmerTest::anova(fit, type = 3, ddf = if (use_kr) "Kenward-Roger" else "Satterthwaite"), silent = TRUE)
+if (!inherits(a3, "try-error")) {
+  write_csv(as.data.frame(a3), file.path(out_dir, "anova_type3_afford4.csv"))
+
+  if (.has_effectsize) {
     et <- try(effectsize::eta_squared(a3, partial = TRUE), silent = TRUE)
     if (!inherits(et, "try-error")) {
-      write_csv(as.data.frame(et), file.path(out_dir, "effectsize_eta_squared_partial_afford4.csv"))
+      et_df <- as.data.frame(et)
+      names(et_df) <- make.names(names(et_df))
+
+      if ("Eta2_partial" %in% names(et_df)) {
+        et_df <- et_df %>% mutate(
+          effect_size_magnitude = dplyr::case_when(
+            Eta2_partial < 0.01 ~ "very_small",
+            Eta2_partial < 0.06 ~ "small",
+            Eta2_partial < 0.14 ~ "medium",
+            TRUE ~ "large"
+          )
+        )
+      }
+
+      write_csv(et_df, file.path(out_dir, "effectsize_eta_squared_partial_afford4.csv"))
+
+      if (all(c("Parameter", "Eta2_partial") %in% names(et_df))) {
+        eta_summary <- et_df %>%
+          transmute(
+            term = as.character(.data$Parameter),
+            eta2_partial = .data$Eta2_partial,
+            magnitude = if ("effect_size_magnitude" %in% names(et_df)) .data$effect_size_magnitude else NA_character_
+          )
+        write_csv(eta_summary, file.path(out_dir, "effectsize_eta_squared_partial_summary_afford4.csv"))
+      }
+
+      eta_status$ok <- TRUE
+    } else {
+      eta_status$reason <- paste("effectsize::eta_squared failed:", as.character(et))
     }
+  } else {
+    eta_status$reason <- "R package 'effectsize' is not installed; partial eta^2 not exported."
   }
+} else {
+  eta_status$reason <- paste("lmerTest::anova(type=3) failed:", as.character(a3))
+}
+
+if (!isTRUE(eta_status$ok)) {
+  writeLines(
+    c(
+      "partial eta^2 export not available for this run.",
+      paste("reason:", if (is.null(eta_status$reason) || is.na(eta_status$reason) || eta_status$reason == "") "unknown" else eta_status$reason)
+    ),
+    file.path(out_dir, "effectsize_eta_squared_partial_status.txt")
+  )
 }
 
 # model summary (text)
@@ -229,6 +274,9 @@ if (.has_performance) {
   }
 }
 
+meta$eta_squared_partial_available <- isTRUE(eta_status$ok)
+meta$eta_squared_partial_reason <- if (!isTRUE(eta_status$ok)) eta_status$reason else NULL
+
 writeLines(jsonlite::toJSON(meta, auto_unbox=TRUE, pretty=TRUE), file.path(out_dir, "r_model_meta.json"))
 
 outs <- c(
@@ -243,7 +291,10 @@ outs <- c(
   "r_model_meta.json"
 )
 if (file.exists(file.path(out_dir, "r2_nakagawa_afford4.csv"))) outs <- c(outs, "r2_nakagawa_afford4.csv")
+if (file.exists(file.path(out_dir, "anova_type3_afford4.csv"))) outs <- c(outs, "anova_type3_afford4.csv")
 if (file.exists(file.path(out_dir, "effectsize_standardized_parameters_afford4.csv"))) outs <- c(outs, "effectsize_standardized_parameters_afford4.csv")
 if (file.exists(file.path(out_dir, "effectsize_eta_squared_partial_afford4.csv"))) outs <- c(outs, "effectsize_eta_squared_partial_afford4.csv")
+if (file.exists(file.path(out_dir, "effectsize_eta_squared_partial_summary_afford4.csv"))) outs <- c(outs, "effectsize_eta_squared_partial_summary_afford4.csv")
+if (file.exists(file.path(out_dir, "effectsize_eta_squared_partial_status.txt"))) outs <- c(outs, "effectsize_eta_squared_partial_status.txt")
 
 cat(jsonlite::toJSON(list(out_dir=out_dir, long_csv=long_csv, outputs=outs), auto_unbox=TRUE))
