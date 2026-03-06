@@ -216,6 +216,28 @@ def main():
             elif args.with_r:
                 _run_r(args.out_root / "r_model", str(args.r_df_method))
 
+            # analysis-2/task2 aligned R effect-size exports (DV-level, not just Afford4)
+            try:
+                qc_exclude = "孙校聪,康少勇,张钰鹏,杨可,洪婷婷,陈韬,高梓楠,赵国宏"
+                for group_tag, group_col in [("experience", "ExperienceGroup"), ("sportfreq", "SportFreqGroup")]:
+                    for branch_tag, exclude in [("raw", ""), ("qc", qc_exclude)]:
+                        out_dir = args.out_root / "research" / "analysis-2" / "task2" / group_tag / branch_tag / "r_effectsize"
+                        cmd = [
+                            args.rscript,
+                            "scripts/run_analysis2_task2_R.R",
+                            "--long-csv", str(out_long / "long_format.csv"),
+                            "--out-dir", str(out_dir),
+                            "--group-col", group_col,
+                            "--exclude-subjects", exclude,
+                            "--df-method", "Kenward-Roger" if args.with_r_robustness else str(args.r_df_method),
+                        ]
+                        print("$", " ".join(cmd))
+                        p = subprocess.run(cmd)
+                        if p.returncode != 0:
+                            print(f"[pipeline] analysis2/task2 R effect-size export failed: group={group_col} branch={branch_tag} rc={p.returncode}")
+            except Exception as e:
+                print(f"[pipeline] Failed to run analysis2/task2 R effect-size exports: {e}")
+
     if not args.skip_bundle:
         # build figure index (PNG-first navigation)
         run([
