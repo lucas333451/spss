@@ -211,7 +211,8 @@ python scripts/pipeline.py \
 - `results/r_model/anova_type3_afford4.csv` (Type III ANOVA table from lmerTest; basis for partial eta² export)
 - `results/r_model/effectsize_eta_squared_partial_afford4.csv` (partial eta² table; preferred file for reporting WWR / Complexity / group effect sizes)
 - `results/r_model/effectsize_eta_squared_partial_summary_afford4.csv` (simplified summary: term, partial eta², magnitude)
-- `results/r_model/effectsize_eta_squared_partial_afford4.png` (journal-style PNG summary of partial eta² for fixed terms; Building and Environment-oriented clean style)
+- `results/r_model/effectsize_eta_squared_partial_afford4.png` (full PNG overview of partial eta² for fixed terms; soft teal + sand-neutral palette, Building and Environment-oriented)
+- `results/r_model/effectsize_eta_squared_partial_afford4_core.png` (main-paper PNG; core fixed terms only: WWR / Complexity / ExperienceGroup / SportFreqGroup / Repetition / Position)
 - `results/r_model/effectsize_eta_squared_partial_status.txt` (written only when partial eta² export is unavailable; explains why)
 
 ---

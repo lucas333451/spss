@@ -19,34 +19,45 @@ sig_tier <- function(p) {
   ""
 }
 
-plot_eta2_bar <- function(df, out_path, title_txt) {
+plot_eta2_bar <- function(df, out_path, title_txt, core_only = FALSE) {
   if (is.null(df) || nrow(df) == 0) return(FALSE)
   if (!("term" %in% names(df)) || !("eta2_partial" %in% names(df))) return(FALSE)
+
+  core_terms <- c("Complexity", "WWR", "ExperienceGroup", "SportFreqGroup", "Repetition", "Position")
 
   z <- df %>%
     filter(!is.na(.data$eta2_partial)) %>%
     mutate(
       term = as.character(.data$term),
       magnitude = if ("magnitude" %in% names(df)) as.character(.data$magnitude) else "",
-      label = sprintf("%.3f", .data$eta2_partial)
-    ) %>%
-    arrange(.data$eta2_partial)
+      sig = if ("sig" %in% names(df)) as.character(.data$sig) else "",
+      label = ifelse(is.na(.data$sig) | .data$sig == "", sprintf("%.3f", .data$eta2_partial), paste0(sprintf("%.3f", .data$eta2_partial), .data$sig))
+    )
+
+  if (core_only) {
+    z <- z %>% filter(.data$term %in% core_terms)
+    z$term <- factor(z$term, levels = rev(core_terms[core_terms %in% z$term]))
+    z <- z %>% arrange(.data$term)
+  } else {
+    z <- z %>% arrange(.data$eta2_partial)
+  }
 
   if (nrow(z) == 0) return(FALSE)
 
   cols <- c(
-    very_small = "#BFC7D5",
-    small = "#9DB7D5",
-    medium = "#5B8CC0",
-    large = "#2F5D8A"
+    very_small = "#D9D4C7",
+    small = "#AFC8C3",
+    medium = "#6FA7A1",
+    large = "#2F7C80"
   )
   fill_cols <- unname(cols[ifelse(z$magnitude %in% names(cols), z$magnitude, "small")])
 
-  png(out_path, width = 2400, height = 1400, res = 300, bg = "white")
+  png(out_path, width = if (core_only) 2200 else 2400, height = if (core_only) 1100 else 1400, res = 300, bg = "white")
   old_par <- par(no.readonly = TRUE)
   on.exit({par(old_par); dev.off()}, add = TRUE)
 
-  par(mar = c(5.2, 10.5, 3.2, 1.2), family = "sans")
+  par(mar = c(5.2, if (core_only) 7.8 else 10.5, 3.0, 1.2), family = "sans")
+  xmax <- max(z$eta2_partial, na.rm = TRUE)
   bp <- barplot(
     z$eta2_partial,
     names.arg = z$term,
@@ -54,22 +65,22 @@ plot_eta2_bar <- function(df, out_path, title_txt) {
     las = 1,
     col = fill_cols,
     border = NA,
-    xlim = c(0, max(z$eta2_partial, na.rm = TRUE) * 1.18),
+    xlim = c(0, xmax * if (core_only) 1.12 else 1.18),
     xlab = expression(paste("Partial ", eta^2)),
     main = title_txt,
-    cex.names = 0.95,
+    cex.names = if (core_only) 1.0 else 0.95,
     cex.lab = 1.05,
     cex.main = 1.05
   )
 
-  abline(v = c(0.01, 0.06, 0.14), col = c("#C7CDD6", "#9AA7B7", "#6B7C93"), lty = c(3, 2, 2), lwd = c(1, 1.2, 1.2))
-  text(x = z$eta2_partial, y = bp, labels = z$label, pos = 4, cex = 0.9, col = "#1F2D3D", xpd = TRUE)
+  abline(v = c(0.01, 0.06, 0.14), col = c("#D8D3C8", "#A9B9B5", "#6FA7A1"), lty = c(3, 2, 2), lwd = c(1, 1.1, 1.1))
+  text(x = z$eta2_partial, y = bp, labels = z$label, pos = 4, cex = 0.9, col = "#294246", xpd = TRUE)
   legend(
     "bottomright",
     legend = c("very small (<0.01)", "small (0.01-0.06)", "medium (0.06-0.14)", "large (>=0.14)"),
     fill = cols[c("very_small", "small", "medium", "large")],
     bty = "n",
-    cex = 0.9
+    cex = 0.88
   )
 
   TRUE
@@ -257,7 +268,14 @@ if (!inherits(a3, "try-error")) {
         plot_eta2_bar(
           eta_summary,
           file.path(out_dir, "effectsize_eta_squared_partial_afford4.png"),
-          "Effect sizes of fixed terms on Afford4"
+          "Partial η² of fixed effects on Afford4",
+          core_only = FALSE
+        )
+        plot_eta2_bar(
+          eta_summary,
+          file.path(out_dir, "effectsize_eta_squared_partial_afford4_core.png"),
+          "Partial η² of core fixed effects on Afford4",
+          core_only = TRUE
         )
       }
 
@@ -373,6 +391,7 @@ if (file.exists(file.path(out_dir, "effectsize_standardized_parameters_afford4.c
 if (file.exists(file.path(out_dir, "effectsize_eta_squared_partial_afford4.csv"))) outs <- c(outs, "effectsize_eta_squared_partial_afford4.csv")
 if (file.exists(file.path(out_dir, "effectsize_eta_squared_partial_summary_afford4.csv"))) outs <- c(outs, "effectsize_eta_squared_partial_summary_afford4.csv")
 if (file.exists(file.path(out_dir, "effectsize_eta_squared_partial_afford4.png"))) outs <- c(outs, "effectsize_eta_squared_partial_afford4.png")
+if (file.exists(file.path(out_dir, "effectsize_eta_squared_partial_afford4_core.png"))) outs <- c(outs, "effectsize_eta_squared_partial_afford4_core.png")
 if (file.exists(file.path(out_dir, "effectsize_eta_squared_partial_status.txt"))) outs <- c(outs, "effectsize_eta_squared_partial_status.txt")
 
 cat(jsonlite::toJSON(list(out_dir=out_dir, long_csv=long_csv, outputs=outs), auto_unbox=TRUE))

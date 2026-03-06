@@ -18,8 +18,8 @@ def _candidates(results_root: Path, branch: str) -> list[tuple[str, str, str]]:
         ),
         (
             "Fig01b_afford4_eta2",
-            "r_model/effectsize_eta_squared_partial_afford4.png",
-            "Partial eta² overview for fixed terms on Afford4 (clean journal-style effect-size figure).",
+            "r_model/effectsize_eta_squared_partial_afford4_core.png",
+            "Partial eta² overview for core fixed terms on Afford4 (clean journal-style effect-size figure).",
         ),
         (
             "Fig02_task2_s_factor_overview",
