@@ -42,6 +42,8 @@ plot_eta2_bar <- function(df, out_path, title_txt, core_only = FALSE) {
     filter(!is.na(.data$eta2_partial)) %>%
     mutate(
       term = as.character(.data$term),
+      model = if ("Model" %in% names(df)) as.character(.data$Model) else "",
+      term_model = ifelse(model == "", term, paste0(model, " | ", term)),
       magnitude = if ("magnitude" %in% names(df)) as.character(.data$magnitude) else "",
       sig = if ("sig" %in% names(df)) as.character(.data$sig) else "",
       label = ifelse(is.na(.data$sig) | .data$sig == "", sprintf("%.3f", .data$eta2_partial), paste0(sprintf("%.3f", .data$eta2_partial), .data$sig))
@@ -49,8 +51,14 @@ plot_eta2_bar <- function(df, out_path, title_txt, core_only = FALSE) {
 
   if (core_only) {
     z <- z %>% filter(.data$term %in% core_terms)
-    z$term <- factor(z$term, levels = rev(core_terms[core_terms %in% z$term]))
-    z <- z %>% arrange(.data$term)
+    model_levels <- unique(z$model)
+    combo_levels <- c()
+    for (mm in model_levels) {
+      keep_terms <- core_terms[core_terms %in% z$term[z$model == mm]]
+      combo_levels <- c(combo_levels, paste0(mm, " | ", keep_terms))
+    }
+    z$term_model <- factor(z$term_model, levels = rev(combo_levels))
+    z <- z %>% arrange(.data$model, .data$term)
   } else {
     z <- z %>% arrange(.data$eta2_partial)
   }
@@ -67,7 +75,7 @@ plot_eta2_bar <- function(df, out_path, title_txt, core_only = FALSE) {
   xmax <- max(z$eta2_partial, na.rm = TRUE)
   bp <- barplot(
     z$eta2_partial,
-    names.arg = z$term,
+    names.arg = z$term_model,
     horiz = TRUE,
     las = 1,
     col = fill_cols,
