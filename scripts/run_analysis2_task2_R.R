@@ -198,13 +198,13 @@ group_col <- opt$`group-col`
 if (!(group_col %in% names(df))) stop(paste("Missing group column:", group_col))
 
 s_specs <- list(
-  c("Model1_main", "{dv} ~ WWR + Complexity + {g}"),
-  c("Model2_two_way", "{dv} ~ WWR * Complexity + WWR * {g} + Complexity * {g}"),
-  c("Model3_three_way", "{dv} ~ WWR * Complexity * {g}")
+  c("Model1_main", "{dv} ~ WWR + Complexity + {g} + (1 + Complexity | SubjectID)"),
+  c("Model2_two_way", "{dv} ~ WWR * Complexity + WWR * {g} + Complexity * {g} + (1 + Complexity | SubjectID)"),
+  c("Model3_three_way", "{dv} ~ WWR * Complexity * {g} + (1 + Complexity | SubjectID)")
 )
 b_specs <- list(
-  c("Model1_main_adj", "{dv} ~ WWR + {g}"),
-  c("Model2_two_way_adj", "{dv} ~ WWR * {g}")
+  c("Model1_main_adj", "{dv} ~ WWR + {g} + (1 | SubjectID)"),
+  c("Model2_two_way_adj", "{dv} ~ WWR * {g} + (1 | SubjectID)")
 )
 
 status_rows <- list(); eta_rows <- list(); anova_rows <- list()
