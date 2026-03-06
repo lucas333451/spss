@@ -17,6 +17,11 @@ def _candidates(results_root: Path, branch: str) -> list[tuple[str, str, str]]:
             "Primary interaction overview on Afford4 (WWR × Complexity).",
         ),
         (
+            "Fig01b_afford4_eta2",
+            "r_model/effectsize_eta_squared_partial_afford4.png",
+            "Partial eta² overview for fixed terms on Afford4 (clean journal-style effect-size figure).",
+        ),
+        (
             "Fig02_task2_s_factor_overview",
             f"research/analysis-2/task2/experience/{b}/task2_core_imm_suite_figures/task2_s_factor_overview_heatmap.png",
             "Task2 S-items factor overview heatmap (WWR/Complexity/Group + interactions; p-tier encoded).",

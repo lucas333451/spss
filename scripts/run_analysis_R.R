@@ -11,6 +11,70 @@ suppressPackageStartupMessages({
   library(broom.mixed)
 })
 
+sig_tier <- function(p) {
+  if (is.na(p)) return("")
+  if (p < 0.001) return("***")
+  if (p < 0.01) return("**")
+  if (p < 0.05) return("*")
+  ""
+}
+
+plot_eta2_bar <- function(df, out_path, title_txt) {
+  if (is.null(df) || nrow(df) == 0) return(FALSE)
+  if (!("term" %in% names(df)) || !("eta2_partial" %in% names(df))) return(FALSE)
+
+  z <- df %>%
+    filter(!is.na(.data$eta2_partial)) %>%
+    mutate(
+      term = as.character(.data$term),
+      magnitude = if ("magnitude" %in% names(df)) as.character(.data$magnitude) else "",
+      label = sprintf("%.3f", .data$eta2_partial)
+    ) %>%
+    arrange(.data$eta2_partial)
+
+  if (nrow(z) == 0) return(FALSE)
+
+  cols <- c(
+    very_small = "#BFC7D5",
+    small = "#9DB7D5",
+    medium = "#5B8CC0",
+    large = "#2F5D8A"
+  )
+  fill_cols <- unname(cols[ifelse(z$magnitude %in% names(cols), z$magnitude, "small")])
+
+  png(out_path, width = 2400, height = 1400, res = 300, bg = "white")
+  old_par <- par(no.readonly = TRUE)
+  on.exit({par(old_par); dev.off()}, add = TRUE)
+
+  par(mar = c(5.2, 10.5, 3.2, 1.2), family = "sans")
+  bp <- barplot(
+    z$eta2_partial,
+    names.arg = z$term,
+    horiz = TRUE,
+    las = 1,
+    col = fill_cols,
+    border = NA,
+    xlim = c(0, max(z$eta2_partial, na.rm = TRUE) * 1.18),
+    xlab = expression(paste("Partial ", eta^2)),
+    main = title_txt,
+    cex.names = 0.95,
+    cex.lab = 1.05,
+    cex.main = 1.05
+  )
+
+  abline(v = c(0.01, 0.06, 0.14), col = c("#C7CDD6", "#9AA7B7", "#6B7C93"), lty = c(3, 2, 2), lwd = c(1, 1.2, 1.2))
+  text(x = z$eta2_partial, y = bp, labels = z$label, pos = 4, cex = 0.9, col = "#1F2D3D", xpd = TRUE)
+  legend(
+    "bottomright",
+    legend = c("very small (<0.01)", "small (0.01-0.06)", "medium (0.06-0.14)", "large (>=0.14)"),
+    fill = cols[c("very_small", "small", "medium", "large")],
+    bty = "n",
+    cex = 0.9
+  )
+
+  TRUE
+}
+
 # optional packages (journal-friendly extras)
 .has_performance <- requireNamespace("performance", quietly = TRUE)
 .has_effectsize <- requireNamespace("effectsize", quietly = TRUE)
@@ -181,7 +245,20 @@ if (!inherits(a3, "try-error")) {
             eta2_partial = .data$Eta2_partial,
             magnitude = if ("effect_size_magnitude" %in% names(et_df)) .data$effect_size_magnitude else NA_character_
           )
+
+        if ("term" %in% names(fixef_tab) && "p.value" %in% names(fixef_tab)) {
+          p_lookup <- fixef_tab %>%
+            filter(.data$term != "(Intercept)") %>%
+            transmute(term = as.character(.data$term), p_value = .data$p.value, sig = vapply(.data$p.value, sig_tier, character(1)))
+          eta_summary <- eta_summary %>% left_join(p_lookup, by = "term")
+        }
+
         write_csv(eta_summary, file.path(out_dir, "effectsize_eta_squared_partial_summary_afford4.csv"))
+        plot_eta2_bar(
+          eta_summary,
+          file.path(out_dir, "effectsize_eta_squared_partial_afford4.png"),
+          "Effect sizes of fixed terms on Afford4"
+        )
       }
 
       eta_status$ok <- TRUE
@@ -295,6 +372,7 @@ if (file.exists(file.path(out_dir, "anova_type3_afford4.csv"))) outs <- c(outs, 
 if (file.exists(file.path(out_dir, "effectsize_standardized_parameters_afford4.csv"))) outs <- c(outs, "effectsize_standardized_parameters_afford4.csv")
 if (file.exists(file.path(out_dir, "effectsize_eta_squared_partial_afford4.csv"))) outs <- c(outs, "effectsize_eta_squared_partial_afford4.csv")
 if (file.exists(file.path(out_dir, "effectsize_eta_squared_partial_summary_afford4.csv"))) outs <- c(outs, "effectsize_eta_squared_partial_summary_afford4.csv")
+if (file.exists(file.path(out_dir, "effectsize_eta_squared_partial_afford4.png"))) outs <- c(outs, "effectsize_eta_squared_partial_afford4.png")
 if (file.exists(file.path(out_dir, "effectsize_eta_squared_partial_status.txt"))) outs <- c(outs, "effectsize_eta_squared_partial_status.txt")
 
 cat(jsonlite::toJSON(list(out_dir=out_dir, long_csv=long_csv, outputs=outs), auto_unbox=TRUE))
