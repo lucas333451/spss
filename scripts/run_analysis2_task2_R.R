@@ -149,7 +149,10 @@ run_one_model <- function(data, dv, domain, model_name, formula_txt, group_col, 
     return(list(status = data.frame(Domain=domain, DV=dv, Model=model_name, Formula=formula_txt, Status="failed", Reason=as.character(fit), n_rows=nrow(sub), n_subjects=dplyr::n_distinct(sub$SubjectID), stringsAsFactors = FALSE), eta = data.frame()))
   }
 
-  a3 <- try(lmerTest::anova(fit, type = 3, ddf = if (use_kr) "Kenward-Roger" else "Satterthwaite"), silent = TRUE)
+  a3 <- try(anova(fit, type = 3, ddf = if (use_kr) "Kenward-Roger" else "Satterthwaite"), silent = TRUE)
+  if (inherits(a3, "try-error")) {
+    a3 <- try(stats::anova(fit), silent = TRUE)
+  }
   if (inherits(a3, "try-error")) {
     return(list(status = data.frame(Domain=domain, DV=dv, Model=model_name, Formula=formula_txt, Status="anova_failed", Reason=as.character(a3), n_rows=nrow(sub), n_subjects=dplyr::n_distinct(sub$SubjectID), stringsAsFactors = FALSE), eta = data.frame()))
   }

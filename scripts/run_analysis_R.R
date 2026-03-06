@@ -226,7 +226,10 @@ if (.has_effectsize) {
 # 2) Partial eta^2 from Type III ANOVA table (lmerTest)
 # Note: This is a common journal-friendly summary; interpret with care.
 eta_status <- list(ok = FALSE, reason = NULL)
-a3 <- try(lmerTest::anova(fit, type = 3, ddf = if (use_kr) "Kenward-Roger" else "Satterthwaite"), silent = TRUE)
+a3 <- try(anova(fit, type = 3, ddf = if (use_kr) "Kenward-Roger" else "Satterthwaite"), silent = TRUE)
+if (inherits(a3, "try-error")) {
+  a3 <- try(stats::anova(fit), silent = TRUE)
+}
 if (!inherits(a3, "try-error")) {
   write_csv(as.data.frame(a3), file.path(out_dir, "anova_type3_afford4.csv"))
 
@@ -287,7 +290,7 @@ if (!inherits(a3, "try-error")) {
     eta_status$reason <- "R package 'effectsize' is not installed; partial eta^2 not exported."
   }
 } else {
-  eta_status$reason <- paste("lmerTest::anova(type=3) failed:", as.character(a3))
+  eta_status$reason <- paste("ANOVA extraction failed:", as.character(a3))
 }
 
 if (!isTRUE(eta_status$ok)) {
