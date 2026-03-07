@@ -145,10 +145,11 @@ python scripts/pipeline.py \
 
 - `results/model/table_descriptives.csv`
 - `results/model/table_fixed_effects.csv`
+- `results/model/table_random_effects.csv` (random effects: variance components/SD/correlation; if extractable)
 - `results/model/table_main_interactions.csv`
 - `results/model/model_comparison.csv`
 - `results/model/table_simple_effects_complexity_by_wwr.csv`
-- `results/model/paper_tables.md`
+- `results/model/paper_tables.md` (includes random-effects table)
 - `results/model/results_draft_zh.md`
 
 - `results/research/table_fixed_effects_all_dv.csv` (item-level S1~S4 main + S5 supplementary)

@@ -141,10 +141,11 @@ python scripts/pipeline.py \
 
 - `results/model/table_descriptives.csv`
 - `results/model/table_fixed_effects.csv`
+- `results/model/table_random_effects.csv`（随机效应：方差成分/SD/相关；若可提取）
 - `results/model/table_main_interactions.csv`
 - `results/model/model_comparison.csv`
 - `results/model/table_simple_effects_complexity_by_wwr.csv`
-- `results/model/paper_tables.md`
+- `results/model/paper_tables.md`（含随机效应表）
 - `results/model/results_draft_zh.md`
 
 - `results/research/table_fixed_effects_all_dv.csv`（分题：S1~S4主构念 + S5补充）

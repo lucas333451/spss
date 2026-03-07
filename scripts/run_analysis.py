@@ -35,6 +35,12 @@ def _rescale_9_to_7(x):
 
 
 def _extract_coef_table(fit) -> pd.DataFrame:
+    """Extract fixed-effect coefficient table.
+
+    Note: statsmodels MixedLM stores random-effect variance/covariance terms
+    in fit.params as well (e.g., "Group Var", "x Var", "x Cov"). We skip
+    those here and export random effects separately.
+    """
     params = fit.params
     bse = fit.bse
     zvals = fit.tvalues
@@ -125,6 +131,62 @@ def _to_markdown_table(df: pd.DataFrame, float_cols=None, digits=3) -> str:
     for c in float_cols:
         x[c] = x[c].map(lambda v: f"{v:.{digits}f}" if pd.notna(v) else "")
     return x.to_markdown(index=False)
+
+
+def _extract_random_effects_summary(fit) -> pd.DataFrame:
+    """Summarize random-effects (variance components) from statsmodels MixedLM.
+
+    Returns a tidy table with Variance/SD/Correlation when available.
+    """
+    if fit is None:
+        return pd.DataFrame()
+
+    rows = []
+
+    # Random-effect covariance matrix
+    cov_re = getattr(fit, "cov_re", None)
+    if cov_re is not None:
+        try:
+            cov = np.asarray(cov_re, dtype=float)
+            names = list(getattr(cov_re, "index", []))
+            if not names:
+                # fallback names
+                names = [f"RE{i+1}" for i in range(cov.shape[0])]
+
+            # variances + SD
+            for i, nm in enumerate(names):
+                v = float(cov[i, i])
+                rows.append({"Component": nm, "Type": "Var", "Value": v})
+                rows.append({"Component": nm, "Type": "SD", "Value": float(np.sqrt(v)) if v >= 0 else np.nan})
+
+            # correlations
+            for i in range(len(names)):
+                for j in range(i + 1, len(names)):
+                    denom = np.sqrt(cov[i, i] * cov[j, j])
+                    corr = float(cov[i, j] / denom) if denom and np.isfinite(denom) and denom > 0 else np.nan
+                    rows.append({"Component": f"{names[i]}~{names[j]}", "Type": "Corr", "Value": corr})
+        except Exception:
+            pass
+
+    # Residual variance (scale)
+    try:
+        # statsmodels MixedLMResults.scale is the residual variance
+        res_var = float(getattr(fit, "scale", np.nan))
+        if np.isfinite(res_var):
+            rows.append({"Component": "Residual", "Type": "Var", "Value": res_var})
+            rows.append({"Component": "Residual", "Type": "SD", "Value": float(np.sqrt(res_var)) if res_var >= 0 else np.nan})
+    except Exception:
+        pass
+
+    out = pd.DataFrame(rows)
+    if out.empty:
+        return out
+
+    # widen a bit for readability
+    wide = out.pivot_table(index="Component", columns="Type", values="Value", aggfunc="first").reset_index()
+    # stable column order
+    cols = [c for c in ["Component", "Var", "SD", "Corr"] if c in wide.columns]
+    return wide[cols]
 
 
 def _fit_with_fallback(data: pd.DataFrame, formula: str, re_formula: str | None) -> tuple[object, dict]:
@@ -283,7 +345,9 @@ def _simple_effects_by_wwr(model_df: pd.DataFrame, dv_col: str = "Afford4") -> p
     return out
 
 
-def _build_paper_tables(model_df: pd.DataFrame, coef_df: pd.DataFrame, dv_col: str = "Afford4") -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def _build_paper_tables(
+    model_df: pd.DataFrame, coef_df: pd.DataFrame, dv_col: str = "Afford4", random_df: pd.DataFrame | None = None
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     desc = (
         model_df.groupby(["WWR", "Complexity", "ExperienceGroup", "SportFreqGroup", "Repetition"], dropna=False)[dv_col]
         .agg(N="count", Mean="mean", SD="std")
@@ -301,7 +365,8 @@ def _build_paper_tables(model_df: pd.DataFrame, coef_df: pd.DataFrame, dv_col: s
     infer["APA_Term"] = infer["Term"].apply(_humanize_term)
     infer = infer[["EffectType", "Term", "APA_Term", "Coef", "SE", "z", "p", "Sig", "CI95_low", "CI95_high"]]
 
-    return desc, fixed, infer
+    rand = (random_df.copy() if isinstance(random_df, pd.DataFrame) else pd.DataFrame())
+    return desc, fixed, infer, rand
 
 
 def _auto_results_draft_zh(best: dict, infer_df: pd.DataFrame, simple_df: pd.DataFrame) -> str:
@@ -402,7 +467,8 @@ def main():
     fit_info = best["info"]
 
     coef_df = _extract_coef_table(fit)
-    desc_df, fixed_df, infer_df = _build_paper_tables(model_df, coef_df, dv_col=dv_col)
+    rand_df = _extract_random_effects_summary(fit)
+    desc_df, fixed_df, infer_df, rand_df = _build_paper_tables(model_df, coef_df, dv_col=dv_col, random_df=rand_df)
 
     # simple effects under each WWR
     simple_df = _simple_effects_by_wwr(model_df, dv_col=dv_col)
@@ -444,6 +510,8 @@ def main():
     desc_df.to_csv(out / "table_descriptives.csv", index=False, encoding="utf-8-sig")
     fixed_df.to_csv(out / "table_fixed_effects.csv", index=False, encoding="utf-8-sig")
     infer_df.to_csv(out / "table_main_interactions.csv", index=False, encoding="utf-8-sig")
+    if rand_df is not None and not rand_df.empty:
+        rand_df.to_csv(out / "table_random_effects.csv", index=False, encoding="utf-8-sig")
     simple_df.to_csv(out / "table_simple_effects_complexity_by_wwr.csv", index=False, encoding="utf-8-sig")
     if sens_out is not None:
         sens_out.to_csv(out / "afford4_missing_sensitivity.csv", index=False, encoding="utf-8-sig")
@@ -462,10 +530,13 @@ def main():
         "## Table 2. Fixed effects coefficients (recommended LMM)",
         _to_markdown_table(fixed_df),
         "",
-        "## Table 3. Main and interaction effects (compact)",
+        "## Table 3. Random effects (variance components)",
+        _to_markdown_table(rand_df) if (rand_df is not None and not rand_df.empty) else "(Not available for this fit)",
+        "",
+        "## Table 4. Main and interaction effects (compact)",
         _to_markdown_table(infer_df),
         "",
-        "## Table 4. Simple effects: Complexity (C1 vs C0) within each WWR",
+        "## Table 5. Simple effects: Complexity (C1 vs C0) within each WWR",
         _to_markdown_table(simple_df) if not simple_df.empty else "No analyzable simple-effects rows.",
         "",
         f"Reliability (Cronbach's alpha, S1-S4): {alpha:.3f}" if not np.isnan(alpha) else "Reliability: NA",
@@ -502,6 +573,7 @@ def main():
             "table_fixed_effects_csv": str(out / "table_fixed_effects.csv"),
             "table_main_interactions_csv": str(out / "table_main_interactions.csv"),
             "table_simple_effects_csv": str(out / "table_simple_effects_complexity_by_wwr.csv"),
+            "table_random_effects_csv": str(out / "table_random_effects.csv") if (rand_df is not None and not rand_df.empty) else None,
             "afford4_missing_sensitivity_csv": str(out / "afford4_missing_sensitivity.csv") if (sens_out is not None) else None,
             "paper_tables_md": str(out / "paper_tables.md"),
             "results_draft_zh_md": str(out / "results_draft_zh.md"),
