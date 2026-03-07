@@ -20,6 +20,10 @@ def build_manifest(long_csv: Path, out_csv: Path) -> pd.DataFrame:
     - trialXX_Cond   (C0/C1)
     - trialXX_Complexity (0/1)
 
+    Naming convention note:
+    - "group" is reserved for people groups (ExperienceGroup/SportFreqGroup),
+      so within-trial timing uses Round/Block naming instead.
+
     This is designed to support downstream eye-tracking/EEG alignment.
     """
 
@@ -63,15 +67,15 @@ def build_manifest(long_csv: Path, out_csv: Path) -> pd.DataFrame:
 
                 tag = f"trial{t:02d}"
 
-                round_n = block  # block1->Round1, block2->Round2
+                round_n = block  # Block1->Round1, Block2->Round2
                 pos_n = pos
-                round_label = f"group{round_n}"  # keep compatibility with your naming (group1=Round1)
+                round_name = f"Round{round_n}"
                 cond_short = f"{cond}W{int(wwr)}"  # e.g., C1W45
                 label = f"O{int(order)}-R{round_n}-P{pos_n}-{cond_short}"
                 key = f"{sid}-" + label
 
                 row[f"{tag}_Round"] = int(round_n)
-                row[f"{tag}_RoundLabel"] = round_label
+                row[f"{tag}_RoundName"] = round_name
                 row[f"{tag}_Pos"] = int(pos_n)
                 row[f"{tag}_label"] = label
                 row[f"{tag}_key"] = key
@@ -84,7 +88,7 @@ def build_manifest(long_csv: Path, out_csv: Path) -> pd.DataFrame:
             for t in range(1, 13):
                 tag = f"trial{t:02d}"
                 row[f"{tag}_Round"] = "Unknown"
-                row[f"{tag}_RoundLabel"] = "Unknown"
+                row[f"{tag}_RoundName"] = "Unknown"
                 row[f"{tag}_Pos"] = "Unknown"
                 row[f"{tag}_label"] = "Unknown"
                 row[f"{tag}_key"] = "Unknown"
