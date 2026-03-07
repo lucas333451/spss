@@ -1065,7 +1065,7 @@ def main():
     mean_wwr_df.to_csv(out / "group_complexity_mean_table_by_wwr.csv", index=False, encoding="utf-8-sig")
     sig_wwr_df.to_csv(out / "group_complexity_delta_significance_by_wwr.csv", index=False, encoding="utf-8-sig")
 
-    # detailed split by round (group1/group2 viewing order)
+    # detailed split by round (Round1/Round2 viewing order)
     delta_round_detail_df, delta_round_shift_df = complexity_delta_by_round(df, DVS)
     delta_round_detail_df.to_csv(out / "group_complexity_delta_by_round.csv", index=False, encoding="utf-8-sig")
     delta_round_shift_df.to_csv(out / "group_complexity_delta_round_shift.csv", index=False, encoding="utf-8-sig")
