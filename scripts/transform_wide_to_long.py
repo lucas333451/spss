@@ -80,13 +80,18 @@ def split_sport_freq_group(v) -> str:
 
 def build_column_index(df: pd.DataFrame, mode: str, subject_col: str | None, order_col: str | None, freq_col: str | None) -> dict:
     cols = [str(c) for c in df.columns]
-    idx: dict[str, str] = {}
+    idx: dict[str, str | None] = {}
 
     if mode == "coded":
         idx["subject"] = subject_col or "name"
         idx["order"] = order_col or "Q1.8"
         idx["freq"] = freq_col or "Q1.5"
         idx["exp"] = "Q1.4"
+
+        # IPQ / presence / comfort items (participant-level)
+        # Q16.1_1 ... Q16.6_1 (numeric-coded export)
+        for i in range(1, 7):
+            idx[f"IPQ_{i}"] = f"Q16.{i}_1"
 
         for block in [1, 2]:
             for pos in [1, 2, 3, 4, 5, 6]:
@@ -105,6 +110,11 @@ def build_column_index(df: pd.DataFrame, mode: str, subject_col: str | None, ord
         idx["freq"] = freq_col or find_first_col(cols, fallback="Q1.5_近 6 个月平均运动频率：", prefix="Q1.5")
         idx["exp"] = find_first_col(cols, fallback="Q1.4_乒乓球经验：", prefix="Q1.4")
 
+        # IPQ / presence / comfort items (participant-level)
+        # Try strict coded-like name first, then prefix match for text-export columns
+        for i in range(1, 7):
+            idx[f"IPQ_{i}"] = find_first_col(cols, fallback=f"Q16.{i}_1", prefix=f"Q16.{i}")
+
         for block in [1, 2]:
             for pos in [1, 2, 3, 4, 5, 6]:
                 qn = q_num(block, pos)
@@ -120,6 +130,12 @@ def build_column_index(df: pd.DataFrame, mode: str, subject_col: str | None, ord
     missing_required = [k for k in required if (k not in idx or idx[k] is None or idx[k] not in cols)]
     if missing_required:
         raise ValueError(f"Missing required columns for mode={mode}: {missing_required}. Resolved={{{k: idx.get(k) for k in required}}}")
+
+    # Optional IPQ items: keep if present, otherwise set to None
+    for i in range(1, 7):
+        k = f"IPQ_{i}"
+        if k in idx and (idx[k] is None or idx[k] not in cols):
+            idx[k] = None
 
     return idx
 
@@ -174,6 +190,17 @@ def build_long(df: pd.DataFrame, col_idx: dict) -> pd.DataFrame:
                 # audit columns for construct composition
                 afford4_n_valid = int(sum([pd.notna(s1), pd.notna(s2), pd.notna(s3), pd.notna(s4)]))
 
+                # IPQ items (participant-level; repeat on each of the 12 rows for convenience)
+                ipq_vals = {}
+                for i in range(1, 7):
+                    c = col_idx.get(f"IPQ_{i}")
+                    ipq_vals[f"IPQ{i}"] = to_num(r.get(c)) if c else np.nan
+
+                # Derived IPQ composites (computed row-wise; safe because values repeat within subject)
+                ipq_arr = np.array([ipq_vals[f"IPQ{i}"] for i in range(1, 7)], dtype=float)
+                ipq_n_valid = int(np.isfinite(ipq_arr).sum())
+                ipq_mean = float(np.nanmean(ipq_arr)) if ipq_n_valid > 0 else np.nan
+
                 records.append({
                     "SubjectID": subject,
                     "Order": order,
@@ -203,6 +230,10 @@ def build_long(df: pd.DataFrame, col_idx: dict) -> pd.DataFrame:
                     "B3": b3,
                     "Bmean": bmean,
                     "SceneID": scene_id(wwr, cond) if not pd.isna(wwr) and cond else np.nan,
+                    # IPQ
+                    **ipq_vals,
+                    "IPQ_mean": ipq_mean,
+                    "IPQ_n_valid": ipq_n_valid,
                 })
 
     return pd.DataFrame(records)

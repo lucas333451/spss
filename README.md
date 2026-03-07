@@ -31,6 +31,7 @@
 - `scripts/analysis_b_items.py` — B1~B3/Bmean focused analyses (mainly C1)
 - `scripts/analysis_groups.py` — shared people-group split/comparison utilities
 - `scripts/report_summary.py` — narrative summary for angle-1/angle-2 conclusions
+- `scripts/analyze_ipq.py` — NEW: IPQ (Q16.1–Q16.6) participant-level analysis (descriptives/reliability/group comparisons)
 - `scripts/diagnostics_lmm.py` — diagnostics (interaction screening / random-structure sensitivity / repetition deep-dive)
 - `scripts/pipeline.py` — one-click end-to-end runner (supports skip flags + optional `--with-r` to re-fit in R)
 - `scripts/build_report_md.py` — build one-file markdown bundle from `results/` (full-index style)
@@ -196,6 +197,9 @@ python scripts/pipeline.py \
 - `results/research/round_icc_by_group.csv` (Round agreement ICC(A,1) by group)
 - `results/research/item_variance_by_group.csv`
 - `results/research/item_variance_summary_by_group.csv`
+
+- `results/ipq/ipq_report_zh.md` (NEW: IPQ report)
+- `results/ipq/ipq_descriptives.csv` / `ipq_reliability.csv` / `ipq_group_comparisons.csv`
 
 - `results/diagnostics/analysis_report.md`
 - `results/diagnostics/model_comparison_interactions.csv`

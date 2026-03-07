@@ -72,6 +72,12 @@ def main():
             "--long-csv", str(out_long / "long_format.csv"),
             "--out-dir", str(out_research),
         ])
+        # participant-level IPQ (Q16.*)
+        run([
+            args.python, "scripts/analyze_ipq.py",
+            "--long-csv", str(out_long / "long_format.csv"),
+            "--out-dir", str(args.out_root / "ipq"),
+        ])
         run([
             args.python, "scripts/analysis_b_items.py",
             "--long-csv", str(out_long / "long_format.csv"),

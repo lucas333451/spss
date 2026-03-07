@@ -32,6 +32,7 @@
 - `scripts/analysis_b_items.py`：B1~B3/Bmean 专项分析（主要 C1）
 - `scripts/analysis_groups.py`：四类人群拆分/对比的公共模块
 - `scripts/report_summary.py`：自动生成角度1/角度2叙事总结
+- `scripts/analyze_ipq.py`：新增：IPQ（Q16.1–Q16.6）被试层面量表分析（描述统计/信度/组间比较）
 - `scripts/diagnostics_lmm.py`：诊断分析（交互来源/随机结构敏感性/Repetition）
 - `scripts/pipeline.py`：一键全流程执行（支持 skip 参数；可选 `--with-r` 自动复算 R 版主模型并输出到 `results/r_model/`）
 - `scripts/build_report_md.py`：将结果目录汇总成一个 markdown（全量索引型）
@@ -192,6 +193,9 @@ python scripts/pipeline.py \
 - `results/research/round_icc_by_group.csv`（各人群 Round 一致性 ICC(A,1)）
 - `results/research/item_variance_by_group.csv`
 - `results/research/item_variance_summary_by_group.csv`
+
+- `results/ipq/ipq_report_zh.md`（新增：IPQ 汇总报告）
+- `results/ipq/ipq_descriptives.csv` / `ipq_reliability.csv` / `ipq_group_comparisons.csv`
 
 - `results/diagnostics/analysis_report.md`
 - `results/diagnostics/model_comparison_interactions.csv`
