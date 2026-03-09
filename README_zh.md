@@ -36,6 +36,13 @@
     - `S1–S5`
     - `B1–B3 / Bmean`
     - `IPQ`
+  - 当前已包含：
+    - 基础统计：`n / mean / sd / median / min / max`
+    - 分布指标：`skewness / kurtosis`
+    - `95% CI`
+    - 正态性检验：`Shapiro p`
+    - 分层描述：`WWR / Complexity / ExperienceGroup`
+    - PNG：`箱线图 / 小提琴图`
 
 ### 3）显著性分析
 - `scripts/significance_pipeline.py`

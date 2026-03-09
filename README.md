@@ -37,6 +37,13 @@ The previous larger, more exploratory version is preserved in branch:
     - `S1–S5`
     - `B1–B3` / `Bmean`
     - `IPQ`
+  - now includes:
+    - basic descriptives: `n / mean / sd / median / min / max`
+    - distribution metrics: `skewness / kurtosis`
+    - `95% CI`
+    - normality check: `Shapiro p`
+    - stratified descriptives by `WWR / Complexity / ExperienceGroup`
+    - PNG figures: `boxplots / violin plots`
 
 ### 3) Significance pipeline
 - `scripts/significance_pipeline.py`
