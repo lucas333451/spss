@@ -100,6 +100,13 @@ def main():
         for group_tag, group_col in [("experience", "ExperienceGroup"), ("sportfreq", "SportFreqGroup")]:
             for branch_tag, exclude in [("raw", ""), ("qc", qc_exclude)]:
                 run([
+                    args.python, "scripts/analysis2_task5_spss_polynomial.py",
+                    "--long-csv", str(out_long / "long_format.csv"),
+                    "--out-dir", str(out_research / "analysis-2" / "task5" / f"{group_tag}_group_only" / branch_tag),
+                    "--split-by", group_col,
+                    "--exclude-subjects", exclude,
+                ])
+                run([
                     args.python, "scripts/analysis2_scene_stage_gap.py",
                     "--long-csv", str(out_long / "long_format.csv"),
                     "--out-dir", str(out_research / "analysis-2" / "task1" / group_tag / branch_tag),

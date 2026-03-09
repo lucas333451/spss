@@ -172,6 +172,25 @@ def _build_markdown(df: pd.DataFrame, out: Path, split_cols: list[str]) -> None:
     out.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _trend_direction_label(contrast: str, mean_contrast: float | None) -> str:
+    if mean_contrast is None or pd.isna(mean_contrast):
+        return ""
+    val = float(mean_contrast)
+    if contrast == "Linear":
+        if val > 0:
+            return "Linear ↑"
+        if val < 0:
+            return "Linear ↓"
+        return "Linear ="
+    if contrast == "Quadratic":
+        if val > 0:
+            return "Quadratic ∪"
+        if val < 0:
+            return "Quadratic ∩"
+        return "Quadratic ="
+    return str(contrast)
+
+
 def _plot_trend_panels(means: pd.DataFrame, out_dir: Path, split_cols: list[str], levels: list[float]) -> list[str]:
     made: list[str] = []
     if means.empty:
@@ -276,7 +295,11 @@ def _plot_contrast_heatmaps(df: pd.DataFrame, out_dir: Path, split_cols: list[st
                         ptxt = f"{pv:.2e}"
                     else:
                         ptxt = f"{pv:0.3f}"
-                    annot.loc[r, c] = f"p={ptxt}{_sigstar(pv)}"
+                    row = sub[(sub["RowLabel"] == r) & (sub["Col"] == c)]
+                    direction = ""
+                    if not row.empty:
+                        direction = _trend_direction_label(str(row.iloc[0]["Contrast"]), row.iloc[0].get("mean_contrast", np.nan))
+                    annot.loc[r, c] = f"{direction}\np={ptxt}{_sigstar(pv)}" if direction else f"p={ptxt}{_sigstar(pv)}"
 
         plt.figure(figsize=(max(8.5, 0.95 * len(mat.columns) + 2.5), max(3.0, 0.58 * len(mat.index) + 1.2)))
         sns.heatmap(
@@ -380,6 +403,7 @@ def main():
                     "DV": dv,
                     "Source": "WWR",
                     "Contrast": contrast_name,
+                    "Direction": _trend_direction_label(contrast_name, stat["mean_contrast"]),
                     "CoefficientVector": " | ".join(_contrast_vector_column(levels, coef)),
                     "n_subjects": stat["n_subjects"],
                     "Type III SS": stat["ss"],
@@ -403,6 +427,7 @@ def main():
                     "DV": dv,
                     "Source": "Error(WWR)",
                     "Contrast": contrast_name,
+                    "Direction": _trend_direction_label(contrast_name, stat["mean_contrast"]),
                     "CoefficientVector": " | ".join(_contrast_vector_column(levels, coef)),
                     "n_subjects": stat["n_subjects"],
                     "Type III SS": float(stat["mse"] * stat["df2"]) if np.isfinite(stat["mse"]) and np.isfinite(stat["df2"]) else np.nan,
