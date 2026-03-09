@@ -131,6 +131,14 @@ def main():
                     "--exclude-subjects", exclude,
                 ])
 
+                run([
+                    args.python, "scripts/analysis2_task5_spss_polynomial.py",
+                    "--long-csv", str(out_long / "long_format.csv"),
+                    "--out-dir", str(out_research / "analysis-2" / "task5" / group_tag / branch_tag),
+                    "--split-by", "Repetition," + group_col,
+                    "--exclude-subjects", exclude,
+                ])
+
         run([
             args.python, "scripts/report_summary.py",
             "--long-csv", str(out_long / "long_format.csv"),
