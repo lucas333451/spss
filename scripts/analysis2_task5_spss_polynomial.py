@@ -191,7 +191,23 @@ def _trend_direction_label(contrast: str, mean_contrast: float | None) -> str:
     return str(contrast)
 
 
-def _plot_trend_panels(means: pd.DataFrame, out_dir: Path, split_cols: list[str], levels: list[float]) -> list[str]:
+def _fmt(v: float | None, nd: int = 3) -> str:
+    if v is None or pd.isna(v):
+        return "NA"
+    return f"{float(v):.{nd}f}"
+
+
+def _summary_box(ax, title: str, lines: list[str]):
+    ax.axis("off")
+    ax.set_facecolor("#F7FAF8")
+    ax.text(0.03, 0.97, title, va="top", ha="left", fontsize=10.2, fontweight="bold", color="#40534C")
+    ax.text(
+        0.03, 0.90, "\n".join(lines), va="top", ha="left", fontsize=8.6, color="#50615A", linespacing=1.35,
+        bbox=dict(boxstyle="round,pad=0.45", fc="#F4F8F6", ec="#D5DFD9", lw=0.8)
+    )
+
+
+def _plot_trend_panels(means: pd.DataFrame, results_df: pd.DataFrame, out_dir: Path, split_cols: list[str], levels: list[float]) -> list[str]:
     made: list[str] = []
     if means.empty:
         return made
@@ -204,7 +220,6 @@ def _plot_trend_panels(means: pd.DataFrame, out_dir: Path, split_cols: list[str]
 
         panel_col = split_cols[0] if split_cols else None
         hue_col = split_cols[1] if len(split_cols) >= 2 else None
-
         if panel_col and panel_col in x.columns:
             panel_values = list(pd.unique(x[panel_col]))
         else:
@@ -212,17 +227,20 @@ def _plot_trend_panels(means: pd.DataFrame, out_dir: Path, split_cols: list[str]
             x["__panel__"] = "ALL"
             panel_col = "__panel__"
 
-        fig, axes = plt.subplots(1, len(panel_values), figsize=(max(5.0 * len(panel_values), 6.2), 4.2), sharey=True)
-        if len(panel_values) == 1:
-            axes = [axes]
+        fig = plt.figure(figsize=(max(8.8, 4.9 * len(panel_values)), 5.0))
+        gs = fig.add_gridspec(1, 2, width_ratios=[3.6, 1.45], wspace=0.16)
+        main_gs = gs[0, 0].subgridspec(1, len(panel_values), wspace=0.18)
+        axes = [fig.add_subplot(main_gs[0, i]) for i in range(len(panel_values))]
+        ax_info = fig.add_subplot(gs[0, 1])
 
+        summary_lines = []
         for ax, panel_val in zip(axes, panel_values):
             sub = x[x[panel_col] == panel_val].copy()
             if hue_col and hue_col in sub.columns:
                 for hv, hg in sub.groupby(hue_col, dropna=False):
                     hg = hg.sort_values("WWR")
-                    ax.plot(hg["WWR"], hg["mean"], marker="o", label=str(hv))
-                    ax.fill_between(hg["WWR"], hg["mean"] - hg["se"], hg["mean"] + hg["se"], alpha=0.15)
+                    ax.plot(hg["WWR"], hg["mean"], marker="o", label=str(hv), color="#6FAF9F")
+                    ax.fill_between(hg["WWR"], hg["mean"] - hg["se"], hg["mean"] + hg["se"], alpha=0.15, color="#A8D5C8")
             else:
                 sub = sub.sort_values("WWR")
                 ax.plot(sub["WWR"], sub["mean"], marker="o", color="#6FAF9F")
@@ -232,17 +250,24 @@ def _plot_trend_panels(means: pd.DataFrame, out_dir: Path, split_cols: list[str]
             ax.set_xticks(levels)
             ax.grid(alpha=0.2)
 
+            rsub = results_df[(results_df["DV"] == dv) & (results_df["Source"] == "WWR")].copy()
+            if panel_col != "__panel__" and panel_col in rsub.columns:
+                rsub = rsub[rsub[panel_col].astype(str) == str(panel_val)]
+            if not rsub.empty:
+                for _, rr in rsub.iterrows():
+                    summary_lines.append(
+                        f"{panel_col}={panel_val} | {rr['Contrast']}\n"
+                        f"{rr.get('Direction','')}\n"
+                        f"F={_fmt(rr.get('F', np.nan))}, p={_fmt(rr.get('Sig.', np.nan))}"
+                    )
+
         axes[0].set_ylabel(dv)
         if hue_col and hue_col in x.columns:
             handles, labels = axes[0].get_legend_handles_labels()
             if handles:
                 fig.legend(handles, labels, title=hue_col, loc="upper center", ncol=max(1, len(labels)))
-                fig.tight_layout(rect=[0, 0, 1, 0.90])
-            else:
-                fig.tight_layout()
-        else:
-            fig.tight_layout()
 
+        _summary_box(ax_info, f"Trend summary — {dv}", summary_lines[:8] if summary_lines else ["No valid contrast rows."])
         path = out_dir / f"task5_trend_profile_{dv}.png"
         fig.savefig(path, dpi=230)
         plt.close(fig)
@@ -264,7 +289,6 @@ def _plot_contrast_heatmaps(df: pd.DataFrame, out_dir: Path, split_cols: list[st
     if not row_label_cols:
         x["Panel"] = "ALL"
         x["RowLabel"] = "ALL"
-        row_label_cols = ["Panel"]
     elif len(row_label_cols) == 1:
         x["Panel"] = x[row_label_cols[0]].astype(str)
         x["RowLabel"] = x[row_label_cols[0]].astype(str)
@@ -283,6 +307,7 @@ def _plot_contrast_heatmaps(df: pd.DataFrame, out_dir: Path, split_cols: list[st
         mat = sub.pivot_table(index="RowLabel", columns="Col", values=p_col, aggfunc="first")
         if mat.empty:
             continue
+
         annot = mat.copy().astype(object)
         for r in annot.index:
             for c in annot.columns:
@@ -295,31 +320,47 @@ def _plot_contrast_heatmaps(df: pd.DataFrame, out_dir: Path, split_cols: list[st
                         ptxt = f"{pv:.2e}"
                     else:
                         ptxt = f"{pv:0.3f}"
-                    row = sub[(sub["RowLabel"] == r) & (sub["Col"] == c)]
-                    direction = ""
-                    if not row.empty:
-                        direction = _trend_direction_label(str(row.iloc[0]["Contrast"]), row.iloc[0].get("mean_contrast", np.nan))
-                    annot.loc[r, c] = f"{direction}\np={ptxt}{_sigstar(pv)}" if direction else f"p={ptxt}{_sigstar(pv)}"
+                    annot.loc[r, c] = f"p={ptxt}{_sigstar(pv)}"
 
-        plt.figure(figsize=(max(8.5, 0.95 * len(mat.columns) + 2.5), max(3.0, 0.58 * len(mat.index) + 1.2)))
+        fig = plt.figure(figsize=(max(11.0, 1.0 * len(mat.columns) + 5.2), max(4.0, 0.55 * len(mat.index) + 2.0)))
+        gs = fig.add_gridspec(1, 2, width_ratios=[3.6, 1.5], wspace=0.14)
+        ax = fig.add_subplot(gs[0, 0])
+        ax2 = fig.add_subplot(gs[0, 1])
+
         sns.heatmap(
             -np.log10(mat.astype(float)),
             cmap=sns.light_palette("#6FAF9F", as_cmap=True),
             annot=annot,
             fmt="",
-            annot_kws={"fontsize": 9},
+            annot_kws={"fontsize": 8.2},
             linewidths=0.6,
-            linecolor="#efefef",
+            linecolor="#E6ECE8",
             cbar_kws={"label": f"-log10({p_label})"},
+            ax=ax,
         )
-        plt.title(f"Task5 {contrast} contrast significance map ({p_label})")
-        plt.xlabel("DV")
-        plt.ylabel("Split cell")
-        plt.xticks(rotation=25, ha="right")
-        plt.tight_layout()
+        ax.set_title(f"Task5 {contrast} significance map ({p_label})")
+        ax.set_xlabel("DV")
+        ax.set_ylabel("Split cell")
+        ax.tick_params(axis="x", rotation=25)
+
+        top = sub.sort_values(p_col).head(6)
+        summary_lines = []
+        for _, rr in top.iterrows():
+            cell_bits = []
+            for c in split_cols:
+                if c in rr.index:
+                    cell_bits.append(f"{c}={rr[c]}")
+            cell = " | ".join(cell_bits) if cell_bits else "ALL"
+            summary_lines.append(
+                f"{rr['DV']} | {cell}\n"
+                f"{rr.get('Direction','')}\n"
+                f"F={_fmt(rr.get('F', np.nan))}, p={_fmt(rr.get(p_col, np.nan))}"
+            )
+        _summary_box(ax2, f"{contrast} summary", summary_lines if summary_lines else ["No valid cells."])
+
         path = out_dir / f"task5_{contrast.lower()}_contrast_heatmap.png"
-        plt.savefig(path, dpi=230)
-        plt.close()
+        fig.savefig(path, dpi=230)
+        plt.close(fig)
         made.append(str(path))
     return made
 
@@ -471,7 +512,7 @@ def main():
     _build_markdown(res, md_path, split_cols)
 
     figs: list[str] = []
-    for p in _plot_trend_panels(means_df, fig_dir, split_cols, levels):
+    for p in _plot_trend_panels(means_df, res, fig_dir, split_cols, levels):
         figs.append(str(Path(p).relative_to(out)))
     p_col = "SigAdj." if args.p_adjust.lower() != "none" else "Sig."
     p_label = "adjusted p" if args.p_adjust.lower() != "none" else "raw p"
@@ -502,6 +543,7 @@ def main():
             "Each subject contributes one value per WWR level after within-subject averaging over any non-split repeated rows.",
             "PNG figures include WWR profile plots and contrast significance heatmaps for Linear/Quadratic contrasts.",
             "Interpret results from the observed data only; no expected-significance pattern is imposed or optimized for.",
+            "Task5 figures now use main-panel + side-summary layout to reduce overlap and improve readability.",
         ],
     }
     summary_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
