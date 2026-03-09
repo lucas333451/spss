@@ -206,8 +206,8 @@ def _plot_trend_panels(means: pd.DataFrame, out_dir: Path, split_cols: list[str]
                     ax.fill_between(hg["WWR"], hg["mean"] - hg["se"], hg["mean"] + hg["se"], alpha=0.15)
             else:
                 sub = sub.sort_values("WWR")
-                ax.plot(sub["WWR"], sub["mean"], marker="o", color="#4E79A7")
-                ax.fill_between(sub["WWR"], sub["mean"] - sub["se"], sub["mean"] + sub["se"], alpha=0.15, color="#4E79A7")
+                ax.plot(sub["WWR"], sub["mean"], marker="o", color="#6FAF9F")
+                ax.fill_between(sub["WWR"], sub["mean"] - sub["se"], sub["mean"] + sub["se"], alpha=0.18, color="#A8D5C8")
             ax.set_title(f"{panel_col} = {panel_val}" if panel_val != "ALL" else dv)
             ax.set_xlabel("WWR")
             ax.set_xticks(levels)
@@ -275,13 +275,13 @@ def _plot_contrast_heatmaps(df: pd.DataFrame, out_dir: Path, split_cols: list[st
                     if pv < 0.001:
                         ptxt = f"{pv:.2e}"
                     else:
-                        ptxt = f"{pv:.3f}"
+                        ptxt = f"{pv:0.3f}"
                     annot.loc[r, c] = f"p={ptxt}{_sigstar(pv)}"
 
         plt.figure(figsize=(max(8.5, 0.95 * len(mat.columns) + 2.5), max(3.0, 0.58 * len(mat.index) + 1.2)))
         sns.heatmap(
             -np.log10(mat.astype(float)),
-            cmap="Blues",
+            cmap=sns.light_palette("#6FAF9F", as_cmap=True),
             annot=annot,
             fmt="",
             annot_kws={"fontsize": 9},

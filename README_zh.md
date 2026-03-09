@@ -40,7 +40,7 @@
 - `scripts/build_report_data_md.py`：生成“数据直写型”markdown（关键表格直接展开，不依赖索引跳转）
 - `RESULTS_MAP.md`：一页速查（每个研究问题优先看哪3个文件）
 - `scripts/run_analysis_R.R`：可选：用 R（lme4/lmerTest/emmeans）复算主模型，生成投稿更常见口径的结果表
-- `scripts/analysis2_task5_spss_polynomial.py`：新增：更贴近 SPSS「Repeated Measures → Polynomial Contrasts」结果口径的 WWR 三水平线性/二次趋势检验，同时生成 PNG 可视化；结论以实际数据为准，不按主观预期去“调结果”
+- `scripts/analysis2_task5_spss_polynomial.py`：新增：更贴近 SPSS「Repeated Measures → Polynomial Contrasts」结果口径的 WWR 三水平线性/二次趋势检验，同时生成更清新的 Building and Environment / Origin 风格 PNG 可视化；p 值标注保留前导 0（如 `0.013`）；结论以实际数据为准，不按主观预期去“调结果”
 
 ---
 
