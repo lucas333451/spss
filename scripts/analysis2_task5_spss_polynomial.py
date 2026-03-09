@@ -163,7 +163,7 @@ def _build_markdown(df: pd.DataFrame, out: Path, split_cols: list[str]) -> None:
         return
 
     display_cols = split_cols + [
-        "DV", "Source", "Contrast", "n_subjects", "Type III SS", "df", "Mean Square", "F", "Sig.", "SigAdj.", "SigStar"
+        "DV", "Source", "Contrast", "Direction", "n_subjects", "Type III SS", "df", "Mean Square", "F", "Sig.", "SigAdj.", "SigStar"
     ]
     x = df[display_cols].copy()
     for c in ["Type III SS", "df", "Mean Square", "F", "Sig.", "SigAdj."]:
@@ -178,15 +178,15 @@ def _trend_direction_label(contrast: str, mean_contrast: float | None) -> str:
     val = float(mean_contrast)
     if contrast == "Linear":
         if val > 0:
-            return "Linear ↑"
+            return "Linear ↑ (15<45<75)"
         if val < 0:
-            return "Linear ↓"
+            return "Linear ↓ (15>45>75)"
         return "Linear ="
     if contrast == "Quadratic":
         if val > 0:
-            return "Quadratic ∪"
+            return "U-shape (45 lowest)"
         if val < 0:
-            return "Quadratic ∩"
+            return "Inverted-U (45 highest)"
         return "Quadratic ="
     return str(contrast)
 
