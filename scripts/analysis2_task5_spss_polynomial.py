@@ -231,7 +231,7 @@ def _plot_trend_panels(means: pd.DataFrame, out_dir: Path, split_cols: list[str]
     return made
 
 
-def _plot_contrast_heatmaps(df: pd.DataFrame, out_dir: Path, split_cols: list[str]) -> list[str]:
+def _plot_contrast_heatmaps(df: pd.DataFrame, out_dir: Path, split_cols: list[str], p_col: str, p_label: str) -> list[str]:
     made: list[str] = []
     if df.empty:
         return made
@@ -261,7 +261,7 @@ def _plot_contrast_heatmaps(df: pd.DataFrame, out_dir: Path, split_cols: list[st
         if "Repetition" in split_cols:
             sub["Col"] = sub["DV"].astype(str) + " | R" + sub["Repetition"].astype(str)
 
-        mat = sub.pivot_table(index="RowLabel", columns="Col", values="SigAdj.", aggfunc="first")
+        mat = sub.pivot_table(index="RowLabel", columns="Col", values=p_col, aggfunc="first")
         if mat.empty:
             continue
         annot = mat.copy().astype(object)
@@ -272,7 +272,11 @@ def _plot_contrast_heatmaps(df: pd.DataFrame, out_dir: Path, split_cols: list[st
                     annot.loc[r, c] = ""
                 else:
                     pv = float(p)
-                    annot.loc[r, c] = f"p={pv:.3f}{_sigstar(pv)}".replace("0.", ".")
+                    if pv < 0.001:
+                        ptxt = f"{pv:.2e}"
+                    else:
+                        ptxt = f"{pv:.3f}"
+                    annot.loc[r, c] = f"p={ptxt}{_sigstar(pv)}"
 
         plt.figure(figsize=(max(8.5, 0.95 * len(mat.columns) + 2.5), max(3.0, 0.58 * len(mat.index) + 1.2)))
         sns.heatmap(
@@ -283,9 +287,9 @@ def _plot_contrast_heatmaps(df: pd.DataFrame, out_dir: Path, split_cols: list[st
             annot_kws={"fontsize": 9},
             linewidths=0.6,
             linecolor="#efefef",
-            cbar_kws={"label": "-log10(adjusted p)"},
+            cbar_kws={"label": f"-log10({p_label})"},
         )
-        plt.title(f"Task5 {contrast} contrast significance map")
+        plt.title(f"Task5 {contrast} contrast significance map ({p_label})")
         plt.xlabel("DV")
         plt.ylabel("Split cell")
         plt.xticks(rotation=25, ha="right")
@@ -444,7 +448,9 @@ def main():
     figs: list[str] = []
     for p in _plot_trend_panels(means_df, fig_dir, split_cols, levels):
         figs.append(str(Path(p).relative_to(out)))
-    for p in _plot_contrast_heatmaps(res, fig_dir, split_cols):
+    p_col = "SigAdj." if args.p_adjust.lower() != "none" else "Sig."
+    p_label = "adjusted p" if args.p_adjust.lower() != "none" else "raw p"
+    for p in _plot_contrast_heatmaps(res, fig_dir, split_cols, p_col=p_col, p_label=p_label):
         figs.append(str(Path(p).relative_to(out)))
 
     payload = {
@@ -470,6 +476,7 @@ def main():
             "Default p-adjust is now 'none' to stay closer to SPSS repeated-measures output unless the user explicitly requests multiplicity correction.",
             "Each subject contributes one value per WWR level after within-subject averaging over any non-split repeated rows.",
             "PNG figures include WWR profile plots and contrast significance heatmaps for Linear/Quadratic contrasts.",
+            "Interpret results from the observed data only; no expected-significance pattern is imposed or optimized for.",
         ],
     }
     summary_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
