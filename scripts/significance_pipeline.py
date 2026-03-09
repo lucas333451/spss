@@ -26,9 +26,9 @@ def _write_index(out: Path, branches: list[str]) -> None:
     for branch in branches:
         lines.append(f"### {branch}")
         lines.append(f"1. `./{branch}/overall/core_model/results_draft_zh.md` — overall core model narrative")
-        lines.append(f"2. `./{branch}/overall/task5/analysis2_task5_spss_polynomial_contrasts.csv` — overall WWR linear/quadratic significance")
-        lines.append(f"3. `./{branch}/experience/task5_group_only/analysis2_task5_spss_polynomial_contrasts.csv` — experience-group significance")
-        lines.append(f"4. `./{branch}/experience/task5_group_round/analysis2_task5_spss_polynomial_contrasts.csv` — experience × round follow-up")
+        lines.append(f"2. `./{branch}/overall/wwr_polynomial/wwr_polynomial_contrasts.csv` — overall WWR linear/quadratic significance")
+        lines.append(f"3. `./{branch}/experience/wwr_polynomial_group_only/wwr_polynomial_contrasts.csv` — experience-group significance")
+        lines.append(f"4. `./{branch}/experience/wwr_polynomial_group_round/wwr_polynomial_contrasts.csv` — experience × round follow-up")
         lines.append("")
     (out / "significance_index.md").write_text("\n".join(lines), encoding="utf-8")
 
@@ -39,11 +39,11 @@ def _write_research_map(out: Path, branches: list[str]) -> None:
     lines.append("")
     lines.append("## Q1. Does WWR show significant linear or quadratic trends overall?")
     for branch in branches:
-        lines.append(f"- {branch}: `./{branch}/overall/task5/analysis2_task5_spss_polynomial_contrasts.csv`")
+        lines.append(f"- {branch}: `./{branch}/overall/wwr_polynomial/wwr_polynomial_contrasts.csv`")
     lines.append("")
     lines.append("## Q2. What is the direction of those trends?")
     for branch in branches:
-        lines.append(f"- {branch}: `./{branch}/overall/task5/analysis2_task5_spss_polynomial_contrasts.csv` (Direction column) + `./{branch}/overall/task5/task5_spss_polynomial_figures/*.png`")
+        lines.append(f"- {branch}: `./{branch}/overall/wwr_polynomial/wwr_polynomial_contrasts.csv` (Direction column) + `./{branch}/overall/wwr_polynomial/wwr_polynomial_figures/*.png`")
     lines.append("")
     lines.append("## Q3. Is there an overall WWR / Complexity effect in the core model?")
     for branch in branches:
@@ -51,11 +51,11 @@ def _write_research_map(out: Path, branches: list[str]) -> None:
     lines.append("")
     lines.append("## Q4. Do high/low experience groups differ in significance patterns?")
     for branch in branches:
-        lines.append(f"- {branch}: `./{branch}/experience/task5_group_only/analysis2_task5_spss_polynomial_contrasts.csv`")
+        lines.append(f"- {branch}: `./{branch}/experience/wwr_polynomial_group_only/wwr_polynomial_contrasts.csv`")
     lines.append("")
     lines.append("## Q5. Do experience effects change by round?")
     for branch in branches:
-        lines.append(f"- {branch}: `./{branch}/experience/task5_group_round/analysis2_task5_spss_polynomial_contrasts.csv`")
+        lines.append(f"- {branch}: `./{branch}/experience/wwr_polynomial_group_round/wwr_polynomial_contrasts.csv`")
     (out / "research_questions_map.md").write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -87,34 +87,34 @@ def main():
         ])
         outputs.append(str((base / "overall" / "core_model").relative_to(out)))
 
-        # overall task5
+        # overall WWR polynomial significance
         run([
-            args.python, "scripts/analysis2_task5_spss_polynomial.py",
+            args.python, "scripts/wwr_polynomial_significance.py",
             "--long-csv", str(args.long_csv),
-            "--out-dir", str(base / "overall" / "task5"),
+            "--out-dir", str(base / "overall" / "wwr_polynomial"),
             "--exclude-subjects", exclude,
         ])
-        outputs.append(str((base / "overall" / "task5").relative_to(out)))
+        outputs.append(str((base / "overall" / "wwr_polynomial").relative_to(out)))
 
         # experience group only
         run([
-            args.python, "scripts/analysis2_task5_spss_polynomial.py",
+            args.python, "scripts/wwr_polynomial_significance.py",
             "--long-csv", str(args.long_csv),
-            "--out-dir", str(base / "experience" / "task5_group_only"),
+            "--out-dir", str(base / "experience" / "wwr_polynomial_group_only"),
             "--split-by", "ExperienceGroup",
             "--exclude-subjects", exclude,
         ])
-        outputs.append(str((base / "experience" / "task5_group_only").relative_to(out)))
+        outputs.append(str((base / "experience" / "wwr_polynomial_group_only").relative_to(out)))
 
         # experience x round
         run([
-            args.python, "scripts/analysis2_task5_spss_polynomial.py",
+            args.python, "scripts/wwr_polynomial_significance.py",
             "--long-csv", str(args.long_csv),
-            "--out-dir", str(base / "experience" / "task5_group_round"),
+            "--out-dir", str(base / "experience" / "wwr_polynomial_group_round"),
             "--split-by", "Repetition,ExperienceGroup",
             "--exclude-subjects", exclude,
         ])
-        outputs.append(str((base / "experience" / "task5_group_round").relative_to(out)))
+        outputs.append(str((base / "experience" / "wwr_polynomial_group_round").relative_to(out)))
 
     _write_index(out, [b for b, _ in branches])
     _write_research_map(out, [b for b, _ in branches])

@@ -52,7 +52,7 @@ The previous larger, more exploratory version is preserved in branch:
   - `experience`
   - currently centered on:
     - core LMM model via `scripts/run_analysis.py` (now with corresponding PNG outputs for model comparison, fixed effects, interactions, random effects, and simple effects)
-    - SPSS-aligned WWR polynomial contrast via `scripts/analysis2_task5_spss_polynomial.py` (including direct direction labels: linear increase/decrease and whether WWR=45 is the highest or lowest; PNG uses main-panel + side-summary layout to reduce overlap)
+    - SPSS-aligned WWR polynomial significance via `scripts/wwr_polynomial_significance.py` (including direct direction labels: linear increase/decrease and whether WWR=45 is the highest or lowest; PNG uses main-panel + side-summary layout to reduce overlap)
   - also auto-generates:
     - `significance_index.md` (what to read first)
     - `research_questions_map.md` (which result answers which question)
@@ -75,20 +75,20 @@ results/
       overall/
       experience/
   significance/
-    overall/
-      core_model/
     raw/
       overall/
-        task5/
+        core_model/
+        wwr_polynomial/
       experience/
-        task5_group_only/
-        task5_group_round/
+        wwr_polynomial_group_only/
+        wwr_polynomial_group_round/
     qc/                # only when --with-qc is used
       overall/
-        task5/
+        core_model/
+        wwr_polynomial/
       experience/
-        task5_group_only/
-        task5_group_round/
+        wwr_polynomial_group_only/
+        wwr_polynomial_group_round/
 ```
 
 ---

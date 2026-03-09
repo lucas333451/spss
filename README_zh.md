@@ -52,7 +52,7 @@
     - `experience`
   - 当前重点包括：
     - `scripts/run_analysis.py` 的核心 LMM 模型（现已为模型比较、固定效应、交互、随机效应、简单效应等关键结果补对应 PNG）
-    - `scripts/analysis2_task5_spss_polynomial.py` 的 WWR 三水平趋势检验（可直接判断线性增加/减少，以及 45 时最高/最低；PNG 采用主图 + 右侧摘要框，减少标注重叠）
+    - `scripts/wwr_polynomial_significance.py` 的 WWR 三水平趋势显著性检验（可直接判断线性增加/减少，以及 45 时最高/最低；PNG 采用主图 + 右侧摘要框，减少标注重叠）
   - 当前还会自动生成：
     - `significance_index.md`（先看哪些文件）
     - `research_questions_map.md`（每个研究问题对应看哪份结果）
@@ -75,20 +75,20 @@ results/
       overall/
       experience/
   significance/
-    overall/
-      core_model/
     raw/
       overall/
-        task5/
+        core_model/
+        wwr_polynomial/
       experience/
-        task5_group_only/
-        task5_group_round/
+        wwr_polynomial_group_only/
+        wwr_polynomial_group_round/
     qc/                # 仅在 --with-qc 时生成
       overall/
-        task5/
+        core_model/
+        wwr_polynomial/
       experience/
-        task5_group_only/
-        task5_group_round/
+        wwr_polynomial_group_only/
+        wwr_polynomial_group_round/
 ```
 
 ---
