@@ -40,7 +40,7 @@
 - `scripts/build_report_data_md.py`：生成“数据直写型”markdown（关键表格直接展开，不依赖索引跳转）
 - `RESULTS_MAP.md`：一页速查（每个研究问题优先看哪3个文件）
 - `scripts/run_analysis_R.R`：可选：用 R（lme4/lmerTest/emmeans）复算主模型，生成投稿更常见口径的结果表
-- `scripts/analysis2_task5_spss_polynomial.py`：新增：对标 SPSS「Repeated Measures → Polynomial Contrasts」的 WWR 三水平线性/二次趋势检验，输出更接近 Within-Subjects Contrasts 的汇总表
+- `scripts/analysis2_task5_spss_polynomial.py`：新增：对标 SPSS「Repeated Measures → Polynomial Contrasts」的 WWR 三水平线性/二次趋势检验，输出更接近 Within-Subjects Contrasts 的结果表，并生成对应 PNG 可视化
 
 ---
 
@@ -187,7 +187,7 @@ python scripts/pipeline.py \
 - `results/research/analysis-2/task1/<experience|sportfreq>/<raw|qc>/analysis2_b_stage_gap_long.csv` + `task1b_b_stage_gap_figures/B1.png|B2.png|B3.png`（analysis-2/task1b：B1–B3 Round2-Round1 差异；输出 p、sr、dz；按人群分层；总共 3 张图）
 - `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/analysis2_core_imm_suite_s_effects.csv` + `analysis2_core_imm_suite_s_models.csv` + `analysis2_core_imm_suite_b_effects.csv` + `analysis2_core_imm_suite_b_models.csv` + `analysis2_core_imm_suite_group_focus.csv` + `analysis2_core_imm_suite_posthoc_s_wwr_by_group.csv` + `analysis2_measurement_reliability_s1_s4.csv` + `task2_core_imm_suite_figures/*.png`（analysis-2/task2 core_Imm_suite：围绕 WWR/Complexity/Group 的问卷评分分层 LMM；补充人群相关项汇总、S题 WWR 事后比较、S1-S4 信度指标，并输出可视化 PNG）
 - `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/r_effectsize/analysis2_task2_eta_squared_partial_all.csv` + `analysis2_task2_eta_squared_partial_summary_all.csv` + `analysis2_task2_eta_squared_partial_<DV>.csv` + `figures/analysis2_task2_eta_squared_partial_<DV>.png`（按 analysis-2/task2 的实际模型口径，为 S1-S5 / B1-B3 逐题导出 partial η² 与论文风格 PNG；不再只看 Afford4）
-- `results/research/analysis-2/task5/<experience|sportfreq>/<raw|qc>/analysis2_task5_spss_polynomial_contrasts.csv` + `.md` + `analysis2_task5_subject_means_<DV>.csv`（新增：对标 SPSS 重复测量 Polynomial Contrasts 的三水平 WWR 趋势检验；输出 Linear/Quadratic 检验结果，以及用于检验的被试层 WWR 均值表）
+- `results/research/analysis-2/task5/<experience|sportfreq>/<raw|qc>/analysis2_task5_spss_polynomial_contrasts.csv` + `.md` + `analysis2_task5_wwr_profile_means.csv` + `analysis2_task5_subject_means_<DV>.csv` + `task5_spss_polynomial_figures/*.png`（新增：对标 SPSS 重复测量 Polynomial Contrasts 的三水平 WWR 趋势检验；输出更接近 Within-Subjects Contrasts 的结果表、用于检验的被试层 WWR 均值表、汇总 profile 均值以及 PNG 可视化）
 - `raw`=全样本；`qc`=排除以下 8 人：孙校聪、康少勇、张钰鹏、杨可、洪婷婷、陈韬、高梓楠、赵国宏。
 - `results/research/analysis_narrative.md`（角度1/角度2自动叙事总结）
 - `results/research/angle1_c1_minus_c0_by_group.csv`（直接回答“C1是否普遍更低、降幅是否一致”）

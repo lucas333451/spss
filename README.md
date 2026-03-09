@@ -33,7 +33,7 @@
 - `scripts/report_summary.py` — narrative summary for angle-1/angle-2 conclusions
 - `scripts/analyze_ipq.py` — NEW: IPQ (Q16.1–Q16.6) participant-level analysis (descriptives/reliability/group comparisons)
 - `scripts/diagnostics_lmm.py` — diagnostics (interaction screening / random-structure sensitivity / repetition deep-dive)
-- `scripts/analysis2_task5_spss_polynomial.py` — NEW: SPSS-style repeated-measures polynomial contrasts across 3 WWR levels (Linear/Quadratic), suitable for Within-Subjects Contrasts style summaries
+- `scripts/analysis2_task5_spss_polynomial.py` — NEW: SPSS-style repeated-measures polynomial contrasts across 3 WWR levels (Linear/Quadratic), with Within-Subjects Contrasts style tables and PNG visualizations
 - `scripts/pipeline.py` — one-click end-to-end runner (supports skip flags + optional `--with-r` to re-fit in R)
 - `scripts/build_report_md.py` — build one-file markdown bundle from `results/` (full-index style)
 - `scripts/build_report_key_md.py` — build a detailed key-results markdown bundle for direct interpretation
@@ -191,7 +191,7 @@ python scripts/pipeline.py \
 - `results/research/analysis-2/task1/<experience|sportfreq>/<raw|qc>/analysis2_b_stage_gap_long.csv` + `task1b_b_stage_gap_figures/B1.png|B2.png|B3.png` (analysis-2/task1b: B1–B3 Round2-Round1 gaps by people group; 3 figures total)
 - `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/analysis2_core_imm_suite_s_effects.csv` + `analysis2_core_imm_suite_s_models.csv` + `analysis2_core_imm_suite_b_effects.csv` + `analysis2_core_imm_suite_b_models.csv` + `analysis2_core_imm_suite_group_focus.csv` + `analysis2_core_imm_suite_posthoc_s_wwr_by_group.csv` + `analysis2_measurement_reliability_s1_s4.csv` + `task2_core_imm_suite_figures/*.png` (analysis-2/task2 core_Imm_suite: layered LMM around WWR/Complexity/Group for questionnaire scores; includes group-focused terms, S-item WWR posthoc contrasts, S1-S4 reliability, and visualization PNGs)
 - `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/r_effectsize/analysis2_task2_eta_squared_partial_all.csv` + `analysis2_task2_eta_squared_partial_summary_all.csv` + `analysis2_task2_eta_squared_partial_<DV>.csv` + `figures/analysis2_task2_eta_squared_partial_<DV>.png` (R-based partial eta² exports aligned to analysis-2/task2 models for each DV: S1-S5 and B1-B3; no longer limited to Afford4)
-- `results/research/analysis-2/task5/<experience|sportfreq>/<raw|qc>/analysis2_task5_spss_polynomial_contrasts.csv` + `.md` + `analysis2_task5_subject_means_<DV>.csv` (NEW: SPSS-style repeated-measures polynomial contrasts for 3 WWR levels; reports Linear/Quadratic trend tests and subject-level WWR means used for contrasts)
+- `results/research/analysis-2/task5/<experience|sportfreq>/<raw|qc>/analysis2_task5_spss_polynomial_contrasts.csv` + `.md` + `analysis2_task5_wwr_profile_means.csv` + `analysis2_task5_subject_means_<DV>.csv` + `task5_spss_polynomial_figures/*.png` (NEW: SPSS-style repeated-measures polynomial contrasts for 3 WWR levels; includes Within-Subjects Contrasts style tables, subject-level WWR means, profile means, and PNG visualizations)
 - `raw` = full sample; `qc` = excludes 8 subjects: 孙校聪, 康少勇, 张钰鹏, 杨可, 洪婷婷, 陈韬, 高梓楠, 赵国宏.
 - `results/research/analysis_narrative.md` (auto narrative summary for Angle1/Angle2)
 - `results/research/angle1_c1_minus_c0_by_group.csv` (directly answers “all groups lower in C1?” and “same or different drop magnitudes?”)
