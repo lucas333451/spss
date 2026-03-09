@@ -416,6 +416,45 @@ def _plot_interactions(infer_df: pd.DataFrame, out_dir: Path) -> str | None:
     return str(p)
 
 
+def _plot_random_effects(rand_df: pd.DataFrame, out_dir: Path) -> str | None:
+    if rand_df is None or rand_df.empty:
+        return None
+    x = rand_df.copy()
+    value_cols = [c for c in ["Var", "SD", "Corr"] if c in x.columns]
+    if not value_cols:
+        return None
+
+    long = x.melt(id_vars=["Component"], value_vars=value_cols, var_name="Metric", value_name="Value").dropna(subset=["Value"])
+    if long.empty:
+        return None
+
+    fig = plt.figure(figsize=(10.0, max(4.8, 0.35 * len(long) + 1.4)))
+    gs = fig.add_gridspec(1, 2, width_ratios=[3.5, 1.5], wspace=0.12)
+    ax = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[0, 1])
+
+    long["Label"] = long["Component"].astype(str) + " | " + long["Metric"].astype(str)
+    long = long.sort_values("Value")
+    palette = long["Metric"].map({"Var": "#A9D6CB", "SD": "#8FA3B8", "Corr": "#C8B98B"}).fillna("#A8C7CF")
+    ax.barh(np.arange(len(long)), long["Value"], color=list(palette))
+    ax.axvline(0, color="#70817A", lw=1)
+    ax.set_yticks(np.arange(len(long)))
+    ax.set_yticklabels(long["Label"], fontsize=8)
+    ax.set_title("Random effects summary")
+    ax.set_xlabel("Value")
+
+    _summary_box(ax2, "Random effects", [
+        f"Components: {x['Component'].nunique()}",
+        f"Metrics shown: {', '.join(value_cols)}",
+        f"Residual Var: {_fmt(x.loc[x['Component'] == 'Residual', 'Var'].iloc[0]) if ('Residual' in x['Component'].values and 'Var' in x.columns) else 'NA'}",
+    ])
+    out_dir.mkdir(parents=True, exist_ok=True)
+    p = out_dir / "random_effects_summary.png"
+    fig.savefig(p, dpi=230)
+    plt.close(fig)
+    return str(p)
+
+
 def _plot_simple_effects(simple_df: pd.DataFrame, out_dir: Path) -> str | None:
     if simple_df.empty:
         return None
@@ -546,6 +585,7 @@ def main():
         "figure_model_comparison": _plot_model_comparison(cmp_df, fig_dir),
         "figure_fixed_effects": _plot_fixed_effects(fixed_df, fig_dir),
         "figure_interactions": _plot_interactions(infer_df, fig_dir),
+        "figure_random_effects": _plot_random_effects(rand_df, fig_dir),
         "figure_simple_effects": _plot_simple_effects(simple_df, fig_dir),
     }
 

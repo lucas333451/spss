@@ -51,7 +51,7 @@
     - `overall`
     - `experience`
   - 当前重点包括：
-    - `scripts/run_analysis.py` 的核心 LMM 模型（现已为关键结果补对应 PNG）
+    - `scripts/run_analysis.py` 的核心 LMM 模型（现已为模型比较、固定效应、交互、随机效应、简单效应等关键结果补对应 PNG）
     - `scripts/analysis2_task5_spss_polynomial.py` 的 WWR 三水平趋势检验
   - 当前还会自动生成：
     - `significance_index.md`（先看哪些文件）
