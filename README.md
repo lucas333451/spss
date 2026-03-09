@@ -53,6 +53,9 @@ The previous larger, more exploratory version is preserved in branch:
   - currently centered on:
     - core model via `scripts/run_analysis.py`
     - SPSS-aligned WWR polynomial contrast via `scripts/analysis2_task5_spss_polynomial.py`
+  - also auto-generates:
+    - `significance_index.md` (what to read first)
+    - `research_questions_map.md` (which result answers which question)
 
 ### 4) Legacy preserved
 - `scripts/pipeline_raw_legacy.py`

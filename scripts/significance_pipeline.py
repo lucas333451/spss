@@ -17,6 +17,48 @@ def run(cmd: list[str]):
         raise SystemExit(p.returncode)
 
 
+def _write_index(out: Path, branches: list[str]) -> None:
+    lines = []
+    lines.append("# Significance module index")
+    lines.append("")
+    lines.append("## Read this order first")
+    lines.append("")
+    for branch in branches:
+        lines.append(f"### {branch}")
+        lines.append(f"1. `./{branch}/overall/core_model/results_draft_zh.md` — overall core model narrative")
+        lines.append(f"2. `./{branch}/overall/task5/analysis2_task5_spss_polynomial_contrasts.csv` — overall WWR linear/quadratic significance")
+        lines.append(f"3. `./{branch}/experience/task5_group_only/analysis2_task5_spss_polynomial_contrasts.csv` — experience-group significance")
+        lines.append(f"4. `./{branch}/experience/task5_group_round/analysis2_task5_spss_polynomial_contrasts.csv` — experience × round follow-up")
+        lines.append("")
+    (out / "significance_index.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+def _write_research_map(out: Path, branches: list[str]) -> None:
+    lines = []
+    lines.append("# Research questions map — significance")
+    lines.append("")
+    lines.append("## Q1. Does WWR show significant linear or quadratic trends overall?")
+    for branch in branches:
+        lines.append(f"- {branch}: `./{branch}/overall/task5/analysis2_task5_spss_polynomial_contrasts.csv`")
+    lines.append("")
+    lines.append("## Q2. What is the direction of those trends?")
+    for branch in branches:
+        lines.append(f"- {branch}: `./{branch}/overall/task5/analysis2_task5_spss_polynomial_contrasts.csv` (Direction column) + `./{branch}/overall/task5/task5_spss_polynomial_figures/*.png`")
+    lines.append("")
+    lines.append("## Q3. Is there an overall WWR / Complexity effect in the core model?")
+    for branch in branches:
+        lines.append(f"- {branch}: `./{branch}/overall/core_model/table_main_interactions.csv` + `./{branch}/overall/core_model/table_fixed_effects.csv`")
+    lines.append("")
+    lines.append("## Q4. Do high/low experience groups differ in significance patterns?")
+    for branch in branches:
+        lines.append(f"- {branch}: `./{branch}/experience/task5_group_only/analysis2_task5_spss_polynomial_contrasts.csv`")
+    lines.append("")
+    lines.append("## Q5. Do experience effects change by round?")
+    for branch in branches:
+        lines.append(f"- {branch}: `./{branch}/experience/task5_group_round/analysis2_task5_spss_polynomial_contrasts.csv`")
+    (out / "research_questions_map.md").write_text("\n".join(lines), encoding="utf-8")
+
+
 def main():
     ap = argparse.ArgumentParser(description="Significance-only pipeline: overall + experience")
     ap.add_argument("--long-csv", type=Path, required=True)
@@ -33,19 +75,18 @@ def main():
     if args.with_qc:
         branches.append(("qc", QC_EXCLUDE))
 
-    # overall main model once (not branch split here; uses long CSV directly)
-    overall_dir = out / "overall"
-    overall_dir.mkdir(parents=True, exist_ok=True)
-    run([
-        args.python, "scripts/run_analysis.py",
-        "--long-csv", str(args.long_csv),
-        "--out-dir", str(overall_dir / "core_model"),
-    ])
-    outputs.append(str((overall_dir / "core_model").relative_to(out)))
-
     for branch, exclude in branches:
         base = out / branch
-        (base / "overall").mkdir(parents=True, exist_ok=True)
+
+        # overall core model
+        run([
+            args.python, "scripts/run_analysis.py",
+            "--long-csv", str(args.long_csv),
+            "--out-dir", str(base / "overall" / "core_model"),
+        ])
+        outputs.append(str((base / "overall" / "core_model").relative_to(out)))
+
+        # overall task5
         run([
             args.python, "scripts/analysis2_task5_spss_polynomial.py",
             "--long-csv", str(args.long_csv),
@@ -54,7 +95,7 @@ def main():
         ])
         outputs.append(str((base / "overall" / "task5").relative_to(out)))
 
-        (base / "experience").mkdir(parents=True, exist_ok=True)
+        # experience group only
         run([
             args.python, "scripts/analysis2_task5_spss_polynomial.py",
             "--long-csv", str(args.long_csv),
@@ -64,6 +105,7 @@ def main():
         ])
         outputs.append(str((base / "experience" / "task5_group_only").relative_to(out)))
 
+        # experience x round
         run([
             args.python, "scripts/analysis2_task5_spss_polynomial.py",
             "--long-csv", str(args.long_csv),
@@ -73,11 +115,14 @@ def main():
         ])
         outputs.append(str((base / "experience" / "task5_group_round").relative_to(out)))
 
+    _write_index(out, [b for b, _ in branches])
+    _write_research_map(out, [b for b, _ in branches])
+
     payload = {
         "task": "significance pipeline",
         "scope": ["overall", "experience"],
         "branches": [b for b, _ in branches],
-        "outputs": outputs,
+        "outputs": outputs + ["significance_index.md", "research_questions_map.md"],
     }
     (out / "significance_summary.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(payload, ensure_ascii=False))

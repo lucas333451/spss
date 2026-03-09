@@ -53,6 +53,9 @@
   - 当前重点包括：
     - `scripts/run_analysis.py` 的核心模型
     - `scripts/analysis2_task5_spss_polynomial.py` 的 WWR 三水平趋势检验
+  - 当前还会自动生成：
+    - `significance_index.md`（先看哪些文件）
+    - `research_questions_map.md`（每个研究问题对应看哪份结果）
 
 ### 4）旧版流程仍保留
 - `scripts/pipeline_raw_legacy.py`
