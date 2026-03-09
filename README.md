@@ -58,7 +58,14 @@ The previous larger, more exploratory version is preserved in branch:
     - `research_questions_map.md` (which result answers which question)
     - `significance_guide.png` (visual overview of the navigation)
 
-### 4) Legacy preserved
+### 4) Results top-level guide
+- `scripts/build_results_guide.py`
+  - auto-generates:
+    - `RESULTS_GUIDE.md`
+    - `RESULTS_GUIDE.png`
+  - connects descriptive / significance / overall / experience / raw / qc into one reading path
+
+### 5) Legacy preserved
 - `scripts/pipeline_raw_legacy.py`
   - old crowded pipeline kept for reference
 

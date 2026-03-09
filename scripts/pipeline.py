@@ -57,6 +57,11 @@ def main():
             cmd.append("--with-qc")
         run(cmd)
 
+    run([
+        args.python, "scripts/build_results_guide.py",
+        "--out-root", str(args.out_root),
+    ])
+
 
 if __name__ == "__main__":
     main()

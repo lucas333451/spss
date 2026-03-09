@@ -58,7 +58,14 @@
     - `research_questions_map.md`（每个研究问题对应看哪份结果）
     - `significance_guide.png`（导航信息的图形总览版）
 
-### 4）旧版流程仍保留
+### 4）结果总导航
+- `scripts/build_results_guide.py`
+  - 自动生成：
+    - `RESULTS_GUIDE.md`
+    - `RESULTS_GUIDE.png`
+  - 用于串起 descriptive / significance / overall / experience / raw / qc 的阅读顺序
+
+### 5）旧版流程仍保留
 - `scripts/pipeline_raw_legacy.py`
   - 原来那套复杂 pipeline，先保留作参考，不删
 
