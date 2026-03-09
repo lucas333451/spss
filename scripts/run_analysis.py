@@ -35,12 +35,6 @@ def _rescale_9_to_7(x):
 
 
 def _extract_coef_table(fit) -> pd.DataFrame:
-    """Extract fixed-effect coefficient table.
-
-    Note: statsmodels MixedLM stores random-effect variance/covariance terms
-    in fit.params as well (e.g., "Group Var", "x Var", "x Cov"). We skip
-    those here and export random effects separately.
-    """
     params = fit.params
     bse = fit.bse
     zvals = fit.tvalues
@@ -134,32 +128,23 @@ def _to_markdown_table(df: pd.DataFrame, float_cols=None, digits=3) -> str:
 
 
 def _extract_random_effects_summary(fit) -> pd.DataFrame:
-    """Summarize random-effects (variance components) from statsmodels MixedLM.
-
-    Returns a tidy table with Variance/SD/Correlation when available.
-    """
     if fit is None:
         return pd.DataFrame()
 
     rows = []
-
-    # Random-effect covariance matrix
     cov_re = getattr(fit, "cov_re", None)
     if cov_re is not None:
         try:
             cov = np.asarray(cov_re, dtype=float)
             names = list(getattr(cov_re, "index", []))
             if not names:
-                # fallback names
                 names = [f"RE{i+1}" for i in range(cov.shape[0])]
 
-            # variances + SD
             for i, nm in enumerate(names):
                 v = float(cov[i, i])
                 rows.append({"Component": nm, "Type": "Var", "Value": v})
                 rows.append({"Component": nm, "Type": "SD", "Value": float(np.sqrt(v)) if v >= 0 else np.nan})
 
-            # correlations
             for i in range(len(names)):
                 for j in range(i + 1, len(names)):
                     denom = np.sqrt(cov[i, i] * cov[j, j])
@@ -168,9 +153,7 @@ def _extract_random_effects_summary(fit) -> pd.DataFrame:
         except Exception:
             pass
 
-    # Residual variance (scale)
     try:
-        # statsmodels MixedLMResults.scale is the residual variance
         res_var = float(getattr(fit, "scale", np.nan))
         if np.isfinite(res_var):
             rows.append({"Component": "Residual", "Type": "Var", "Value": res_var})
@@ -181,10 +164,7 @@ def _extract_random_effects_summary(fit) -> pd.DataFrame:
     out = pd.DataFrame(rows)
     if out.empty:
         return out
-
-    # widen a bit for readability
     wide = out.pivot_table(index="Component", columns="Type", values="Value", aggfunc="first").reset_index()
-    # stable column order
     cols = [c for c in ["Component", "Var", "SD", "Corr"] if c in wide.columns]
     return wide[cols]
 
@@ -218,197 +198,252 @@ def _fit_with_fallback(data: pd.DataFrame, formula: str, re_formula: str | None)
             return fit, info
         except Exception as e:
             last_err = str(e)
-            continue
-
-    raise RuntimeError(f"MixedLM fit failed for formula={formula}; last_error={last_err}")
+    raise RuntimeError(f"MixedLM failed. formula={formula}, last_error={last_err}")
 
 
-def _build_model_comparison(model_df: pd.DataFrame, dv_col: str = "Afford4") -> tuple[pd.DataFrame, dict, dict]:
-    # A: compact main effects
-    f_a = f"{dv_col} ~ C(Complexity) + C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)"
-    # B: key interaction
-    f_b = f"{dv_col} ~ C(Complexity) * C(WWR) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)"
-    # C: fuller model
-    f_c = f"{dv_col} ~ C(WWR) * C(Complexity) * C(ExperienceGroup) * C(SportFreqGroup) + C(Repetition) + C(Position)"
+def _build_model_comparison(model_df: pd.DataFrame, dv_col: str):
+    f_a = f"{dv_col} ~ C(WWR) + C(Complexity) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)"
+    f_b = f"{dv_col} ~ (C(WWR) + C(Complexity) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position))**2"
+    f_c = f"{dv_col} ~ (C(WWR) + C(Complexity) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position))**3"
 
-    models = [
+    specs = [
         ("Model_A_compact", f_a),
-        ("Model_B_key_interaction", f_b),
-        ("Model_C_full", f_c),
+        ("Model_B_two_way", f_b),
+        ("Model_C_three_way", f_c),
     ]
 
-    rows = []
-    fitted: dict[str, tuple[object, dict]] = {}
-    for name, formula in models:
+    rows, fits = [], {}
+    primary_name, primary_formula = specs[0]
+    for name, formula in specs:
         fit, info = _fit_with_fallback(model_df, formula, re_formula="1 + C(Complexity)")
+        fits[name] = {"fit": fit, "formula": formula, "info": info}
         rows.append({
             "Model": name,
             "Formula": formula,
-            "RandomStructureRequested": "(1 + Complexity | Subject)",
-            "RandomStructureUsed": "(1 + Complexity | Subject)" if info["re_formula_used"] else "(1 | Subject)",
-            "FitMethod": info["method"],
-            "FallbackToRandomIntercept": info["fallback_used"],
-            "Converged": info["converged"],
             "AIC": info["aic"],
             "BIC": info["bic"],
             "LogLik": info["llf"],
-            "n_rows": int(len(model_df)),
-            "n_subjects": int(model_df["SubjectID"].nunique()),
+            "Converged": info["converged"],
+            "FitMethod": info["method"],
+            "RandomStructureUsed": info["re_formula_used"] if info["re_formula_used"] is not None else "1",
         })
-        fitted[name] = (fit, info)
 
-    cmp_df = pd.DataFrame(rows).sort_values(["AIC", "BIC"], na_position="last").reset_index(drop=True)
-
-    best_name = cmp_df.iloc[0]["Model"]
-    best_fit, best_info = fitted[best_name]
-
-    # Primary vs exploratory (journal-friendly):
-    # - Primary model is the compact main-effects model (Model_A_compact)
-    # - Other models are treated as exploratory/sensitivity checks.
-    primary_name = "Model_A_compact"
-    if primary_name not in fitted:
-        primary_name = best_name
-
-    cmp_df["Role"] = np.where(cmp_df["Model"].eq(primary_name), "Primary", "Exploratory")
-
-    pick = {
+    cmp_df = pd.DataFrame(rows).sort_values("AIC").reset_index(drop=True)
+    recommended_name = str(cmp_df.iloc[0]["Model"]) if not cmp_df.empty else primary_name
+    best = {
         "primary_model": primary_name,
-        "primary_formula": next((r["Formula"] for r in rows if r["Model"] == primary_name), None),
-        "recommended_model_by_aic": best_name,
-        "recommended_formula_by_aic": cmp_df.iloc[0]["Formula"],
-        "random_structure_used": next((r["RandomStructureUsed"] for r in rows if r["Model"] == primary_name), cmp_df.iloc[0]["RandomStructureUsed"]),
-        "fit_method": next((r["FitMethod"] for r in rows if r["Model"] == primary_name), cmp_df.iloc[0]["FitMethod"]),
-        "aic_best": float(cmp_df.iloc[0]["AIC"]),
-        "bic_best": float(cmp_df.iloc[0]["BIC"]),
+        "primary_formula": primary_formula,
+        "recommended_model_by_aic": recommended_name,
+        "recommended_formula_by_aic": fits[recommended_name]["formula"],
+        "fit": fits[primary_name]["fit"],
+        "info": fits[primary_name]["info"],
+        "fit_method": fits[primary_name]["info"]["method"],
+        "random_structure_used": fits[primary_name]["info"]["re_formula_used"] if fits[primary_name]["info"]["re_formula_used"] is not None else "1",
     }
-
-    primary_fit, primary_info = fitted[primary_name]
-    return cmp_df, {"fit": primary_fit, "info": primary_info, **pick}, fitted
+    return cmp_df, best, fits
 
 
-def _paired_cohens_d(a: np.ndarray, b: np.ndarray) -> float:
-    diff = b - a
-    sd = np.std(diff, ddof=1)
-    if np.isnan(sd) or sd == 0:
-        return np.nan
-    return float(np.mean(diff) / sd)
-
-
-def _simple_effects_by_wwr(model_df: pd.DataFrame, dv_col: str = "Afford4") -> pd.DataFrame:
-    rows = []
-    for w in sorted(model_df["WWR"].astype(str).unique(), key=lambda x: int(float(x)) if str(x).replace('.', '', 1).isdigit() else x):
-        sub = model_df[model_df["WWR"].astype(str) == str(w)].copy()
-
-        piv = sub.pivot_table(index="SubjectID", columns="Complexity", values=dv_col, aggfunc="mean")
-        if "0" in piv.columns and "1" in piv.columns:
-            x0 = piv["0"].to_numpy(dtype=float)
-            x1 = piv["1"].to_numpy(dtype=float)
-        else:
-            # try numeric-coded columns fallback
-            ccols = list(piv.columns)
-            has0 = 0 in ccols
-            has1 = 1 in ccols
-            if has0 and has1:
-                x0 = piv[0].to_numpy(dtype=float)
-                x1 = piv[1].to_numpy(dtype=float)
-            else:
-                continue
-
-        mask = np.isfinite(x0) & np.isfinite(x1)
-        if mask.sum() < 3:
-            continue
-
-        t_res = ttest_rel(x1[mask], x0[mask], nan_policy="omit")
-        mean_c0 = float(np.mean(x0[mask]))
-        mean_c1 = float(np.mean(x1[mask]))
-        d_z = _paired_cohens_d(x0[mask], x1[mask])
-
-        rows.append({
-            "WWR": w,
-            "n_subjects": int(mask.sum()),
-            "Mean_C0": mean_c0,
-            "Mean_C1": mean_c1,
-            "Delta_C1_minus_C0": mean_c1 - mean_c0,
-            "t": float(t_res.statistic),
-            "p": float(t_res.pvalue),
-            "cohens_dz": d_z,
-        })
-
-    out = pd.DataFrame(rows)
-    if out.empty:
-        return out
-
-    rej, p_adj, _, _ = multipletests(out["p"].to_numpy(), method="holm")
-    out["p_holm"] = p_adj
-    out["Sig_holm"] = np.where(out["p_holm"] < 0.001, "***", np.where(out["p_holm"] < 0.01, "**", np.where(out["p_holm"] < 0.05, "*", "")))
-    out["Significant_holm"] = rej
-    return out
-
-
-def _build_paper_tables(
-    model_df: pd.DataFrame, coef_df: pd.DataFrame, dv_col: str = "Afford4", random_df: pd.DataFrame | None = None
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    desc = (
-        model_df.groupby(["WWR", "Complexity", "ExperienceGroup", "SportFreqGroup", "Repetition"], dropna=False)[dv_col]
-        .agg(N="count", Mean="mean", SD="std")
-        .reset_index()
-    )
+def _build_paper_tables(model_df: pd.DataFrame, coef_df: pd.DataFrame, dv_col: str, random_df: pd.DataFrame | None = None):
+    d = model_df.copy()
+    desc = d.groupby(["WWR", "Complexity"], as_index=False)[dv_col].agg(n="count", mean="mean", sd="std")
 
     fixed = coef_df.copy()
-    fixed[["EffectType", "Effect"]] = fixed["Term"].apply(lambda t: pd.Series(_classify_effect(str(t))))
-    fixed["APA_Term"] = fixed["Effect"].apply(_humanize_term)
-    fixed = fixed[["EffectType", "Effect", "APA_Term", "Coef", "SE", "z", "p", "Sig", "CI95_low", "CI95_high"]]
-    fixed = fixed.sort_values(["EffectType", "Effect"]).reset_index(drop=True)
+    fixed["EffectType"], fixed["EffectRaw"] = zip(*fixed["Term"].map(_classify_effect))
+    fixed["APA_Term"] = fixed["Term"].map(_humanize_term)
 
-    infer = fixed[fixed["EffectType"].isin(["Main Effect", "Interaction (2-way)", "Interaction (3-way)", "Interaction (4-way+)"])].copy()
-    infer = infer.rename(columns={"Effect": "Term"})
-    infer["APA_Term"] = infer["Term"].apply(_humanize_term)
-    infer = infer[["EffectType", "Term", "APA_Term", "Coef", "SE", "z", "p", "Sig", "CI95_low", "CI95_high"]]
-
-    rand = (random_df.copy() if isinstance(random_df, pd.DataFrame) else pd.DataFrame())
+    infer = fixed[fixed["EffectType"].str.contains("Main Effect|Interaction", na=False)].copy()
+    infer = infer[["EffectType", "APA_Term", "Coef", "SE", "z", "p", "Sig", "CI95_low", "CI95_high"]]
+    rand = random_df.copy() if random_df is not None else pd.DataFrame()
     return desc, fixed, infer, rand
 
 
-def _auto_results_draft_zh(best: dict, infer_df: pd.DataFrame, simple_df: pd.DataFrame) -> str:
-    lines = [
-        "# 论文结果段草稿（自动生成，中文）",
-        "",
-        "## 模型说明",
-        f"采用线性混合模型（LMM），主模型（Primary）为：`{best['primary_formula']}`。",
-        f"AIC 最优模型（Exploratory/Sensitivity）为：`{best['recommended_formula_by_aic']}`。",
-        f"随机结构使用：`{best['random_structure_used']}`（拟合方法：{best['fit_method']}）。",
-        "",
-        "## 主要结果（固定效应）",
-    ]
-
-    sig = infer_df[infer_df["p"] < 0.05].copy() if not infer_df.empty else pd.DataFrame()
-    if sig.empty:
-        lines.append("在当前模型下，主要固定效应与交互项未达到显著水平（p < .05）。")
-    else:
-        for _, r in sig.sort_values("p").head(8).iterrows():
-            lines.append(
-                f"- {r['APA_Term']}：β={r['Coef']:.3f}, SE={r['SE']:.3f}, z={r['z']:.3f}, p={r['p']:.4f}{r['Sig']}。"
-            )
-
-    lines.extend(["", "## Simple effect（Complexity 在各 WWR 下）"])
-    if simple_df.empty:
-        lines.append("未能得到可分析的 simple effect 结果。")
-    else:
-        sig_s = simple_df[simple_df["p_holm"] < 0.05].copy()
-        if sig_s.empty:
-            lines.append("在 Holm 多重比较校正后，各 WWR 条件下 Complexity 的 simple effect 均不显著。")
+def _simple_effects_by_wwr(model_df: pd.DataFrame, dv_col: str) -> pd.DataFrame:
+    rows = []
+    for wwr, sub in model_df.groupby("WWR"):
+        wide = sub.pivot_table(index="SubjectID", columns="Complexity", values=dv_col, aggfunc="mean")
+        if "0" not in wide.columns or "1" not in wide.columns:
+            continue
+        a = pd.to_numeric(wide["0"], errors="coerce")
+        b = pd.to_numeric(wide["1"], errors="coerce")
+        valid = a.notna() & b.notna()
+        a2 = a[valid].to_numpy(dtype=float)
+        b2 = b[valid].to_numpy(dtype=float)
+        if len(a2) < 3:
+            continue
+        t_res = ttest_rel(b2, a2, nan_policy="omit")
+        diff = b2 - a2
+        dz = float(np.mean(diff) / np.std(diff, ddof=1)) if len(diff) >= 2 and np.std(diff, ddof=1) > 0 else np.nan
+        rows.append({
+            "WWR": wwr,
+            "n": int(len(diff)),
+            "Mean_C0": float(np.mean(a2)),
+            "Mean_C1": float(np.mean(b2)),
+            "Diff_C1_minus_C0": float(np.mean(diff)),
+            "t": float(t_res.statistic) if pd.notna(t_res.statistic) else np.nan,
+            "p": float(t_res.pvalue) if pd.notna(t_res.pvalue) else np.nan,
+            "dz": dz,
+        })
+    out = pd.DataFrame(rows)
+    if not out.empty:
+        mask = out["p"].notna()
+        if mask.any():
+            out.loc[mask, "p_holm"] = multipletests(out.loc[mask, "p"], method="holm")[1]
         else:
-            for _, r in sig_s.iterrows():
-                lines.append(
-                    f"- WWR={r['WWR']}：C1-C0={r['Delta_C1_minus_C0']:.3f}, t={r['t']:.3f}, p_holm={r['p_holm']:.4f}{r['Sig_holm']}, d_z={r['cohens_dz']:.3f}。"
-                )
+            out["p_holm"] = np.nan
+    return out
 
-    lines.extend([
-        "",
-        "## 写作提示",
-        "请将上述自动草稿与理论假设、研究设计、图表编号进行人工核对后再用于论文正文。",
-    ])
+
+def _auto_results_draft_zh(best: dict, infer_df: pd.DataFrame, simple_df: pd.DataFrame) -> str:
+    lines = []
+    lines.append("# 结果草稿（中文自动生成）")
+    lines.append("")
+    lines.append(f"主报告模型固定为：{best['primary_model']}")
+    lines.append(f"公式：{best['primary_formula']}")
+    lines.append("")
+    if not infer_df.empty:
+        sig = infer_df[infer_df["p"] < 0.05].copy()
+        if not sig.empty:
+            lines.append("## 显著项（p < 0.05）")
+            for _, r in sig.iterrows():
+                lines.append(f"- {r['EffectType']}：{r['APA_Term']}，Coef={r['Coef']:.3f}, z={r['z']:.3f}, p={r['p']:.4f}")
+    if not simple_df.empty:
+        lines.append("")
+        lines.append("## Complexity 在各 WWR 下的简单效应")
+        for _, r in simple_df.iterrows():
+            lines.append(f"- WWR={r['WWR']}：C1-C0={r['Diff_C1_minus_C0']:.3f}, p={r['p']:.4f}, p_holm={r.get('p_holm', np.nan):.4f}")
     return "\n".join(lines)
+
+
+def _fmt(v, nd=3):
+    if v is None or pd.isna(v):
+        return "NA"
+    return f"{float(v):.{nd}f}"
+
+
+def _summary_box(ax, title: str, lines: list[str]):
+    ax.axis("off")
+    ax.set_facecolor("#F7FAF8")
+    ax.text(0.03, 0.97, title, va="top", ha="left", fontsize=10.2, fontweight="bold", color="#40534C")
+    ax.text(
+        0.03, 0.90, "\n".join(lines), va="top", ha="left", fontsize=8.6, color="#50615A", linespacing=1.35,
+        bbox=dict(boxstyle="round,pad=0.45", fc="#F4F8F6", ec="#D5DFD9", lw=0.8)
+    )
+
+
+def _plot_model_comparison(cmp_df: pd.DataFrame, out_dir: Path) -> str | None:
+    if cmp_df.empty:
+        return None
+    fig = plt.figure(figsize=(9.4, 4.8))
+    gs = fig.add_gridspec(1, 2, width_ratios=[3.4, 1.5], wspace=0.16)
+    ax = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[0, 1])
+    x = cmp_df.copy().sort_values("AIC", ascending=True)
+    sns.barplot(data=x, y="Model", x="AIC", color="#A9D6CB", ax=ax)
+    ax.set_title("Model comparison by AIC")
+    ax.set_xlabel("AIC")
+    ax.set_ylabel("")
+    best_row = x.iloc[0]
+    _summary_box(ax2, "Model summary", [
+        f"Best by AIC: {best_row['Model']}",
+        f"AIC={_fmt(best_row['AIC'])}",
+        f"BIC={_fmt(best_row['BIC'])}",
+        f"LogLik={_fmt(best_row['LogLik'])}",
+    ])
+    out_dir.mkdir(parents=True, exist_ok=True)
+    p = out_dir / "model_comparison_aic.png"
+    fig.savefig(p, dpi=230)
+    plt.close(fig)
+    return str(p)
+
+
+def _plot_fixed_effects(fixed_df: pd.DataFrame, out_dir: Path) -> str | None:
+    if fixed_df.empty:
+        return None
+    x = fixed_df[fixed_df["Term"] != "Intercept"].copy()
+    if x.empty:
+        return None
+    x = x.sort_values("Coef")
+    fig = plt.figure(figsize=(10.5, max(4.8, 0.34 * len(x) + 1.6)))
+    gs = fig.add_gridspec(1, 2, width_ratios=[3.6, 1.4], wspace=0.12)
+    ax = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax.axvline(0, color="#70817A", lw=1)
+    ax.errorbar(x["Coef"], np.arange(len(x)), xerr=[x["Coef"] - x["CI95_low"], x["CI95_high"] - x["Coef"]], fmt='o', color="#6FAF9F", ecolor="#A8D5C8", capsize=2)
+    ax.set_yticks(np.arange(len(x)))
+    ax.set_yticklabels([_humanize_term(t) for t in x["Term"]], fontsize=8)
+    ax.set_title("Fixed effects with 95% CI")
+    ax.set_xlabel("Coefficient")
+    sig_n = int((x["p"] < 0.05).sum())
+    _summary_box(ax2, "Fixed effects", [
+        f"Terms shown: {len(x)}",
+        f"Significant (p<0.05): {sig_n}",
+        f"Strongest +Coef: {_humanize_term(str(x.iloc[-1]['Term']))}",
+        f"Strongest -Coef: {_humanize_term(str(x.iloc[0]['Term']))}",
+    ])
+    out_dir.mkdir(parents=True, exist_ok=True)
+    p = out_dir / "fixed_effects_forest.png"
+    fig.savefig(p, dpi=230)
+    plt.close(fig)
+    return str(p)
+
+
+def _plot_interactions(infer_df: pd.DataFrame, out_dir: Path) -> str | None:
+    if infer_df.empty:
+        return None
+    x = infer_df.copy()
+    x["minuslog10p"] = -np.log10(pd.to_numeric(x["p"], errors="coerce"))
+    x = x.sort_values("minuslog10p", ascending=True)
+    fig = plt.figure(figsize=(10.2, max(4.8, 0.34 * len(x) + 1.4)))
+    gs = fig.add_gridspec(1, 2, width_ratios=[3.6, 1.4], wspace=0.12)
+    ax = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[0, 1])
+    palette = x["EffectType"].map({"Main Effect": "#6FAF9F", "Interaction (2-way)": "#8FA3B8", "Interaction (3-way)": "#C8B98B"}).fillna("#A8C7CF")
+    ax.barh(np.arange(len(x)), x["minuslog10p"], color=list(palette))
+    ax.set_yticks(np.arange(len(x)))
+    ax.set_yticklabels(x["APA_Term"], fontsize=8)
+    ax.set_xlabel("-log10(p)")
+    ax.set_title("Main and interaction effects")
+    _summary_box(ax2, "Interaction summary", [
+        f"Rows: {len(x)}",
+        f"Main effects: {int((x['EffectType'] == 'Main Effect').sum())}",
+        f"2-way: {int((x['EffectType'] == 'Interaction (2-way)').sum())}",
+        f"3-way+: {int(x['EffectType'].str.contains('3-way|4-way', na=False).sum())}",
+    ])
+    out_dir.mkdir(parents=True, exist_ok=True)
+    p = out_dir / "main_interactions_summary.png"
+    fig.savefig(p, dpi=230)
+    plt.close(fig)
+    return str(p)
+
+
+def _plot_simple_effects(simple_df: pd.DataFrame, out_dir: Path) -> str | None:
+    if simple_df.empty:
+        return None
+    x = simple_df.copy().sort_values("WWR")
+    fig = plt.figure(figsize=(9.2, 4.8))
+    gs = fig.add_gridspec(1, 2, width_ratios=[3.2, 1.5], wspace=0.12)
+    ax = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[0, 1])
+    bars = ax.bar(x["WWR"].astype(str), x["Diff_C1_minus_C0"], color="#8EC5B6")
+    ax.axhline(0, color="#70817A", lw=1)
+    ax.set_title("Simple effects: C1 - C0 within each WWR")
+    ax.set_xlabel("WWR")
+    ax.set_ylabel("Mean difference")
+    for b, p in zip(bars, x["p"]):
+        ax.text(b.get_x() + b.get_width()/2, b.get_height(), f"p={_fmt(p, 3)}", ha="center", va="bottom", fontsize=8, color="#50615A")
+    best = x.loc[x["p"].idxmin()] if x["p"].notna().any() else x.iloc[0]
+    _summary_box(ax2, "Simple-effects summary", [
+        f"Most evidence at WWR={best['WWR']}",
+        f"C1-C0={_fmt(best['Diff_C1_minus_C0'])}",
+        f"p={_fmt(best['p'])}",
+        f"Holm p={_fmt(best.get('p_holm', np.nan))}",
+        f"dz={_fmt(best.get('dz', np.nan))}",
+    ])
+    out_dir.mkdir(parents=True, exist_ok=True)
+    p = out_dir / "simple_effects_complexity_by_wwr.png"
+    fig.savefig(p, dpi=230)
+    plt.close(fig)
+    return str(p)
 
 
 def main():
@@ -416,6 +451,7 @@ def main():
     ap.add_argument("--long-csv", type=Path, required=True)
     ap.add_argument("--out-dir", type=Path, default=Path("results/model"))
     ap.add_argument("--afford4-min-items", type=int, default=3, help="Minimum valid items among S1-S4 required to compute Afford4 (default: 3)")
+    ap.add_argument("--exclude-subjects", default="", help="Comma-separated SubjectID list for exclusion (used by qc branch in clean main pipeline)")
     args = ap.parse_args()
 
     apply_bae_style()
@@ -424,12 +460,11 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(args.long_csv)
+    if args.exclude_subjects and "SubjectID" in df.columns:
+        names = [x.strip() for x in str(args.exclude_subjects).split(",") if x.strip()]
+        sid = df["SubjectID"].astype(str).str.strip()
+        df = df.loc[~sid.isin(set(names))].copy()
 
-    # Construct-specific composites:
-    # - Main construct: Afford4 = mean(S1..S4)
-    # - S5 (1-9) is supplementary and reported separately (not merged into Afford4)
-    # Main DV: Afford4 (mean of S1-S4) with explicit missing-item rule.
-    # Default rule: require >=3/4 valid items; otherwise mark as NA (row excluded from LMM).
     afford_min_items = int(args.afford4_min_items)
     df["Afford4_n_valid"] = df[["S1", "S2", "S3", "S4"]].notna().sum(axis=1).astype(int)
     df["Afford4_lenient"] = df[["S1", "S2", "S3", "S4"]].mean(axis=1, skipna=True)
@@ -443,25 +478,19 @@ def main():
 
     if "ExperienceGroup" not in df.columns:
         raise SystemExit("Missing ExperienceGroup in long CSV. Please re-run transform_wide_to_long.py with latest version.")
-
-    # S5 explicit naming (preferred): SAM_Valence (1-9). Keep backward compatibility.
     if "SAM_Valence" not in df.columns and "S5" in df.columns:
         df["SAM_Valence"] = df["S5"]
     if "SportFreqGroup" not in df.columns:
         raise SystemExit("Missing SportFreqGroup in long CSV. Please re-run transform_wide_to_long.py with latest version.")
-
-    # Repetition compatibility: prefer explicit column, fallback to Block
     if "Repetition" not in df.columns:
         df["Repetition"] = df["Block"]
 
     keep_cols = ["SubjectID", dv_col, "WWR", "Complexity", "Position", "ExperienceGroup", "SportFreqGroup", "Repetition"]
     model_df = df.dropna(subset=keep_cols).copy()
 
-    # categorical coding
     for c in ["WWR", "Complexity", "Position", "ExperienceGroup", "SportFreqGroup", "Repetition"]:
         model_df[c] = model_df[c].astype(str)
 
-    # model selection (A/B/C)
     cmp_df, best, fitted_models = _build_model_comparison(model_df, dv_col=dv_col)
     fit = best["fit"]
     fit_info = best["info"]
@@ -469,11 +498,8 @@ def main():
     coef_df = _extract_coef_table(fit)
     rand_df = _extract_random_effects_summary(fit)
     desc_df, fixed_df, infer_df, rand_df = _build_paper_tables(model_df, coef_df, dv_col=dv_col, random_df=rand_df)
-
-    # simple effects under each WWR
     simple_df = _simple_effects_by_wwr(model_df, dv_col=dv_col)
 
-    # Sensitivity: compare primary (min-items rule) vs lenient (available-item mean) DV definition
     sens_out = None
     try:
         model_df_lenient = df.dropna(subset=["Afford4_lenient", "WWR", "Complexity", "ExperienceGroup", "SportFreqGroup", "Repetition", "Position"]).copy()
@@ -491,7 +517,6 @@ def main():
     except Exception:
         sens_out = None
 
-    # interaction plot with repetition as style
     plt.figure(figsize=(9, 5))
     pdat = model_df.copy()
     pdat["Complexity"] = pdat["Complexity"].replace({"0": "C0", "1": "C1"})
@@ -502,7 +527,6 @@ def main():
     plt.savefig(out / "figures" / "wwr_complexity_afford4.png", dpi=220)
     plt.close()
 
-    # save outputs
     (out / "lmm_summary.txt").write_text(str(fit.summary()), encoding="utf-8")
     (out / "model_formula.txt").write_text(str(best["primary_formula"]), encoding="utf-8")
     (out / "model_formula_recommended_by_aic.txt").write_text(str(best["recommended_formula_by_aic"]), encoding="utf-8")
@@ -515,6 +539,15 @@ def main():
     simple_df.to_csv(out / "table_simple_effects_complexity_by_wwr.csv", index=False, encoding="utf-8-sig")
     if sens_out is not None:
         sens_out.to_csv(out / "afford4_missing_sensitivity.csv", index=False, encoding="utf-8-sig")
+
+    fig_dir = out / "figures"
+    fig_paths = {
+        "figure_wwr_complexity": str(out / "figures" / "wwr_complexity_afford4.png"),
+        "figure_model_comparison": _plot_model_comparison(cmp_df, fig_dir),
+        "figure_fixed_effects": _plot_fixed_effects(fixed_df, fig_dir),
+        "figure_interactions": _plot_interactions(infer_df, fig_dir),
+        "figure_simple_effects": _plot_simple_effects(simple_df, fig_dir),
+    }
 
     md_lines = [
         "# Paper-ready Results Tables",
@@ -577,7 +610,7 @@ def main():
             "afford4_missing_sensitivity_csv": str(out / "afford4_missing_sensitivity.csv") if (sens_out is not None) else None,
             "paper_tables_md": str(out / "paper_tables.md"),
             "results_draft_zh_md": str(out / "results_draft_zh.md"),
-            "figure_wwr_complexity": str(out / "figures" / "wwr_complexity_afford4.png"),
+            **fig_paths,
         },
     }
     (out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

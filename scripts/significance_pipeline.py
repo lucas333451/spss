@@ -83,6 +83,7 @@ def main():
             args.python, "scripts/run_analysis.py",
             "--long-csv", str(args.long_csv),
             "--out-dir", str(base / "overall" / "core_model"),
+            "--exclude-subjects", exclude,
         ])
         outputs.append(str((base / "overall" / "core_model").relative_to(out)))
 

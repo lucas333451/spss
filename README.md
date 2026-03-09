@@ -51,7 +51,7 @@ The previous larger, more exploratory version is preserved in branch:
   - `overall`
   - `experience`
   - currently centered on:
-    - core model via `scripts/run_analysis.py`
+    - core LMM model via `scripts/run_analysis.py` (now with corresponding PNG outputs for key result tables)
     - SPSS-aligned WWR polynomial contrast via `scripts/analysis2_task5_spss_polynomial.py`
   - also auto-generates:
     - `significance_index.md` (what to read first)
