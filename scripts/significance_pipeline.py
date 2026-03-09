@@ -42,7 +42,8 @@ def _write_index(out: Path, branches: list[str]) -> None:
         lines.append(f"1. `./{branch}/overall/core_model/results_draft_zh.md` — overall core model narrative")
         lines.append(f"2. `./{branch}/overall/wwr_polynomial/wwr_polynomial_contrasts.csv` — overall WWR linear/quadratic significance")
         lines.append(f"3. `./{branch}/experience/wwr_polynomial_group_only/wwr_polynomial_contrasts.csv` — experience-group significance")
-        lines.append(f"4. `./{branch}/experience/wwr_polynomial_group_round/wwr_polynomial_contrasts.csv` — experience × round follow-up")
+        lines.append(f"4. `./{branch}/experience/wwr_polynomial_group_round/csv/wwr_polynomial_contrasts.csv` — experience × round follow-up")
+        lines.append(f"5. `./{branch}/item_level/experience/s_items/csv/s_items_experience_welch.csv` — S/B/IPQ item-level significance entry")
         lines.append("")
     (out / "significance_index.md").write_text("\n".join(lines), encoding="utf-8")
 
@@ -69,7 +70,11 @@ def _write_research_map(out: Path, branches: list[str]) -> None:
     lines.append("")
     lines.append("## Q5. Do experience effects change by round?")
     for branch in branches:
-        lines.append(f"- {branch}: `./{branch}/experience/wwr_polynomial_group_round/wwr_polynomial_contrasts.csv`")
+        lines.append(f"- {branch}: `./{branch}/experience/wwr_polynomial_group_round/csv/wwr_polynomial_contrasts.csv`")
+    lines.append("")
+    lines.append("## Q6. Are item-level S / B / IPQ differences significant by experience group?")
+    for branch in branches:
+        lines.append(f"- {branch}: `./{branch}/item_level/experience/s_items/csv/s_items_experience_welch.csv` + `./{branch}/item_level/experience/b_items/csv/b_items_experience_welch.csv` + `./{branch}/item_level/experience/ipq_items/csv/ipq_items_experience_welch.csv`")
     (out / "research_questions_map.md").write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -161,6 +166,14 @@ def main():
             "--exclude-subjects", exclude,
         ])
         outputs.append(str((base / "experience" / "wwr_polynomial_group_round").relative_to(out)))
+
+        run([
+            args.python, "scripts/item_level_significance.py",
+            "--long-csv", str(args.long_csv),
+            "--out-dir", str(base / "item_level"),
+            "--exclude-subjects", exclude,
+        ])
+        outputs.append(str((base / "item_level").relative_to(out)))
 
     branch_names = [b for b, _ in branches]
     _write_index(out, branch_names)

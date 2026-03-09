@@ -53,6 +53,7 @@
   - 当前重点包括：
     - `scripts/run_analysis.py` 的核心 LMM 模型（现已为模型比较、固定效应、交互、随机效应、简单效应等关键结果补对应 PNG）
     - `scripts/wwr_polynomial_significance.py` 的 WWR 三水平趋势显著性检验（可直接判断线性增加/减少，以及 45 时最高/最低；PNG 采用主图 + 右侧摘要框，减少标注重叠）
+    - `scripts/item_level_significance.py` 的逐题显著性入口（覆盖 S / B / IPQ 的 experience 组间显著性，统一输出 csv/png/md/json）
   - 当前还会自动生成：
     - `significance_index.md`（先看哪些文件）
     - `research_questions_map.md`（每个研究问题对应看哪份结果）
