@@ -56,6 +56,7 @@ The previous larger, more exploratory version is preserved in branch:
   - also auto-generates:
     - `significance_index.md` (what to read first)
     - `research_questions_map.md` (which result answers which question)
+    - `significance_guide.png` (visual overview of the navigation)
 
 ### 4) Legacy preserved
 - `scripts/pipeline_raw_legacy.py`
