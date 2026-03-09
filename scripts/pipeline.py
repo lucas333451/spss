@@ -89,6 +89,14 @@ def main():
         # no 4-cell cross interaction group (PeopleGroup4) at this stage.
         qc_exclude = "孙校聪,康少勇,张钰鹏,杨可,洪婷婷,陈韬,高梓楠,赵国宏"
 
+        for branch_tag, exclude in [("raw", ""), ("qc", qc_exclude)]:
+            run([
+                args.python, "scripts/analysis2_task5_spss_polynomial.py",
+                "--long-csv", str(out_long / "long_format.csv"),
+                "--out-dir", str(out_research / "analysis-2" / "task5" / "overall" / branch_tag),
+                "--exclude-subjects", exclude,
+            ])
+
         for group_tag, group_col in [("experience", "ExperienceGroup"), ("sportfreq", "SportFreqGroup")]:
             for branch_tag, exclude in [("raw", ""), ("qc", qc_exclude)]:
                 run([

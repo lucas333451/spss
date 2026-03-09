@@ -307,7 +307,7 @@ def main():
     ap.add_argument("--dvs", default=",".join(S_DVS), help="Comma-separated dependent variables, default S1,S2,S3,S4,S5")
     ap.add_argument("--split-by", default="", help="Optional comma-separated split columns, e.g. Repetition or ExperienceGroup")
     ap.add_argument("--exclude-subjects", default="", help="Comma-separated SubjectID list for QC exclusion")
-    ap.add_argument("--p-adjust", default="holm", help="Multiple-testing adjustment: holm|bonferroni|fdr_bh|none")
+    ap.add_argument("--p-adjust", default="none", help="Multiple-testing adjustment: holm|bonferroni|fdr_bh|none; default none to stay closer to SPSS output")
     args = ap.parse_args()
 
     apply_bae_style()
@@ -467,7 +467,9 @@ def main():
             "Subject-level means are computed within each WWR level before contrast testing.",
             "For 3 WWR levels, Linear uses [-1, 0, 1] and Quadratic uses [1, -2, 1].",
             "Output table is organized to resemble SPSS Within-Subjects Contrasts (WWR / Error(WWR)).",
-            "PNG figures include WWR profile plots and adjusted-p heatmaps for Linear/Quadratic contrasts.",
+            "Default p-adjust is now 'none' to stay closer to SPSS repeated-measures output unless the user explicitly requests multiplicity correction.",
+            "Each subject contributes one value per WWR level after within-subject averaging over any non-split repeated rows.",
+            "PNG figures include WWR profile plots and contrast significance heatmaps for Linear/Quadratic contrasts.",
         ],
     }
     summary_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
