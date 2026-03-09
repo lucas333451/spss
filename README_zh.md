@@ -43,6 +43,7 @@
     - 正态性检验：`Shapiro p`
     - 分层描述：`WWR / Complexity / ExperienceGroup`
     - PNG：`箱线图 / 小提琴图`
+    - 图版式：`主图 + 右侧统计摘要框`，避免数据结果彼此重叠影响观感
 
 ### 3）显著性分析
 - `scripts/significance_pipeline.py`

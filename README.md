@@ -44,6 +44,7 @@ The previous larger, more exploratory version is preserved in branch:
     - normality check: `Shapiro p`
     - stratified descriptives by `WWR / Complexity / ExperienceGroup`
     - PNG figures: `boxplots / violin plots`
+    - figure layout: `main panel + right-side statistical summary box`, to avoid overlapping annotations
 
 ### 3) Significance pipeline
 - `scripts/significance_pipeline.py`

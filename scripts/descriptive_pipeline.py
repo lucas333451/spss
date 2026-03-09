@@ -50,6 +50,25 @@ def _norm_p(z: pd.Series) -> float:
         return np.nan
 
 
+def _desc_stats(z: pd.Series) -> dict[str, float]:
+    zz = pd.to_numeric(z, errors="coerce").dropna()
+    n = int(len(zz))
+    ci_low, ci_high = _ci95(zz)
+    return {
+        "n": n,
+        "mean": float(zz.mean()) if n else np.nan,
+        "sd": float(zz.std(ddof=1)) if n > 1 else np.nan,
+        "median": float(zz.median()) if n else np.nan,
+        "min": float(zz.min()) if n else np.nan,
+        "max": float(zz.max()) if n else np.nan,
+        "skewness": float(skew(zz, bias=False)) if n > 2 else np.nan,
+        "kurtosis": float(kurtosis(zz, fisher=True, bias=False)) if n > 3 else np.nan,
+        "ci95_low": ci_low,
+        "ci95_high": ci_high,
+        "shapiro_p": _norm_p(zz),
+    }
+
+
 def _desc_table(df: pd.DataFrame, cols: list[str], group_cols: list[str] | None = None) -> pd.DataFrame:
     rows = []
     use_cols = [c for c in cols if c in df.columns]
@@ -68,24 +87,7 @@ def _desc_table(df: pd.DataFrame, cols: list[str], group_cols: list[str] | None 
             key = (key,)
         key_map = dict(zip(group_cols, key)) if group_cols else {"Group": "ALL"}
         for c in use_cols:
-            z = pd.to_numeric(sub[c], errors="coerce")
-            n = int(z.notna().sum())
-            ci_low, ci_high = _ci95(z)
-            rows.append({
-                **key_map,
-                "DV": c,
-                "n": n,
-                "mean": float(z.mean()) if n else np.nan,
-                "sd": float(z.std(ddof=1)) if n > 1 else np.nan,
-                "median": float(z.median()) if n else np.nan,
-                "min": float(z.min()) if n else np.nan,
-                "max": float(z.max()) if n else np.nan,
-                "skewness": float(skew(z.dropna(), bias=False)) if n > 2 else np.nan,
-                "kurtosis": float(kurtosis(z.dropna(), fisher=True, bias=False)) if n > 3 else np.nan,
-                "ci95_low": ci_low,
-                "ci95_high": ci_high,
-                "shapiro_p": _norm_p(z),
-            })
+            rows.append({**key_map, "DV": c, **_desc_stats(sub[c])})
     return pd.DataFrame(rows)
 
 
@@ -95,6 +97,40 @@ def _subject_level_ipq(df: pd.DataFrame) -> pd.DataFrame:
     return df.groupby("SubjectID", as_index=False).first()
 
 
+def _fmt_num(v: float | None, nd: int = 3) -> str:
+    if v is None or pd.isna(v):
+        return "NA"
+    return f"{float(v):.{nd}f}"
+
+
+def _summary_text(sub: pd.DataFrame, dv: str, group_col: str | None = None) -> str:
+    lines = []
+    if group_col and group_col in sub.columns:
+        for g, sg in sub.groupby(group_col, dropna=False):
+            st = _desc_stats(sg[dv])
+            lines.append(
+                f"{group_col}={g}\n"
+                f"n={st['n']}  mean={_fmt_num(st['mean'])}\n"
+                f"sd={_fmt_num(st['sd'])}  median={_fmt_num(st['median'])}\n"
+                f"95% CI [{_fmt_num(st['ci95_low'])}, {_fmt_num(st['ci95_high'])}]\n"
+                f"skew={_fmt_num(st['skewness'])}  kurt={_fmt_num(st['kurtosis'])}\n"
+                f"Shapiro p={_fmt_num(st['shapiro_p'])}"
+            )
+    else:
+        st = _desc_stats(sub[dv])
+        lines.append(
+            f"n={st['n']}\n"
+            f"mean={_fmt_num(st['mean'])}\n"
+            f"sd={_fmt_num(st['sd'])}\n"
+            f"median={_fmt_num(st['median'])}\n"
+            f"95% CI [{_fmt_num(st['ci95_low'])}, {_fmt_num(st['ci95_high'])}]\n"
+            f"skew={_fmt_num(st['skewness'])}\n"
+            f"kurt={_fmt_num(st['kurtosis'])}\n"
+            f"Shapiro p={_fmt_num(st['shapiro_p'])}"
+        )
+    return "\n\n".join(lines)
+
+
 def _plot_distribution_panels(df: pd.DataFrame, cols: list[str], out_dir: Path, prefix: str, hue: str | None = None, xcol: str | None = None) -> list[str]:
     made = []
     use_cols = [c for c in cols if c in df.columns]
@@ -102,36 +138,59 @@ def _plot_distribution_panels(df: pd.DataFrame, cols: list[str], out_dir: Path, 
         return made
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    violin_fill = "#A9D6CB"
+    box_fill = "#D8C9A2"
+
     for dv in use_cols:
         sub = df.dropna(subset=[dv]).copy()
         if sub.empty:
             continue
 
-        # violin
-        plt.figure(figsize=(6.2, 4.4))
-        if xcol and xcol in sub.columns:
-            sns.violinplot(data=sub, x=xcol, y=dv, hue=hue if hue in sub.columns else None, inner="box", cut=0)
-        else:
-            sns.violinplot(data=sub, y=dv, inner="box", cut=0, color="#8EC5B6")
-        plt.title(f"{dv} violin")
-        plt.tight_layout()
-        p1 = out_dir / f"{prefix}_{dv}_violin.png"
-        plt.savefig(p1, dpi=230)
-        plt.close()
-        made.append(str(p1))
+        for kind in ["violin", "box"]:
+            fig = plt.figure(figsize=(9.8, 4.6))
+            gs = fig.add_gridspec(1, 2, width_ratios=[3.7, 1.45], wspace=0.18)
+            ax = fig.add_subplot(gs[0, 0])
+            ax_info = fig.add_subplot(gs[0, 1])
+            ax_info.axis("off")
+            ax_info.set_facecolor("#F7FAF8")
 
-        # box
-        plt.figure(figsize=(6.2, 4.4))
-        if xcol and xcol in sub.columns:
-            sns.boxplot(data=sub, x=xcol, y=dv, hue=hue if hue in sub.columns else None)
-        else:
-            sns.boxplot(data=sub, y=dv, color="#A8D5C8")
-        plt.title(f"{dv} boxplot")
-        plt.tight_layout()
-        p2 = out_dir / f"{prefix}_{dv}_box.png"
-        plt.savefig(p2, dpi=230)
-        plt.close()
-        made.append(str(p2))
+            if kind == "violin":
+                if xcol and xcol in sub.columns:
+                    sns.violinplot(
+                        data=sub, x=xcol, y=dv, hue=hue if hue in sub.columns and hue != xcol else None,
+                        inner="box", cut=0, linewidth=0.8, saturation=0.95, ax=ax
+                    )
+                else:
+                    sns.violinplot(data=sub, y=dv, inner="box", cut=0, color=violin_fill, linewidth=0.8, ax=ax)
+            else:
+                if xcol and xcol in sub.columns:
+                    sns.boxplot(
+                        data=sub, x=xcol, y=dv, hue=hue if hue in sub.columns and hue != xcol else None,
+                        width=0.58, fliersize=2.5, linewidth=0.9, ax=ax
+                    )
+                else:
+                    sns.boxplot(data=sub, y=dv, color=box_fill, width=0.38, fliersize=2.5, linewidth=0.9, ax=ax)
+
+            ax.set_title(f"{dv} {'violin' if kind == 'violin' else 'boxplot'}", pad=10)
+            ax.set_xlabel(xcol if xcol and xcol in sub.columns else "")
+            ax.set_ylabel(dv)
+            ax.tick_params(axis="x", rotation=0)
+            if ax.get_legend() is not None:
+                ax.legend(frameon=False, loc="upper left")
+
+            summary = _summary_text(sub, dv, group_col=(hue if hue in sub.columns and hue != xcol else None))
+            ax_info.text(
+                0.03, 0.97, "Descriptive summary", va="top", ha="left", fontsize=10.2, fontweight="bold", color="#40534C"
+            )
+            ax_info.text(
+                0.03, 0.90, summary, va="top", ha="left", fontsize=8.6, color="#50615A", linespacing=1.35,
+                bbox=dict(boxstyle="round,pad=0.45", fc="#F4F8F6", ec="#D5DFD9", lw=0.8)
+            )
+
+            path = out_dir / f"{prefix}_{dv}_{kind}.png"
+            fig.savefig(path, dpi=230)
+            plt.close(fig)
+            made.append(str(path))
     return made
 
 
@@ -159,7 +218,6 @@ def main():
         base.mkdir(parents=True, exist_ok=True)
         x = _exclude_subjects(df, exclude)
 
-        # overall
         overall_dir = base / "overall"
         overall_dir.mkdir(parents=True, exist_ok=True)
         fig_dir_overall = overall_dir / "figures"
@@ -196,7 +254,6 @@ def main():
         for p in _plot_distribution_panels(b_src, B_COLS, fig_dir_overall, prefix="overall_b", xcol="WWR" if "WWR" in b_src.columns else None):
             outputs.append(str(Path(p).relative_to(out)))
 
-        # experience
         if "ExperienceGroup" in x.columns:
             exp_dir = base / "experience"
             exp_dir.mkdir(parents=True, exist_ok=True)
@@ -239,6 +296,7 @@ def main():
         "outputs": outputs,
         "stats": ["n", "mean", "sd", "median", "min", "max", "skewness", "kurtosis", "ci95", "shapiro_p"],
         "stratification": ["WWR", "Complexity", "ExperienceGroup"],
+        "figure_style": "fresh B&E / Origin-like, with side summary panels to avoid annotation overlap",
     }
     (out / "descriptive_summary.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(payload, ensure_ascii=False))
