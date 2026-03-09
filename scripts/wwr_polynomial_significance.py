@@ -382,8 +382,13 @@ def main():
 
     out = args.out_dir
     out.mkdir(parents=True, exist_ok=True)
-    fig_dir = out / "wwr_polynomial_figures"
-    fig_dir.mkdir(parents=True, exist_ok=True)
+    csv_dir = out / "csv"
+    png_dir = out / "png"
+    md_dir = out / "md"
+    json_dir = out / "json"
+    for d in [csv_dir, png_dir, md_dir, json_dir]:
+        d.mkdir(parents=True, exist_ok=True)
+    fig_dir = png_dir
 
     levels = _parse_levels(args.wwr_levels)
     dvs = [x.strip() for x in str(args.dvs).split(",") if x.strip()]
@@ -405,7 +410,7 @@ def main():
         if dv not in df.columns:
             continue
         wide = _subject_level_wide(df, dv, levels, split_cols)
-        wide_path = out / f"wwr_subject_means_{dv}.csv"
+        wide_path = csv_dir / f"wwr_subject_means_{dv}.csv"
         wide.to_csv(wide_path, index=False, encoding="utf-8-sig")
         wide_exports.append(str(wide_path.relative_to(out)))
 
@@ -502,10 +507,10 @@ def main():
         res = res.sort_values(sort_cols).reset_index(drop=True)
 
     means_df = pd.DataFrame(means_rows)
-    means_path = out / "wwr_profile_means.csv"
-    csv_path = out / "wwr_polynomial_contrasts.csv"
-    md_path = out / "wwr_polynomial_contrasts.md"
-    summary_path = out / "wwr_polynomial_summary.json"
+    means_path = csv_dir / "wwr_profile_means.csv"
+    csv_path = csv_dir / "wwr_polynomial_contrasts.csv"
+    md_path = md_dir / "wwr_polynomial_contrasts.md"
+    summary_path = json_dir / "wwr_polynomial_summary.json"
 
     means_df.to_csv(means_path, index=False, encoding="utf-8-sig")
     res.to_csv(csv_path, index=False, encoding="utf-8-sig")

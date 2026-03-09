@@ -556,30 +556,37 @@ def main():
     except Exception:
         sens_out = None
 
+    csv_dir = out / "csv"
+    png_dir = out / "png"
+    md_dir = out / "md"
+    txt_dir = out / "txt"
+    json_dir = out / "json"
+    for d in [csv_dir, png_dir, md_dir, txt_dir, json_dir]:
+        d.mkdir(parents=True, exist_ok=True)
+
     plt.figure(figsize=(9, 5))
     pdat = model_df.copy()
     pdat["Complexity"] = pdat["Complexity"].replace({"0": "C0", "1": "C1"})
     sns.pointplot(data=pdat, x="WWR", y=dv_col, hue="Complexity", errorbar="se", dodge=True)
     plt.title(f"WWR × Complexity on {dv_col}")
     plt.tight_layout()
-    (out / "figures").mkdir(parents=True, exist_ok=True)
-    plt.savefig(out / "figures" / "wwr_complexity_afford4.png", dpi=220)
+    plt.savefig(png_dir / "wwr_complexity_afford4.png", dpi=220)
     plt.close()
 
-    (out / "lmm_summary.txt").write_text(str(fit.summary()), encoding="utf-8")
-    (out / "model_formula.txt").write_text(str(best["primary_formula"]), encoding="utf-8")
-    (out / "model_formula_recommended_by_aic.txt").write_text(str(best["recommended_formula_by_aic"]), encoding="utf-8")
-    cmp_df.to_csv(out / "model_comparison.csv", index=False, encoding="utf-8-sig")
-    desc_df.to_csv(out / "table_descriptives.csv", index=False, encoding="utf-8-sig")
-    fixed_df.to_csv(out / "table_fixed_effects.csv", index=False, encoding="utf-8-sig")
-    infer_df.to_csv(out / "table_main_interactions.csv", index=False, encoding="utf-8-sig")
+    (txt_dir / "lmm_summary.txt").write_text(str(fit.summary()), encoding="utf-8")
+    (txt_dir / "model_formula.txt").write_text(str(best["primary_formula"]), encoding="utf-8")
+    (txt_dir / "model_formula_recommended_by_aic.txt").write_text(str(best["recommended_formula_by_aic"]), encoding="utf-8")
+    cmp_df.to_csv(csv_dir / "model_comparison.csv", index=False, encoding="utf-8-sig")
+    desc_df.to_csv(csv_dir / "table_descriptives.csv", index=False, encoding="utf-8-sig")
+    fixed_df.to_csv(csv_dir / "table_fixed_effects.csv", index=False, encoding="utf-8-sig")
+    infer_df.to_csv(csv_dir / "table_main_interactions.csv", index=False, encoding="utf-8-sig")
     if rand_df is not None and not rand_df.empty:
-        rand_df.to_csv(out / "table_random_effects.csv", index=False, encoding="utf-8-sig")
-    simple_df.to_csv(out / "table_simple_effects_complexity_by_wwr.csv", index=False, encoding="utf-8-sig")
+        rand_df.to_csv(csv_dir / "table_random_effects.csv", index=False, encoding="utf-8-sig")
+    simple_df.to_csv(csv_dir / "table_simple_effects_complexity_by_wwr.csv", index=False, encoding="utf-8-sig")
     if sens_out is not None:
-        sens_out.to_csv(out / "afford4_missing_sensitivity.csv", index=False, encoding="utf-8-sig")
+        sens_out.to_csv(csv_dir / "afford4_missing_sensitivity.csv", index=False, encoding="utf-8-sig")
 
-    fig_dir = out / "figures"
+    fig_dir = png_dir
     fig_paths = {
         "figure_wwr_complexity": str(out / "figures" / "wwr_complexity_afford4.png"),
         "figure_model_comparison": _plot_model_comparison(cmp_df, fig_dir),
@@ -620,10 +627,10 @@ def main():
         f"Formula (AIC-best): {best['recommended_formula_by_aic']}",
         f"Random structure used: {best['random_structure_used']}",
     ]
-    (out / "paper_tables.md").write_text("\n".join(md_lines), encoding="utf-8")
+    (md_dir / "paper_tables.md").write_text("\n".join(md_lines), encoding="utf-8")
 
     draft_zh = _auto_results_draft_zh(best, infer_df, simple_df)
-    (out / "results_draft_zh.md").write_text(draft_zh, encoding="utf-8")
+    (md_dir / "results_draft_zh.md").write_text(draft_zh, encoding="utf-8")
 
     report = {
         "n_rows_input": int(len(df)),
@@ -641,19 +648,19 @@ def main():
         "fit_method": best["fit_method"],
         "fit_fallback_to_random_intercept": bool(fit_info.get("fallback_used", False)),
         "outputs": {
-            "model_comparison_csv": str(out / "model_comparison.csv"),
-            "table_descriptives_csv": str(out / "table_descriptives.csv"),
-            "table_fixed_effects_csv": str(out / "table_fixed_effects.csv"),
-            "table_main_interactions_csv": str(out / "table_main_interactions.csv"),
-            "table_simple_effects_csv": str(out / "table_simple_effects_complexity_by_wwr.csv"),
-            "table_random_effects_csv": str(out / "table_random_effects.csv") if (rand_df is not None and not rand_df.empty) else None,
-            "afford4_missing_sensitivity_csv": str(out / "afford4_missing_sensitivity.csv") if (sens_out is not None) else None,
-            "paper_tables_md": str(out / "paper_tables.md"),
-            "results_draft_zh_md": str(out / "results_draft_zh.md"),
+            "model_comparison_csv": str(csv_dir / "model_comparison.csv"),
+            "table_descriptives_csv": str(csv_dir / "table_descriptives.csv"),
+            "table_fixed_effects_csv": str(csv_dir / "table_fixed_effects.csv"),
+            "table_main_interactions_csv": str(csv_dir / "table_main_interactions.csv"),
+            "table_simple_effects_csv": str(csv_dir / "table_simple_effects_complexity_by_wwr.csv"),
+            "table_random_effects_csv": str(csv_dir / "table_random_effects.csv") if (rand_df is not None and not rand_df.empty) else None,
+            "afford4_missing_sensitivity_csv": str(csv_dir / "afford4_missing_sensitivity.csv") if (sens_out is not None) else None,
+            "paper_tables_md": str(md_dir / "paper_tables.md"),
+            "results_draft_zh_md": str(md_dir / "results_draft_zh.md"),
             **fig_paths,
         },
     }
-    (out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    (json_dir / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(json.dumps(report, ensure_ascii=False))
 

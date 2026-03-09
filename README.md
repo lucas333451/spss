@@ -71,25 +71,67 @@ results/
   descriptive/
     raw/
       overall/
+        csv/
+        png/
       experience/
+        csv/
+        png/
     qc/                # only when --with-qc is used
       overall/
+        csv/
+        png/
       experience/
+        csv/
+        png/
   significance/
     raw/
       overall/
         core_model/
+          csv/
+          png/
+          md/
+          txt/
+          json/
         wwr_polynomial/
+          csv/
+          png/
+          md/
+          json/
       experience/
         wwr_polynomial_group_only/
+          csv/
+          png/
+          md/
+          json/
         wwr_polynomial_group_round/
+          csv/
+          png/
+          md/
+          json/
     qc/                # only when --with-qc is used
       overall/
         core_model/
+          csv/
+          png/
+          md/
+          txt/
+          json/
         wwr_polynomial/
+          csv/
+          png/
+          md/
+          json/
       experience/
         wwr_polynomial_group_only/
+          csv/
+          png/
+          md/
+          json/
         wwr_polynomial_group_round/
+          csv/
+          png/
+          md/
+          json/
 ```
 
 ---

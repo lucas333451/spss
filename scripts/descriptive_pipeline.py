@@ -220,7 +220,11 @@ def main():
 
         overall_dir = base / "overall"
         overall_dir.mkdir(parents=True, exist_ok=True)
-        fig_dir_overall = overall_dir / "figures"
+        csv_dir_overall = overall_dir / "csv"
+        png_dir_overall = overall_dir / "png"
+        csv_dir_overall.mkdir(parents=True, exist_ok=True)
+        png_dir_overall.mkdir(parents=True, exist_ok=True)
+        fig_dir_overall = png_dir_overall
 
         s_overall = _desc_table(x, S_COLS)
         s_overall_wwr = _desc_table(x, S_COLS, ["WWR"]) if "WWR" in x.columns else pd.DataFrame()
@@ -233,20 +237,20 @@ def main():
         ipq_subj = _subject_level_ipq(x)
         ipq_overall = _desc_table(ipq_subj, IPQ_COLS)
 
-        s_overall.to_csv(overall_dir / "s1_s5_descriptives.csv", index=False, encoding="utf-8-sig")
-        s_overall_wwr.to_csv(overall_dir / "s1_s5_descriptives_by_wwr.csv", index=False, encoding="utf-8-sig")
-        s_overall_cx.to_csv(overall_dir / "s1_s5_descriptives_by_complexity.csv", index=False, encoding="utf-8-sig")
-        b_overall.to_csv(overall_dir / "b1_b3_descriptives.csv", index=False, encoding="utf-8-sig")
-        b_overall_wwr.to_csv(overall_dir / "b1_b3_descriptives_by_wwr.csv", index=False, encoding="utf-8-sig")
-        ipq_overall.to_csv(overall_dir / "ipq_descriptives.csv", index=False, encoding="utf-8-sig")
+        s_overall.to_csv(csv_dir_overall / "s1_s5_descriptives.csv", index=False, encoding="utf-8-sig")
+        s_overall_wwr.to_csv(csv_dir_overall / "s1_s5_descriptives_by_wwr.csv", index=False, encoding="utf-8-sig")
+        s_overall_cx.to_csv(csv_dir_overall / "s1_s5_descriptives_by_complexity.csv", index=False, encoding="utf-8-sig")
+        b_overall.to_csv(csv_dir_overall / "b1_b3_descriptives.csv", index=False, encoding="utf-8-sig")
+        b_overall_wwr.to_csv(csv_dir_overall / "b1_b3_descriptives_by_wwr.csv", index=False, encoding="utf-8-sig")
+        ipq_overall.to_csv(csv_dir_overall / "ipq_descriptives.csv", index=False, encoding="utf-8-sig")
 
         outputs += [
-            str((overall_dir / "s1_s5_descriptives.csv").relative_to(out)),
-            str((overall_dir / "s1_s5_descriptives_by_wwr.csv").relative_to(out)),
-            str((overall_dir / "s1_s5_descriptives_by_complexity.csv").relative_to(out)),
-            str((overall_dir / "b1_b3_descriptives.csv").relative_to(out)),
-            str((overall_dir / "b1_b3_descriptives_by_wwr.csv").relative_to(out)),
-            str((overall_dir / "ipq_descriptives.csv").relative_to(out)),
+            str((csv_dir_overall / "s1_s5_descriptives.csv").relative_to(out)),
+            str((csv_dir_overall / "s1_s5_descriptives_by_wwr.csv").relative_to(out)),
+            str((csv_dir_overall / "s1_s5_descriptives_by_complexity.csv").relative_to(out)),
+            str((csv_dir_overall / "b1_b3_descriptives.csv").relative_to(out)),
+            str((csv_dir_overall / "b1_b3_descriptives_by_wwr.csv").relative_to(out)),
+            str((csv_dir_overall / "ipq_descriptives.csv").relative_to(out)),
         ]
 
         for p in _plot_distribution_panels(x, S_COLS, fig_dir_overall, prefix="overall_s", xcol="WWR" if "WWR" in x.columns else None):
@@ -257,7 +261,11 @@ def main():
         if "ExperienceGroup" in x.columns:
             exp_dir = base / "experience"
             exp_dir.mkdir(parents=True, exist_ok=True)
-            fig_dir_exp = exp_dir / "figures"
+            csv_dir_exp = exp_dir / "csv"
+            png_dir_exp = exp_dir / "png"
+            csv_dir_exp.mkdir(parents=True, exist_ok=True)
+            png_dir_exp.mkdir(parents=True, exist_ok=True)
+            fig_dir_exp = png_dir_exp
 
             s_exp = _desc_table(x, S_COLS, ["ExperienceGroup"])
             s_exp_wwr = _desc_table(x, S_COLS, ["ExperienceGroup", "WWR"]) if "WWR" in x.columns else pd.DataFrame()
@@ -268,20 +276,20 @@ def main():
 
             ipq_exp = _desc_table(ipq_subj, IPQ_COLS, ["ExperienceGroup"])
 
-            s_exp.to_csv(exp_dir / "s1_s5_descriptives_by_experience.csv", index=False, encoding="utf-8-sig")
-            s_exp_wwr.to_csv(exp_dir / "s1_s5_descriptives_by_experience_wwr.csv", index=False, encoding="utf-8-sig")
-            s_exp_cx.to_csv(exp_dir / "s1_s5_descriptives_by_experience_complexity.csv", index=False, encoding="utf-8-sig")
-            b_exp.to_csv(exp_dir / "b1_b3_descriptives_by_experience.csv", index=False, encoding="utf-8-sig")
-            b_exp_wwr.to_csv(exp_dir / "b1_b3_descriptives_by_experience_wwr.csv", index=False, encoding="utf-8-sig")
-            ipq_exp.to_csv(exp_dir / "ipq_descriptives_by_experience.csv", index=False, encoding="utf-8-sig")
+            s_exp.to_csv(csv_dir_exp / "s1_s5_descriptives_by_experience.csv", index=False, encoding="utf-8-sig")
+            s_exp_wwr.to_csv(csv_dir_exp / "s1_s5_descriptives_by_experience_wwr.csv", index=False, encoding="utf-8-sig")
+            s_exp_cx.to_csv(csv_dir_exp / "s1_s5_descriptives_by_experience_complexity.csv", index=False, encoding="utf-8-sig")
+            b_exp.to_csv(csv_dir_exp / "b1_b3_descriptives_by_experience.csv", index=False, encoding="utf-8-sig")
+            b_exp_wwr.to_csv(csv_dir_exp / "b1_b3_descriptives_by_experience_wwr.csv", index=False, encoding="utf-8-sig")
+            ipq_exp.to_csv(csv_dir_exp / "ipq_descriptives_by_experience.csv", index=False, encoding="utf-8-sig")
 
             outputs += [
-                str((exp_dir / "s1_s5_descriptives_by_experience.csv").relative_to(out)),
-                str((exp_dir / "s1_s5_descriptives_by_experience_wwr.csv").relative_to(out)),
-                str((exp_dir / "s1_s5_descriptives_by_experience_complexity.csv").relative_to(out)),
-                str((exp_dir / "b1_b3_descriptives_by_experience.csv").relative_to(out)),
-                str((exp_dir / "b1_b3_descriptives_by_experience_wwr.csv").relative_to(out)),
-                str((exp_dir / "ipq_descriptives_by_experience.csv").relative_to(out)),
+                str((csv_dir_exp / "s1_s5_descriptives_by_experience.csv").relative_to(out)),
+                str((csv_dir_exp / "s1_s5_descriptives_by_experience_wwr.csv").relative_to(out)),
+                str((csv_dir_exp / "s1_s5_descriptives_by_experience_complexity.csv").relative_to(out)),
+                str((csv_dir_exp / "b1_b3_descriptives_by_experience.csv").relative_to(out)),
+                str((csv_dir_exp / "b1_b3_descriptives_by_experience_wwr.csv").relative_to(out)),
+                str((csv_dir_exp / "ipq_descriptives_by_experience.csv").relative_to(out)),
             ]
 
             for p in _plot_distribution_panels(x, S_COLS, fig_dir_exp, prefix="experience_s", hue="ExperienceGroup", xcol="WWR" if "WWR" in x.columns else "ExperienceGroup"):

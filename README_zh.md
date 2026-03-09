@@ -71,25 +71,67 @@ results/
   descriptive/
     raw/
       overall/
+        csv/
+        png/
       experience/
+        csv/
+        png/
     qc/                # 仅在 --with-qc 时生成
       overall/
+        csv/
+        png/
       experience/
+        csv/
+        png/
   significance/
     raw/
       overall/
         core_model/
+          csv/
+          png/
+          md/
+          txt/
+          json/
         wwr_polynomial/
+          csv/
+          png/
+          md/
+          json/
       experience/
         wwr_polynomial_group_only/
+          csv/
+          png/
+          md/
+          json/
         wwr_polynomial_group_round/
+          csv/
+          png/
+          md/
+          json/
     qc/                # 仅在 --with-qc 时生成
       overall/
         core_model/
+          csv/
+          png/
+          md/
+          txt/
+          json/
         wwr_polynomial/
+          csv/
+          png/
+          md/
+          json/
       experience/
         wwr_polynomial_group_only/
+          csv/
+          png/
+          md/
+          json/
         wwr_polynomial_group_round/
+          csv/
+          png/
+          md/
+          json/
 ```
 
 ---
