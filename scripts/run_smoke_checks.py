@@ -80,6 +80,9 @@ def main() -> int:
             'First reading order',
             'descriptive/qc/overall/png/',
             'significance/qc/overall/core_model/',
+            'significance/qc/experience/wwr_polynomial_group_round/',
+            'Prefer `qc` over `raw` for formal interpretation.',
+            'Read `png/` first for pattern, then `csv/` for exact numbers.',
         ]
         for snippet in required_snippets:
             if snippet not in text:

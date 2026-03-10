@@ -177,13 +177,16 @@ python scripts/significance_pipeline.py \
 ---
 
 ## Maintenance note / 维护提示
-- After editing user-facing docs or notebooks, run:
+
+### Quick maintenance commands
+- Doc drift check:
   - `python3 scripts/check_doc_consistency.py`
-- For a broader clean-main entrypoint health check, run:
+- Clean-main entrypoint health check:
   - `python3 scripts/check_main_entrypoints.py`
-- For a lightweight executable smoke suite, run:
+- Lightweight executable smoke suite:
   - `python3 scripts/run_smoke_checks.py`
-- This helps keep the clean `main` reading surface from drifting back to legacy `results/model` / `results/research` wording, checks that key entry files and README links still exist, verifies that the top-level results guide can still be generated in a temporary output folder, and sanity-checks the main CLI `--help` interfaces (both key flags and core clean-main wording).
+
+These checks help keep the clean `main` reading surface from drifting back to legacy `results/model` / `results/research` wording, verify that key entry files and README links still exist, confirm that the top-level results guide can still be generated in a temporary output folder, and sanity-check the main CLI `--help` interfaces (both key flags and core clean-main wording).
 
 ## Notes / 说明
 - `main` intentionally avoids too many exploratory outputs.

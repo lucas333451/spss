@@ -176,13 +176,16 @@ python scripts/significance_pipeline.py \
 ---
 
 ## 维护提示
-- 如果你修改了用户入口文档或 Colab notebook，建议顺手运行：
+
+### 维护命令速查
+- 文档防漂移检查：
   - `python3 scripts/check_doc_consistency.py`
-- 如果你想做更完整的 clean main 入口体检，再运行：
+- clean main 入口体检：
   - `python3 scripts/check_main_entrypoints.py`
-- 如果你想做不依赖真实 Excel 的轻量可执行检查，再运行：
+- 轻量可执行 smoke 检查：
   - `python3 scripts/run_smoke_checks.py`
-- 这些检查合起来可以防止结果入口漂回旧的 `results/model` / `results/research` 口径，也会检查关键入口文件、README 链接、顶层 `RESULTS_GUIDE.md/png` 是否还能正常生成，以及主入口 CLI 的 `--help` 约定与 clean-main 语义说明是否还在。
+
+这些检查合起来可以防止结果入口漂回旧的 `results/model` / `results/research` 口径，也会检查关键入口文件、README 链接、顶层 `RESULTS_GUIDE.md/png` 是否还能正常生成，以及主入口 CLI 的 `--help` 约定与 clean-main 语义说明是否还在。
 
 ## 说明
 - 现在 `main` 故意不再追求“能出特别多结果”，而是优先保证结构清楚、好用、好维护。
