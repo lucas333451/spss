@@ -1,107 +1,114 @@
 # RESULTS_MAP.md
 
-一页速查：每个研究问题先看哪 3 个文件（按优先级）。
+一页速查：当前 `main` 分支下，每类研究问题优先看哪些文件。
+
+> 说明：
+> - 当前 `main` 只强调两条主线：`overall` 与 `experience`
+> - 正式汇报优先看 `qc`
+> - 如果没跑 `--with-qc`，就把下面路径里的 `qc/` 改看 `raw/`
 
 ---
 
-## Q1. WWR×复杂度是否影响 S1-S4（感知可供性主构念）？（角度1主问题）
-1. `results/research/table_angle1_main_interactions_all_dv.csv`
-2. `results/research/group_complexity_mean_table.csv`
-3. `results/research/analysis_narrative.md`
+## 0. 总入口：先看哪里？
+1. `results/RESULTS_GUIDE.md`
+2. `results/RESULTS_GUIDE.png`
+3. `results/significance/significance_index.md`
+4. `results/significance/research_questions_map.md`
+5. `results/significance/significance_guide.png`
 
 ---
 
-## Q2. 高复杂度 C1 是否普遍更低？不同人群降幅是否不同？
-1. `results/research/angle1_c1_minus_c0_by_group.csv`
-2. `results/research/group_complexity_delta_significance.csv`
-3. `results/research/figures/group_complexity_delta_S*.png`
+## Q1. 全样本（overall）的描述性结果先看哪里？
+1. `results/descriptive/qc/overall/png/`
+2. `results/descriptive/qc/overall/csv/s1_s5_descriptives.csv`
+3. `results/descriptive/qc/overall/csv/b1_b3_descriptives.csv`
+4. `results/descriptive/qc/overall/csv/ipq_descriptives.csv`
 
 ---
 
-## Q3. 在不同 WWR 下，上述复杂度差异是否变化？
-1. `results/research/group_complexity_mean_table_by_wwr.csv`
-2. `results/research/group_complexity_delta_significance_by_wwr.csv`
-3. `results/research/figures/interaction_S*_by_sportfreqgroup.png`
+## Q2. Experience 高低组的描述性差异先看哪里？
+1. `results/descriptive/qc/experience/png/`
+2. `results/descriptive/qc/experience/csv/s1_s5_descriptives_by_experience.csv`
+3. `results/descriptive/qc/experience/csv/b1_b3_descriptives_by_experience.csv`
+4. `results/descriptive/qc/experience/csv/ipq_descriptives_by_experience.csv`
 
 ---
 
-## Q4. 两遍观看（Round1/2）是否出现收敛/学习？
-1. `results/research/table_angle2_round_interactions_all_dv.csv`
-2. `results/research/angle2_round_diff_by_group.csv`
-3. `results/research/round_icc_by_group.csv`
+## Q3. 全样本（overall）的核心显著性结果先看哪里？
+1. `results/significance/qc/overall/core_model/md/results_draft_zh.md`
+2. `results/significance/qc/overall/core_model/csv/table_main_interactions.csv`
+3. `results/significance/qc/overall/core_model/csv/table_fixed_effects.csv`
+4. `results/significance/qc/overall/core_model/png/`
 
 ---
 
-## Q5. 顺序（组1/组2）是否改变复杂度差值？
-1. `results/research/group_complexity_delta_by_round.csv`
-2. `results/research/group_complexity_delta_round_shift.csv`
-3. `results/research/round_consistency_by_group.csv`
+## Q4. WWR 在线性 / 二次趋势上是否显著？
+1. `results/significance/qc/overall/wwr_polynomial/csv/wwr_polynomial_contrasts.csv`
+2. `results/significance/qc/overall/wwr_polynomial/png/`
+3. `results/significance/qc/overall/wwr_polynomial/md/`
+
+重点看：
+- 是否显著
+- 方向是 increase / decrease
+- WWR=45 是否最高或最低
 
 ---
 
-## Q6. 四类交叉人群（Experience×SportFreq）具体差异是什么？
-1. `results/research/group_comparisons_item_level.csv`
-2. `results/research/groups/manifest.csv`
-3. `results/research/groups/group_*.csv`
+## Q5. Experience 高低组在显著性模式上是否不同？
+1. `results/significance/qc/experience/wwr_polynomial_group_only/csv/wwr_polynomial_contrasts.csv`
+2. `results/significance/qc/experience/wwr_polynomial_group_only/png/`
+3. `results/significance/qc/experience/wwr_polynomial_group_only/md/`
 
 ---
 
-## Q7. 只按 SportFreq 二分（高/低）看差异
-1. `results/research/group2_comparisons_item_level_sportfreqgroup.csv`
-2. `results/research/group2_complexity_mean_table_sportfreqgroup.csv`
-3. `results/research/group2_complexity_delta_significance_sportfreqgroup.csv`
+## Q6. Experience 效应是否随 round 变化？
+1. `results/significance/qc/experience/wwr_polynomial_group_round/csv/wwr_polynomial_contrasts.csv`
+2. `results/significance/qc/experience/wwr_polynomial_group_round/png/`
+3. `results/significance/qc/experience/wwr_polynomial_group_round/md/`
 
 ---
 
-## Q8. 只按 Experience 二分（高/低）看差异
-1. `results/research/group2_comparisons_item_level_experiencegroup.csv`
-2. `results/research/group2_complexity_mean_table_experiencegroup.csv`
-3. `results/research/group2_complexity_delta_significance_experiencegroup.csv`
+## Q7. S / B / IPQ 的逐题组间显著性看哪里？
+1. `results/significance/qc/item_level/experience/s_items/csv/s_items_experience_welch.csv`
+2. `results/significance/qc/item_level/experience/b_items/csv/b_items_experience_welch.csv`
+3. `results/significance/qc/item_level/experience/ipq_items/csv/ipq_items_experience_welch.csv`
+4. `results/significance/qc/item_level/experience/` 下对应 png / md / json
 
 ---
 
-## Q9. B题（B1-B3 / Bmean）在 C1 下的人群差异（操纵检验/补充）
-1. `results/research/b_items_group_comparisons.csv`
-2. `results/research/b_items_condition_means.csv`
-3. `results/research/b_items_long_c1.csv`
+## Q8. 如果我要正式汇报，文件优先顺序是什么？
+1. `results/RESULTS_GUIDE.md`
+2. `results/descriptive/qc/overall/png/`
+3. `results/descriptive/qc/experience/png/`
+4. `results/significance/qc/overall/core_model/md/results_draft_zh.md`
+5. `results/significance/qc/overall/wwr_polynomial/csv/wwr_polynomial_contrasts.csv`
+6. `results/significance/qc/experience/wwr_polynomial_group_only/csv/wwr_polynomial_contrasts.csv`
+7. `results/significance/qc/experience/wwr_polynomial_group_round/csv/wwr_polynomial_contrasts.csv`
 
 ---
 
-## Q10. 诊断与稳健性：结果是否受模型设定影响？
-1. `results/diagnostics/analysis_report.md`
-2. `results/diagnostics/model_comparison_interactions.csv`
-3. `results/diagnostics/main_effect_stability_by_random_structure.csv`
+## Q9. raw 和 qc 应该怎么选？
+- 对外汇报 / 正式写作：优先 `qc`
+- 内部核对 / 稳健性对照：再看 `raw`
+
+一句话规则：
+- `png` 先看模式
+- `csv` 再核对数值
+- `qc` 先用
+- `raw` 后比对
 
 ---
 
-## Q11. Analysis-2/task1：同一场景两阶段（Round1/2）评分差距（S1–S5）在人群间是否不同？
-1. `results/research/analysis-2/task1/<experience|sportfreq>/<raw|qc>/analysis2_scene_stage_gap_long.csv`
-2. `results/research/analysis-2/task1/analysis2_scene_stage_gap_wide_<SceneID>.csv`
-3. `results/research/analysis-2/task1/<experience|sportfreq>/<raw|qc>/task1_scene_stage_gap_figures/scene_<SceneID>.png`
+## Q10. 如果我要旧版 research / analysis-2 那条线怎么办？
+当前这个 `RESULTS_MAP.md` 只服务于 **clean main 主线**。
 
-## Q12. Analysis-2/task1b：B1–B3（C1-only）两阶段（Round1/2）评分差距在人群间是否不同？
-1. `results/research/analysis-2/task1/<experience|sportfreq>/<raw|qc>/analysis2_b_stage_gap_long.csv`
-2. `results/research/analysis-2/task1/<experience|sportfreq>/<raw|qc>/task1b_b_stage_gap_figures/B1.png`
-3. `results/research/analysis-2/task1/<experience|sportfreq>/<raw|qc>/task1b_b_stage_gap_figures/B2.png`
-4. `results/research/analysis-2/task1/<experience|sportfreq>/<raw|qc>/task1b_b_stage_gap_figures/B3.png`
+如果你明确要：
+- 旧版 `results/research/*`
+- 旧版 `results/model/*`
+- analysis-2 / task1~task5
+- 更 exploratory 的历史输出
 
-## Q13. Analysis-2/task2 core_Imm_suite：围绕 WWR（及 Complexity、Group）的问卷评分核心 LMM 主效应/交互结果
-1. `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/analysis2_core_imm_suite_s_models.csv`
-2. `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/analysis2_core_imm_suite_s_effects.csv`
-3. `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/analysis2_core_imm_suite_b_models.csv`
-4. `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/analysis2_core_imm_suite_b_effects.csv`
-5. `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/task2_core_imm_suite_figures/task2_s_model_aic.png`
-6. `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/task2_core_imm_suite_figures/task2_s_top_effects_forest.png`
-7. `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/task2_core_imm_suite_figures/task2_b_model_aic.png`
-8. `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/task2_core_imm_suite_figures/task2_b_top_effects_forest.png`
-9. `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/task2_core_imm_suite_figures/task2_b_means_B1.png`（B2/B3 同路径）
-10. `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/analysis2_core_imm_suite_group_focus.csv`（仅保留 Group/交互相关项）
-11. `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/analysis2_core_imm_suite_posthoc_s_wwr_by_group.csv`（S题 WWR 事后配对比较）
-12. `results/research/analysis-2/task2/<experience|sportfreq>/<raw|qc>/analysis2_measurement_reliability_s1_s4.csv`（S1-S4 信度：alpha/omega）
+请切到：
+- `raw` 分支
 
----
-
-## 最快交付（给导师/合作者）
-- 首选：`results/analysis_report_bundle.md`
-- 再补：`results/research/analysis_narrative.md`
-- 如需图：`results/research/figures/`
+不要把旧版 research 路径和当前 main 默认结果入口混在一起读。
