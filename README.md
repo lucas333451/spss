@@ -2,6 +2,8 @@
 
 [中文说明 / Chinese guide](./README_zh.md)
 
+[Results reading guide](./docs/RESULTS_READING_GUIDE.md)
+
 [Chinese results reading guide / 中文结果阅读指南](./docs/RESULTS_READING_GUIDE.zh.md)
 
 ## Overview / 概述
@@ -173,6 +175,11 @@ python scripts/significance_pipeline.py \
 ```
 
 ---
+
+## Maintenance note / 维护提示
+- After editing user-facing docs or notebooks, run:
+  - `python3 scripts/check_doc_consistency.py`
+- This helps keep the clean `main` reading surface from drifting back to legacy `results/model` / `results/research` wording.
 
 ## Notes / 说明
 - `main` intentionally avoids too many exploratory outputs.

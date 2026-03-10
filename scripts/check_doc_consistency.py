@@ -13,6 +13,7 @@ TARGETS = [
     REPO / 'RESULTS_MAP.md',
     REPO / 'docs' / 'COLAB_GUIDE.md',
     REPO / 'docs' / 'PROJECT_OVERVIEW.md',
+    REPO / 'docs' / 'RESULTS_READING_GUIDE.md',
     REPO / 'docs' / 'RESULTS_READING_GUIDE.zh.md',
     REPO / 'notebooks' / 'colab_setup.ipynb',
     REPO / 'notebooks' / 'spss_colab.ipynb',
@@ -35,6 +36,9 @@ ALLOWED_CONTEXT_SNIPPETS = [
     '那不是当前 `main` 的默认主阅读面',
     '才回到旧版逻辑',
     '旧的 `results/',
+    'not the default reading surface',
+    'go back to legacy outputs',
+    'old `results/',
 ]
 
 

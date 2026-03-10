@@ -1,5 +1,6 @@
 # spss（清爽主线版）— 问卷分析流程
 
+- 英文结果阅读指南：`./docs/RESULTS_READING_GUIDE.md`
 - 中文结果阅读指南：`./docs/RESULTS_READING_GUIDE.zh.md`
 
 ## 当前主旨
@@ -173,6 +174,11 @@ python scripts/significance_pipeline.py \
 ```
 
 ---
+
+## 维护提示
+- 如果你修改了用户入口文档或 Colab notebook，建议顺手运行：
+  - `python3 scripts/check_doc_consistency.py`
+- 这个检查的作用是防止 clean `main` 的结果入口又漂回旧的 `results/model` / `results/research` 口径。
 
 ## 说明
 - 现在 `main` 故意不再追求“能出特别多结果”，而是优先保证结构清楚、好用、好维护。
