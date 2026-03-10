@@ -2,6 +2,8 @@
 
 [中文说明 / Chinese guide](./README_zh.md)
 
+[Chinese results reading guide / 中文结果阅读指南](./docs/RESULTS_READING_GUIDE.zh.md)
+
 ## Overview / 概述
 This repository now keeps the **main branch** focused on two output families only:
 

@@ -1,5 +1,7 @@
 # spss（清爽主线版）— 问卷分析流程
 
+- 中文结果阅读指南：`./docs/RESULTS_READING_GUIDE.zh.md`
+
 ## 当前主旨
 现在 `main` 分支只保留两大类输出：
 
