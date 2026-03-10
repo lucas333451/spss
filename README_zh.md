@@ -178,7 +178,9 @@ python scripts/significance_pipeline.py \
 ## 维护提示
 - 如果你修改了用户入口文档或 Colab notebook，建议顺手运行：
   - `python3 scripts/check_doc_consistency.py`
-- 这个检查的作用是防止 clean `main` 的结果入口又漂回旧的 `results/model` / `results/research` 口径。
+- 如果你想做更完整的 clean main 入口体检，再运行：
+  - `python3 scripts/check_main_entrypoints.py`
+- 这个检查不仅能防止结果入口漂回旧的 `results/model` / `results/research` 口径，也会检查关键入口文件和 README 链接是否还存在。
 
 ## 说明
 - 现在 `main` 故意不再追求“能出特别多结果”，而是优先保证结构清楚、好用、好维护。

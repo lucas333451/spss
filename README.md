@@ -179,7 +179,9 @@ python scripts/significance_pipeline.py \
 ## Maintenance note / 维护提示
 - After editing user-facing docs or notebooks, run:
   - `python3 scripts/check_doc_consistency.py`
-- This helps keep the clean `main` reading surface from drifting back to legacy `results/model` / `results/research` wording.
+- For a broader clean-main entrypoint health check, run:
+  - `python3 scripts/check_main_entrypoints.py`
+- This helps keep the clean `main` reading surface from drifting back to legacy `results/model` / `results/research` wording, and also checks that key entry files and README links still exist.
 
 ## Notes / 说明
 - `main` intentionally avoids too many exploratory outputs.
