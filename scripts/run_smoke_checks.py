@@ -39,21 +39,28 @@ def main() -> int:
         (
             [sys.executable, 'scripts/pipeline.py', '--help'],
             ['--excel', '--sheet', '--out-root', '--skip-descriptive', '--skip-significance', '--with-qc'],
+            [['Clean pipeline'], ['descriptive', 'significance'], ['overall', 'experience']],
         ),
         (
             [sys.executable, 'scripts/descriptive_pipeline.py', '--help'],
             ['--long-csv', '--out-dir', '--with-qc'],
+            [['Descriptive-only pipeline'], ['overall', 'experience']],
         ),
         (
             [sys.executable, 'scripts/significance_pipeline.py', '--help'],
             ['--long-csv', '--out-dir', '--python', '--with-qc'],
+            [['Significance-only pipeline'], ['overall', 'experience']],
         ),
     ]
-    for cmd, required_flags in cli_checks:
+    for cmd, required_flags, required_phrase_groups in cli_checks:
         out = capture(cmd)
         for flag in required_flags:
             if flag not in out:
                 raise SystemExit(f'Missing expected CLI flag in help output: {flag}')
+        for group in required_phrase_groups:
+            for token in group:
+                if token not in out:
+                    raise SystemExit(f'Missing expected CLI help token: {token}')
     print('[OK] CLI help sanity')
 
     tmpdir = Path(tempfile.mkdtemp(prefix='spss_smoke_'))
