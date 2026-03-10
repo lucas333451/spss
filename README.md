@@ -181,7 +181,9 @@ python scripts/significance_pipeline.py \
   - `python3 scripts/check_doc_consistency.py`
 - For a broader clean-main entrypoint health check, run:
   - `python3 scripts/check_main_entrypoints.py`
-- This helps keep the clean `main` reading surface from drifting back to legacy `results/model` / `results/research` wording, and also checks that key entry files and README links still exist.
+- For a lightweight executable smoke suite, run:
+  - `python3 scripts/run_smoke_checks.py`
+- This helps keep the clean `main` reading surface from drifting back to legacy `results/model` / `results/research` wording, checks that key entry files and README links still exist, and verifies that the top-level results guide can still be generated in a temporary output folder.
 
 ## Notes / 说明
 - `main` intentionally avoids too many exploratory outputs.
