@@ -17,6 +17,14 @@ def run(cmd: list[str], cwd: Path | None = None) -> None:
         raise SystemExit(p.returncode)
 
 
+def capture(cmd: list[str], cwd: Path | None = None) -> str:
+    print('$', ' '.join(cmd))
+    p = subprocess.run(cmd, cwd=cwd or REPO, capture_output=True, text=True)
+    if p.returncode != 0:
+        raise SystemExit(p.returncode)
+    return p.stdout
+
+
 
 def main() -> int:
     print('== clean main smoke checks ==')
@@ -26,6 +34,27 @@ def main() -> int:
 
     run([sys.executable, 'scripts/check_main_entrypoints.py'])
     print('[OK] main entrypoints')
+
+    cli_checks = [
+        (
+            [sys.executable, 'scripts/pipeline.py', '--help'],
+            ['--excel', '--sheet', '--out-root', '--skip-descriptive', '--skip-significance', '--with-qc'],
+        ),
+        (
+            [sys.executable, 'scripts/descriptive_pipeline.py', '--help'],
+            ['--long-csv', '--out-dir', '--with-qc'],
+        ),
+        (
+            [sys.executable, 'scripts/significance_pipeline.py', '--help'],
+            ['--long-csv', '--out-dir', '--python', '--with-qc'],
+        ),
+    ]
+    for cmd, required_flags in cli_checks:
+        out = capture(cmd)
+        for flag in required_flags:
+            if flag not in out:
+                raise SystemExit(f'Missing expected CLI flag in help output: {flag}')
+    print('[OK] CLI help sanity')
 
     tmpdir = Path(tempfile.mkdtemp(prefix='spss_smoke_'))
     try:
