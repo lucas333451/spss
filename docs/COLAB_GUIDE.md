@@ -1,7 +1,7 @@
 # Colab 超详细上手指南（零基础版）
 
-> 目标：你不用配置本地 Python，直接在 Google Colab 跑完整项目。  
-> 结果：得到 `results/` 文件夹（包含 long 数据、QC、LMM 表格、图）。
+> 目标：你不用配置本地 Python，直接在 Google Colab 跑当前 `main` 分支的清爽版问卷分析流程。  
+> 结果：得到 `results/` 文件夹（包含 `long / descriptive / significance` 三层主结果）。
 
 ---
 
@@ -21,10 +21,10 @@
 ## 0. 你将得到什么
 运行完成后会生成：
 - `results/long/long_format.csv`（宽转长后的主数据）
-- `results/long/qc_issues.csv`（质控失败明细）
-- `results/model/paper_tables.md`（论文可贴表）
-- `results/research/table_main_interactions_all_dv.csv`（主效应/交互汇总）
-- 多张图（交互图、热力图、Round 差值图）
+- `results/descriptive/`（描述性分析：overall / experience，含 csv/png）
+- `results/significance/`（显著性分析：overall / experience，含 csv/png/md/json）
+- `results/RESULTS_GUIDE.md`（总导航）
+- `results/RESULTS_GUIDE.png`（总导航图）
 
 ---
 
@@ -133,10 +133,10 @@ print("✅ 当前使用文件:", EXCEL_FILE)
 > 注意：如果文件名里有空格（例如 `...2026-02-17 .xlsx`），务必放在变量里并用引号传递（上面这种写法即可）。
 
 这一步会自动做这些事情：
-1. 宽表 -> long + QC
-2. 生成 `results/group_manifest.csv`（含 Order/Round/Pos/trial_key，用于眼动/EEG 对齐）
-3. 跑基础模型与研究分析（输出表/图）
-4. 生成 `results/provenance.json`（记录 git commit / python 包版本 / 参数，用于可复现与审稿）
+1. 宽表 -> `results/long/long_format.csv`
+2. 跑描述性分析，生成 `results/descriptive/`
+3. 跑显著性分析，生成 `results/significance/`
+4. 自动生成 `results/RESULTS_GUIDE.md` 与 `results/RESULTS_GUIDE.png`
 
 ---
 
@@ -147,22 +147,26 @@ print("✅ 当前使用文件:", EXCEL_FILE)
 !find results -maxdepth 3 -type f | sort
 ```
 
-如果你看到 `results/long/`、`results/model/`、`results/research/` 下多文件，说明流程成功。
+如果你看到 `results/long/`、`results/descriptive/`、`results/significance/` 下出现多文件，说明流程成功。
 
 ---
 
 ## 4. 如何判断“运行成功”
-至少满足以下 3 条：
+至少满足以下 5 条：
 1. `results/long/long_format.csv` 存在
-2. `results/model/paper_tables.md` 存在
-3. `results/research/table_main_interactions_all_dv.csv` 存在
+2. `results/descriptive/descriptive_summary.json` 存在
+3. `results/significance/significance_summary.json` 存在
+4. `results/RESULTS_GUIDE.md` 存在
+5. `results/RESULTS_GUIDE.png` 存在
 
 可用下面命令快速检查：
 
 ```python
 !test -f results/long/long_format.csv && echo "✅ long_format.csv ok"
-!test -f results/model/paper_tables.md && echo "✅ paper_tables.md ok"
-!test -f results/research/table_main_interactions_all_dv.csv && echo "✅ interactions table ok"
+!test -f results/descriptive/descriptive_summary.json && echo "✅ descriptive_summary.json ok"
+!test -f results/significance/significance_summary.json && echo "✅ significance_summary.json ok"
+!test -f results/RESULTS_GUIDE.md && echo "✅ RESULTS_GUIDE.md ok"
+!test -f results/RESULTS_GUIDE.png && echo "✅ RESULTS_GUIDE.png ok"
 ```
 
 ---
@@ -172,7 +176,7 @@ print("✅ 当前使用文件:", EXCEL_FILE)
 ## 5.1 下载单个文件
 ```python
 from google.colab import files
-files.download('results/model/paper_tables.md')
+files.download('results/RESULTS_GUIDE.md')
 ```
 
 ## 5.2 打包下载全部结果（推荐）
