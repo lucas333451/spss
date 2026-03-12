@@ -373,25 +373,20 @@ def _summary_box(ax, title: str, lines: list[str]):
 def _plot_model_comparison(cmp_df: pd.DataFrame, out_dir: Path) -> str | None:
     if cmp_df.empty:
         return None
-    fig = plt.figure(figsize=(9.4, 4.8))
-    gs = fig.add_gridspec(1, 2, width_ratios=[3.4, 1.5], wspace=0.16)
-    ax = fig.add_subplot(gs[0, 0])
-    ax2 = fig.add_subplot(gs[0, 1])
     x = cmp_df.copy().sort_values("AIC", ascending=True)
-    sns.barplot(data=x, y="Model", x="AIC", color="#A9D6CB", ax=ax)
-    ax.set_title("Model comparison by AIC")
+    fig, ax = plt.subplots(figsize=(7.2, 4.2))
+    colors = ["#2F5D7E" if s == "ok" else "#C95A49" for s in x.get("Status", pd.Series(["ok"] * len(x)))]
+    ax.barh(x["Model"], x["AIC"], color=colors, alpha=0.92)
+    ax.set_title("Model comparison by AIC", pad=8)
     ax.set_xlabel("AIC")
     ax.set_ylabel("")
+    ax.grid(axis="x", alpha=0.18)
+    ax.grid(axis="y", visible=False)
     best_row = x.iloc[0]
-    _summary_box(ax2, "Model summary", [
-        f"Best by AIC: {best_row['Model']}",
-        f"AIC={_fmt(best_row['AIC'])}",
-        f"BIC={_fmt(best_row['BIC'])}",
-        f"LogLik={_fmt(best_row['LogLik'])}",
-    ])
+    ax.text(0.98, 0.04, f"Best: {best_row['Model']} | AIC={_fmt(best_row['AIC'])}", transform=ax.transAxes, ha="right", va="bottom", fontsize=8.2, color="#4B5560")
     out_dir.mkdir(parents=True, exist_ok=True)
     p = out_dir / "model_comparison_aic.png"
-    fig.savefig(p, dpi=230)
+    fig.savefig(p, dpi=300)
     plt.close(fig)
     return str(p)
 
@@ -403,26 +398,18 @@ def _plot_fixed_effects(fixed_df: pd.DataFrame, out_dir: Path) -> str | None:
     if x.empty:
         return None
     x = x.sort_values("Coef")
-    fig = plt.figure(figsize=(10.5, max(4.8, 0.34 * len(x) + 1.6)))
-    gs = fig.add_gridspec(1, 2, width_ratios=[3.6, 1.4], wspace=0.12)
-    ax = fig.add_subplot(gs[0, 0])
-    ax2 = fig.add_subplot(gs[0, 1])
+    fig, ax = plt.subplots(figsize=(8.2, max(4.8, 0.34 * len(x) + 1.2)))
     ax.axvline(0, color="#8B929A", lw=0.9)
     ax.errorbar(x["Coef"], np.arange(len(x)), xerr=[x["Coef"] - x["CI95_low"], x["CI95_high"] - x["Coef"]], fmt='o', color="#2F5D7E", ecolor="#9EB9CF", capsize=2.2)
     ax.set_yticks(np.arange(len(x)))
     ax.set_yticklabels([_humanize_term(t) for t in x["Term"]], fontsize=8)
-    ax.set_title("Fixed effects with 95% CI")
+    ax.set_title("Fixed effects with 95% CI", pad=8)
     ax.set_xlabel("Coefficient")
-    sig_n = int((x["p"] < 0.05).sum())
-    _summary_box(ax2, "Fixed effects", [
-        f"Terms shown: {len(x)}",
-        f"Significant (p<0.05): {sig_n}",
-        f"Strongest +Coef: {_humanize_term(str(x.iloc[-1]['Term']))}",
-        f"Strongest -Coef: {_humanize_term(str(x.iloc[0]['Term']))}",
-    ])
+    ax.grid(axis="x", alpha=0.18)
+    ax.grid(axis="y", visible=False)
     out_dir.mkdir(parents=True, exist_ok=True)
     p = out_dir / "fixed_effects_forest.png"
-    fig.savefig(p, dpi=230)
+    fig.savefig(p, dpi=300)
     plt.close(fig)
     return str(p)
 
@@ -433,25 +420,18 @@ def _plot_interactions(infer_df: pd.DataFrame, out_dir: Path) -> str | None:
     x = infer_df.copy()
     x["minuslog10p"] = -np.log10(pd.to_numeric(x["p"], errors="coerce"))
     x = x.sort_values("minuslog10p", ascending=True)
-    fig = plt.figure(figsize=(10.2, max(4.8, 0.34 * len(x) + 1.4)))
-    gs = fig.add_gridspec(1, 2, width_ratios=[3.6, 1.4], wspace=0.12)
-    ax = fig.add_subplot(gs[0, 0])
-    ax2 = fig.add_subplot(gs[0, 1])
+    fig, ax = plt.subplots(figsize=(8.2, max(4.8, 0.34 * len(x) + 1.2)))
     palette = x["EffectType"].map({"Main Effect": "#2F5D7E", "Interaction (2-way)": "#D98C3F", "Interaction (3-way)": "#7A8E65"}).fillna("#AAB4BE")
-    ax.barh(np.arange(len(x)), x["minuslog10p"], color=list(palette))
+    ax.barh(np.arange(len(x)), x["minuslog10p"], color=list(palette), alpha=0.92)
     ax.set_yticks(np.arange(len(x)))
     ax.set_yticklabels(x["APA_Term"], fontsize=8)
     ax.set_xlabel("-log10(p)")
-    ax.set_title("Main and interaction effects")
-    _summary_box(ax2, "Interaction summary", [
-        f"Rows: {len(x)}",
-        f"Main effects: {int((x['EffectType'] == 'Main Effect').sum())}",
-        f"2-way: {int((x['EffectType'] == 'Interaction (2-way)').sum())}",
-        f"3-way+: {int(x['EffectType'].str.contains('3-way|4-way', na=False).sum())}",
-    ])
+    ax.set_title("Main and interaction effects", pad=8)
+    ax.grid(axis="x", alpha=0.18)
+    ax.grid(axis="y", visible=False)
     out_dir.mkdir(parents=True, exist_ok=True)
     p = out_dir / "main_interactions_summary.png"
-    fig.savefig(p, dpi=230)
+    fig.savefig(p, dpi=300)
     plt.close(fig)
     return str(p)
 
@@ -468,29 +448,21 @@ def _plot_random_effects(rand_df: pd.DataFrame, out_dir: Path) -> str | None:
     if long.empty:
         return None
 
-    fig = plt.figure(figsize=(10.0, max(4.8, 0.35 * len(long) + 1.4)))
-    gs = fig.add_gridspec(1, 2, width_ratios=[3.5, 1.5], wspace=0.12)
-    ax = fig.add_subplot(gs[0, 0])
-    ax2 = fig.add_subplot(gs[0, 1])
-
+    fig, ax = plt.subplots(figsize=(8.0, max(4.8, 0.35 * len(long) + 1.2)))
     long["Label"] = long["Component"].astype(str) + " | " + long["Metric"].astype(str)
     long = long.sort_values("Value")
-    palette = long["Metric"].map({"Var": "#A9D6CB", "SD": "#8FA3B8", "Corr": "#C8B98B"}).fillna("#A8C7CF")
-    ax.barh(np.arange(len(long)), long["Value"], color=list(palette))
-    ax.axvline(0, color="#70817A", lw=1)
+    palette = long["Metric"].map({"Var": "#2F5D7E", "SD": "#7E9CB5", "Corr": "#D98C3F"}).fillna("#AAB4BE")
+    ax.barh(np.arange(len(long)), long["Value"], color=list(palette), alpha=0.9)
+    ax.axvline(0, color="#8B929A", lw=0.9)
     ax.set_yticks(np.arange(len(long)))
     ax.set_yticklabels(long["Label"], fontsize=8)
-    ax.set_title("Random effects summary")
+    ax.set_title("Random effects summary", pad=8)
     ax.set_xlabel("Value")
-
-    _summary_box(ax2, "Random effects", [
-        f"Components: {x['Component'].nunique()}",
-        f"Metrics shown: {', '.join(value_cols)}",
-        f"Residual Var: {_fmt(x.loc[x['Component'] == 'Residual', 'Var'].iloc[0]) if ('Residual' in x['Component'].values and 'Var' in x.columns) else 'NA'}",
-    ])
+    ax.grid(axis="x", alpha=0.18)
+    ax.grid(axis="y", visible=False)
     out_dir.mkdir(parents=True, exist_ok=True)
     p = out_dir / "random_effects_summary.png"
-    fig.savefig(p, dpi=230)
+    fig.savefig(p, dpi=300)
     plt.close(fig)
     return str(p)
 
@@ -499,28 +471,19 @@ def _plot_simple_effects(simple_df: pd.DataFrame, out_dir: Path) -> str | None:
     if simple_df.empty:
         return None
     x = simple_df.copy().sort_values("WWR")
-    fig = plt.figure(figsize=(9.2, 4.8))
-    gs = fig.add_gridspec(1, 2, width_ratios=[3.2, 1.5], wspace=0.12)
-    ax = fig.add_subplot(gs[0, 0])
-    ax2 = fig.add_subplot(gs[0, 1])
+    fig, ax = plt.subplots(figsize=(7.2, 4.2))
     bars = ax.bar(x["WWR"].astype(str), x["Diff_C1_minus_C0"], color="#4C78A8", alpha=0.88)
     ax.axhline(0, color="#8B929A", lw=0.9)
-    ax.set_title("Simple effects: C1 - C0 within each WWR")
+    ax.set_title("Simple effects: C1 - C0 within each WWR", pad=8)
     ax.set_xlabel("WWR")
     ax.set_ylabel("Mean difference")
+    ax.grid(axis="y", alpha=0.18)
+    ax.grid(axis="x", visible=False)
     for b, p in zip(bars, x["p"]):
         ax.text(b.get_x() + b.get_width()/2, b.get_height(), f"p={_fmt(p, 3)}", ha="center", va="bottom", fontsize=8, color="#50615A")
-    best = x.loc[x["p"].idxmin()] if x["p"].notna().any() else x.iloc[0]
-    _summary_box(ax2, "Simple-effects summary", [
-        f"Most evidence at WWR={best['WWR']}",
-        f"C1-C0={_fmt(best['Diff_C1_minus_C0'])}",
-        f"p={_fmt(best['p'])}",
-        f"Holm p={_fmt(best.get('p_holm', np.nan))}",
-        f"dz={_fmt(best.get('dz', np.nan))}",
-    ])
     out_dir.mkdir(parents=True, exist_ok=True)
     p = out_dir / "simple_effects_complexity_by_wwr.png"
-    fig.savefig(p, dpi=230)
+    fig.savefig(p, dpi=300)
     plt.close(fig)
     return str(p)
 

@@ -227,24 +227,21 @@ def _plot_trend_panels(means: pd.DataFrame, results_df: pd.DataFrame, out_dir: P
             x["__panel__"] = "ALL"
             panel_col = "__panel__"
 
-        fig = plt.figure(figsize=(max(8.8, 4.9 * len(panel_values)), 5.0))
-        gs = fig.add_gridspec(1, 2, width_ratios=[3.6, 1.45], wspace=0.16)
-        main_gs = gs[0, 0].subgridspec(1, len(panel_values), wspace=0.18)
+        fig = plt.figure(figsize=(max(7.6, 4.4 * len(panel_values)), 4.6))
+        main_gs = fig.add_gridspec(1, len(panel_values), wspace=0.18)
         axes = [fig.add_subplot(main_gs[0, i]) for i in range(len(panel_values))]
-        ax_info = fig.add_subplot(gs[0, 1])
-
-        summary_lines = []
         for ax, panel_val in zip(axes, panel_values):
             sub = x[x[panel_col] == panel_val].copy()
             if hue_col and hue_col in sub.columns:
                 for hv, hg in sub.groupby(hue_col, dropna=False):
                     hg = hg.sort_values("WWR")
-                    ax.plot(hg["WWR"], hg["mean"], marker="o", label=str(hv), color="#6FAF9F")
-                    ax.fill_between(hg["WWR"], hg["mean"] - hg["se"], hg["mean"] + hg["se"], alpha=0.15, color="#A8D5C8")
+                    color = "#2F5D7E" if str(hv).lower().startswith("h") else "#D98C3F"
+                    ax.plot(hg["WWR"], hg["mean"], marker="o", label=str(hv), color=color, linewidth=1.8)
+                    ax.fill_between(hg["WWR"], hg["mean"] - hg["se"], hg["mean"] + hg["se"], alpha=0.14, color=color)
             else:
                 sub = sub.sort_values("WWR")
-                ax.plot(sub["WWR"], sub["mean"], marker="o", color="#6FAF9F")
-                ax.fill_between(sub["WWR"], sub["mean"] - sub["se"], sub["mean"] + sub["se"], alpha=0.18, color="#A8D5C8")
+                ax.plot(sub["WWR"], sub["mean"], marker="o", color="#2F5D7E", linewidth=1.8)
+                ax.fill_between(sub["WWR"], sub["mean"] - sub["se"], sub["mean"] + sub["se"], alpha=0.14, color="#9EB9CF")
             ax.set_title(f"{panel_col} = {panel_val}" if panel_val != "ALL" else dv)
             ax.set_xlabel("WWR")
             ax.set_xticks(levels)
@@ -253,21 +250,12 @@ def _plot_trend_panels(means: pd.DataFrame, results_df: pd.DataFrame, out_dir: P
             rsub = results_df[(results_df["DV"] == dv) & (results_df["Source"] == "WWR")].copy()
             if panel_col != "__panel__" and panel_col in rsub.columns:
                 rsub = rsub[rsub[panel_col].astype(str) == str(panel_val)]
-            if not rsub.empty:
-                for _, rr in rsub.iterrows():
-                    summary_lines.append(
-                        f"{panel_col}={panel_val} | {rr['Contrast']}\n"
-                        f"{rr.get('Direction','')}\n"
-                        f"F={_fmt(rr.get('F', np.nan))}, p={_fmt(rr.get('Sig.', np.nan))}"
-                    )
-
         axes[0].set_ylabel(dv)
         if hue_col and hue_col in x.columns:
             handles, labels = axes[0].get_legend_handles_labels()
             if handles:
                 fig.legend(handles, labels, title=hue_col, loc="upper center", ncol=max(1, len(labels)))
 
-        _summary_box(ax_info, f"Trend summary — {dv}", summary_lines[:8] if summary_lines else ["No valid contrast rows."])
         path = out_dir / f"task5_trend_profile_{dv}.png"
         fig.savefig(path, dpi=230)
         plt.close(fig)
@@ -322,14 +310,11 @@ def _plot_contrast_heatmaps(df: pd.DataFrame, out_dir: Path, split_cols: list[st
                         ptxt = f"{pv:0.3f}"
                     annot.loc[r, c] = f"p={ptxt}{_sigstar(pv)}"
 
-        fig = plt.figure(figsize=(max(11.0, 1.0 * len(mat.columns) + 5.2), max(4.0, 0.55 * len(mat.index) + 2.0)))
-        gs = fig.add_gridspec(1, 2, width_ratios=[3.6, 1.5], wspace=0.14)
-        ax = fig.add_subplot(gs[0, 0])
-        ax2 = fig.add_subplot(gs[0, 1])
+        fig, ax = plt.subplots(figsize=(max(9.0, 0.9 * len(mat.columns) + 4.0), max(4.0, 0.55 * len(mat.index) + 1.6)))
 
         sns.heatmap(
             -np.log10(mat.astype(float)),
-            cmap=sns.light_palette("#6FAF9F", as_cmap=True),
+            cmap=sns.light_palette("#2F5D7E", as_cmap=True),
             annot=annot,
             fmt="",
             annot_kws={"fontsize": 8.2},
@@ -342,21 +327,6 @@ def _plot_contrast_heatmaps(df: pd.DataFrame, out_dir: Path, split_cols: list[st
         ax.set_xlabel("DV")
         ax.set_ylabel("Split cell")
         ax.tick_params(axis="x", rotation=25)
-
-        top = sub.sort_values(p_col).head(6)
-        summary_lines = []
-        for _, rr in top.iterrows():
-            cell_bits = []
-            for c in split_cols:
-                if c in rr.index:
-                    cell_bits.append(f"{c}={rr[c]}")
-            cell = " | ".join(cell_bits) if cell_bits else "ALL"
-            summary_lines.append(
-                f"{rr['DV']} | {cell}\n"
-                f"{rr.get('Direction','')}\n"
-                f"F={_fmt(rr.get('F', np.nan))}, p={_fmt(rr.get(p_col, np.nan))}"
-            )
-        _summary_box(ax2, f"{contrast} summary", summary_lines if summary_lines else ["No valid cells."])
 
         path = out_dir / f"task5_{contrast.lower()}_contrast_heatmap.png"
         fig.savefig(path, dpi=230)
