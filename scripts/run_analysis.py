@@ -179,8 +179,13 @@ def _fit_with_fallback(data: pd.DataFrame, formula: str, re_formula: str | None)
     last_err = None
     for a in attempts:
         try:
-            mdl = mixedlm(formula=formula, data=data, groups=data["SubjectID"], re_formula=a["re_formula"])
-            fit = mdl.fit(reml=False, method=a["method"], maxiter=2000)
+            with warnings.catch_warnings(record=True) as wlist:
+                warnings.simplefilter("always")
+                mdl = mixedlm(formula=formula, data=data, groups=data["SubjectID"], re_formula=a["re_formula"])
+                fit = mdl.fit(reml=False, method=a["method"], maxiter=2000)
+            warn_msgs = [str(w.message) for w in wlist]
+            boundary = any("boundary of the parameter space" in m for m in warn_msgs)
+            hessian_pd = not any("Hessian matrix" in m and "not positive definite" in m for m in warn_msgs)
             info = {
                 "method": a["method"],
                 "re_formula_requested": re_formula,
@@ -190,7 +195,13 @@ def _fit_with_fallback(data: pd.DataFrame, formula: str, re_formula: str | None)
                 "aic": float(fit.aic) if pd.notna(fit.aic) else np.nan,
                 "bic": float(fit.bic) if pd.notna(fit.bic) else np.nan,
                 "llf": float(fit.llf) if pd.notna(fit.llf) else np.nan,
+                "boundary_warning": boundary,
+                "hessian_not_pd": not hessian_pd,
+                "warnings": " | ".join(dict.fromkeys(warn_msgs)),
             }
+            if boundary or not hessian_pd:
+                last_err = info["warnings"] or "fit_quality_warning"
+                continue
             return fit, info
         except Exception as e:
             last_err = str(e)
