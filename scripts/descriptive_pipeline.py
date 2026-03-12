@@ -203,11 +203,15 @@ def _get_grouped_palette(sub: pd.DataFrame, hue: str | None) -> dict | None:
 def _plot_box_jitter(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None, palette) -> None:
     if xcol and xcol in sub.columns:
         hue_arg = hue if hue in sub.columns and hue != xcol else xcol
+        x_order = _get_order(sub[xcol])
+        hue_order = _get_order(sub[hue_arg]) if hue_arg and hue_arg in sub.columns else None
         sns.boxplot(
             data=sub,
             x=xcol,
             y=dv,
             hue=hue_arg,
+            order=x_order,
+            hue_order=hue_order,
             palette=palette,
             width=0.56,
             fliersize=0,
@@ -221,6 +225,8 @@ def _plot_box_jitter(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str 
             x=xcol,
             y=dv,
             hue=hue_arg,
+            order=x_order,
+            hue_order=hue_order,
             palette=palette,
             dodge=(hue_arg != xcol),
             jitter=0.18,
@@ -238,11 +244,15 @@ def _plot_box_jitter(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str 
 def _plot_box_mean_ci(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None, palette) -> None:
     if xcol and xcol in sub.columns:
         hue_arg = hue if hue in sub.columns and hue != xcol else xcol
+        x_order = _get_order(sub[xcol])
+        hue_order = _get_order(sub[hue_arg]) if hue_arg and hue_arg in sub.columns else None
         sns.boxplot(
             data=sub,
             x=xcol,
             y=dv,
             hue=hue_arg,
+            order=x_order,
+            hue_order=hue_order,
             palette=palette,
             width=0.52,
             fliersize=0,
@@ -259,6 +269,8 @@ def _plot_box_mean_ci(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str
             x=xcol,
             y=dv,
             hue=hue_arg,
+            order=x_order,
+            hue_order=hue_order,
             palette=palette,
             dodge=0.36 if hue_arg != xcol else False,
             errorbar=("ci", 95),
@@ -288,11 +300,15 @@ def _plot_box_mean_ci(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str
 def _plot_violin(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None, palette) -> None:
     if xcol and xcol in sub.columns:
         hue_arg = hue if hue in sub.columns and hue != xcol else xcol
+        x_order = _get_order(sub[xcol])
+        hue_order = _get_order(sub[hue_arg]) if hue_arg and hue_arg in sub.columns else None
         sns.violinplot(
             data=sub,
             x=xcol,
             y=dv,
             hue=hue_arg,
+            order=x_order,
+            hue_order=hue_order,
             palette=palette,
             inner=None,
             cut=0,
@@ -307,6 +323,8 @@ def _plot_violin(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | No
             x=xcol,
             y=dv,
             hue=hue_arg,
+            order=x_order,
+            hue_order=hue_order,
             palette=palette,
             width=0.18,
             fliersize=0,
@@ -323,6 +341,8 @@ def _plot_violin(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | No
             x=xcol,
             y=dv,
             hue=hue_arg,
+            order=x_order,
+            hue_order=hue_order,
             palette=palette,
             dodge=0.36 if hue_arg != xcol else False,
             errorbar=("ci", 95),
