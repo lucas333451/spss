@@ -214,22 +214,51 @@ def _build_model_comparison(model_df: pd.DataFrame, dv_col: str):
 
     rows, fits = [], {}
     primary_name, primary_formula = specs[0]
-    for name, formula in specs:
-        fit, info = _fit_with_fallback(model_df, formula, re_formula="1 + C(Complexity)")
-        fits[name] = {"fit": fit, "formula": formula, "info": info}
-        rows.append({
-            "Model": name,
-            "Formula": formula,
-            "AIC": info["aic"],
-            "BIC": info["bic"],
-            "LogLik": info["llf"],
-            "Converged": info["converged"],
-            "FitMethod": info["method"],
-            "RandomStructureUsed": info["re_formula_used"] if info["re_formula_used"] is not None else "1",
-        })
+    primary_error = None
 
-    cmp_df = pd.DataFrame(rows).sort_values("AIC").reset_index(drop=True)
-    recommended_name = str(cmp_df.iloc[0]["Model"]) if not cmp_df.empty else primary_name
+    for name, formula in specs:
+        try:
+            fit, info = _fit_with_fallback(model_df, formula, re_formula="1 + C(Complexity)")
+            fits[name] = {"fit": fit, "formula": formula, "info": info, "status": "ok"}
+            rows.append({
+                "Model": name,
+                "Formula": formula,
+                "AIC": info["aic"],
+                "BIC": info["bic"],
+                "LogLik": info["llf"],
+                "Converged": info["converged"],
+                "FitMethod": info["method"],
+                "RandomStructureUsed": info["re_formula_used"] if info["re_formula_used"] is not None else "1",
+                "Status": "ok",
+                "Error": "",
+            })
+        except Exception as e:
+            err = str(e)
+            fits[name] = {"fit": None, "formula": formula, "info": None, "status": "failed", "error": err}
+            rows.append({
+                "Model": name,
+                "Formula": formula,
+                "AIC": np.nan,
+                "BIC": np.nan,
+                "LogLik": np.nan,
+                "Converged": False,
+                "FitMethod": "failed",
+                "RandomStructureUsed": "NA",
+                "Status": "failed",
+                "Error": err,
+            })
+            if name == primary_name:
+                primary_error = err
+
+    cmp_df = pd.DataFrame(rows)
+    ok_cmp = cmp_df.loc[cmp_df["Status"] == "ok"].copy()
+    if ok_cmp.empty or fits.get(primary_name, {}).get("fit") is None:
+        raise RuntimeError(
+            f"Primary compact model failed; cannot continue significance analysis. primary_formula={primary_formula}, error={primary_error or 'no successful fits'}"
+        )
+
+    ok_cmp = ok_cmp.sort_values("AIC").reset_index(drop=True)
+    recommended_name = str(ok_cmp.iloc[0]["Model"])
     best = {
         "primary_model": primary_name,
         "primary_formula": primary_formula,
@@ -240,6 +269,7 @@ def _build_model_comparison(model_df: pd.DataFrame, dv_col: str):
         "fit_method": fits[primary_name]["info"]["method"],
         "random_structure_used": fits[primary_name]["info"]["re_formula_used"] if fits[primary_name]["info"]["re_formula_used"] is not None else "1",
     }
+    cmp_df = cmp_df.sort_values(["Status", "AIC"], na_position="last").reset_index(drop=True)
     return cmp_df, best, fits
 
 
