@@ -40,8 +40,9 @@ def _write_index(out: Path, branches: list[str]) -> None:
     for branch in branches:
         lines.append(f"### {branch}")
         lines.append(f"1. `./{branch}/overall/core_model/md/results_draft_zh.md` — Afford4 core-model narrative")
-        lines.append(f"2. `./{branch}/item_level/README.md` — S1–S5 / B1–B3 / IPQ item-level significance overview")
-        lines.append(f"3. `./{branch}/overall/wwr_polynomial/wwr_polynomial_contrasts.csv` — overall WWR linear/quadratic significance")
+        lines.append(f"2. `./{branch}/overall/core_model/png/effect_size_summary.png` — Afford4 effect-size quick read")
+        lines.append(f"3. `./{branch}/item_level/README.md` — S1–S5 / B1–B3 / IPQ item-level significance overview")
+        lines.append(f"4. `./{branch}/overall/wwr_polynomial/wwr_polynomial_contrasts.csv` — overall WWR linear/quadratic significance")
         lines.append(f"4. `./{branch}/experience/wwr_polynomial_group_only/wwr_polynomial_contrasts.csv` — experience-group significance")
         lines.append(f"5. `./{branch}/experience/wwr_polynomial_group_round/csv/wwr_polynomial_contrasts.csv` — experience × round follow-up")
         lines.append("")
@@ -62,11 +63,11 @@ def _write_research_map(out: Path, branches: list[str]) -> None:
     lines.append("")
     lines.append("## Q3. What does the Afford4 core model say about WWR / Complexity / ExperienceGroup?")
     for branch in branches:
-        lines.append(f"- {branch}: `./{branch}/overall/core_model/csv/model_comparison.csv` + `./{branch}/overall/core_model/csv/table_main_interactions.csv` + `./{branch}/overall/core_model/md/results_draft_zh.md`")
+        lines.append(f"- {branch}: `./{branch}/overall/core_model/csv/model_comparison.csv` + `./{branch}/overall/core_model/csv/table_main_interactions.csv` + `./{branch}/overall/core_model/csv/effect_size_summary.csv` + `./{branch}/overall/core_model/png/effect_size_summary.png` + `./{branch}/overall/core_model/md/results_draft_zh.md`")
     lines.append("")
     lines.append("## Q4. What do item-level significance results say for S1–S5 / B1–B3 / IPQ1–IPQ6?")
     for branch in branches:
-        lines.append(f"- {branch}: `./{branch}/item_level/README.md` + `./{branch}/item_level/s_items/csv/s_items_primary_main_interactions.csv` + `./{branch}/item_level/b_items/csv/b_items_primary_main_interactions.csv` + `./{branch}/item_level/ipq_items/csv/ipq_items_primary_main_interactions.csv`")
+        lines.append(f"- {branch}: `./{branch}/item_level/README.md` + `./{branch}/item_level/s_items/csv/s_items_primary_main_interactions.csv` + `./{branch}/item_level/b_items/csv/b_items_primary_main_interactions.csv` + `./{branch}/item_level/ipq_items/csv/ipq_items_primary_main_interactions.csv` + `./{branch}/item_level/s_items/png/s_items_effect_size_summary.png` + `./{branch}/item_level/b_items/png/b_items_effect_size_summary.png` + `./{branch}/item_level/ipq_items/png/ipq_items_effect_size_summary.png`")
     lines.append("")
     lines.append("## Q5. Do high/low experience groups differ in WWR significance patterns?")
     for branch in branches:

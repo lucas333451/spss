@@ -305,6 +305,31 @@ def _plot_domain_summary(summary_df: pd.DataFrame, out_png: Path, title: str) ->
     return str(out_png)
 
 
+def _plot_effect_size_domain(effect_df: pd.DataFrame, out_png: Path, title: str) -> str | None:
+    if effect_df.empty or "effect_size_abs_r_approx" not in effect_df.columns:
+        return None
+    x = effect_df.copy()
+    x = x[x["Term"] != "Intercept"].copy()
+    x = x.dropna(subset=["effect_size_abs_r_approx"])
+    if x.empty:
+        return None
+    x["Label"] = x["DV"].astype(str) + " | " + x["APA_Term"].astype(str)
+    x = x.sort_values("effect_size_abs_r_approx").tail(18)
+    fig, ax = plt.subplots(figsize=(8.2, max(4.2, 0.30 * len(x) + 1.2)))
+    colors = ["#2F5D7E" if et == "Main Effect" else "#D98C3F" if "2-way" in str(et) else "#7A8E65" for et in x.get("EffectType", [""] * len(x))]
+    ax.barh(np.arange(len(x)), x["effect_size_abs_r_approx"], color=colors, alpha=0.92)
+    ax.set_yticks(np.arange(len(x)))
+    ax.set_yticklabels(x["Label"], fontsize=7.8)
+    ax.set_xlabel("Approximate |r|")
+    ax.set_title(title, pad=8)
+    ax.grid(axis="x", alpha=0.18)
+    ax.grid(axis="y", visible=False)
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_png, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    return str(out_png)
+
+
 def _write_domain_readme(base: Path, domain: str, summary_df: pd.DataFrame, note: str) -> str:
     lines = [
         f"# {domain} item-level significance",
@@ -316,7 +341,9 @@ def _write_domain_readme(base: Path, domain: str, summary_df: pd.DataFrame, note
         f"- `./csv/{domain}_primary_fixed_effects.csv` (includes approximate r effect sizes)",
         f"- `./csv/{domain}_primary_main_interactions.csv` (includes approximate r effect sizes)",
         f"- `./md/{domain}_summary.md`",
+        f"- `./csv/{domain}_effect_size_summary.csv`",
         f"- `./png/{domain}_significant_terms.png`",
+        f"- `./png/{domain}_effect_size_summary.png`",
         "",
     ]
     if summary_df.empty:
@@ -359,14 +386,20 @@ def _export_domain(out: Path, domain: str, df: pd.DataFrame, dv_cols: list[str],
     fixed_path = csv_dir / f"{domain}_primary_fixed_effects.csv"
     infer_path = csv_dir / f"{domain}_primary_main_interactions.csv"
     summary_path = csv_dir / f"{domain}_summary.csv"
+    effect_path = csv_dir / f"{domain}_effect_size_summary.csv"
     md_path = md_dir / f"{domain}_summary.md"
     png_path = png_dir / f"{domain}_significant_terms.png"
+    effect_png_path = png_dir / f"{domain}_effect_size_summary.png"
     json_path = json_dir / f"{domain}_summary.json"
 
     cmp_all_df.to_csv(cmp_path, index=False, encoding="utf-8-sig")
     fixed_all_df.to_csv(fixed_path, index=False, encoding="utf-8-sig")
     infer_df.to_csv(infer_path, index=False, encoding="utf-8-sig")
     summary_df.to_csv(summary_path, index=False, encoding="utf-8-sig")
+    effect_df = fixed_all_df.copy()
+    if not effect_df.empty and "effect_size_abs_r_approx" in effect_df.columns:
+        effect_df = effect_df.sort_values("effect_size_abs_r_approx", ascending=False)
+    effect_df.to_csv(effect_path, index=False, encoding="utf-8-sig")
 
     md_lines = [f"# {domain} item-level significance summary", "", note, ""]
     if summary_df.empty:
@@ -376,9 +409,12 @@ def _export_domain(out: Path, domain: str, df: pd.DataFrame, dv_cols: list[str],
         md_lines.append(summary_df.to_markdown(index=False, floatfmt='.4f'))
         if not infer_df.empty:
             md_lines += ["", "## Primary-model main / interaction effects", infer_df.to_markdown(index=False, floatfmt='.4f')]
+        if not effect_df.empty:
+            md_lines += ["", "## Effect size summary (approximate r)", effect_df[[c for c in [\"DV\",\"APA_Term\",\"EffectType\",\"p\",\"effect_size_r_approx\",\"effect_size_abs_r_approx\"] if c in effect_df.columns]].head(40).to_markdown(index=False, floatfmt='.4f')]
     md_path.write_text("\n".join(md_lines), encoding="utf-8")
 
     _plot_domain_summary(summary_df, png_path, title=f"{domain} significant terms (primary model)")
+    _plot_effect_size_domain(effect_df, effect_png_path, title=f"{domain} effect size summary")
     readme_path = _write_domain_readme(base, domain, summary_df, note)
 
     json_path.write_text(json.dumps({
@@ -391,13 +427,15 @@ def _export_domain(out: Path, domain: str, df: pd.DataFrame, dv_cols: list[str],
             "primary_fixed_effects_csv": str(fixed_path),
             "primary_main_interactions_csv": str(infer_path),
             "summary_csv": str(summary_path),
+            "effect_size_summary_csv": str(effect_path),
             "summary_md": str(md_path),
             "summary_png": str(png_path),
+            "effect_size_summary_png": str(effect_png_path),
             "readme_md": str(readme_path),
         },
     }, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    return [str(cmp_path), str(fixed_path), str(infer_path), str(summary_path), str(md_path), str(png_path), str(readme_path), str(json_path)]
+    return [str(cmp_path), str(fixed_path), str(infer_path), str(summary_path), str(effect_path), str(md_path), str(png_path), str(effect_png_path), str(readme_path), str(json_path)]
 
 
 def _write_root_readme(out: Path) -> str:
@@ -415,6 +453,9 @@ def _write_root_readme(out: Path) -> str:
         "1. `./s_items/README.md`",
         "2. `./b_items/README.md`",
         "3. `./ipq_items/README.md`",
+        "4. `./s_items/png/s_items_effect_size_summary.png`",
+        "5. `./b_items/png/b_items_effect_size_summary.png`",
+        "6. `./ipq_items/png/ipq_items_effect_size_summary.png`",
         "",
         "## Modeling notes",
         "- S items and IPQ items use the 3-factor core model: WWR, Complexity, ExperienceGroup.",
