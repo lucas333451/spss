@@ -118,18 +118,19 @@ Together, these answer:
 
 ### Step 5 — If you need item-level detail
 Go to:
-- `results/significance/qc/item_level/experience/s_items/`
-- `results/significance/qc/item_level/experience/b_items/`
-- `results/significance/qc/item_level/experience/ipq_items/`
+- `results/significance/qc/item_level/s_items/`
+- `results/significance/qc/item_level/b_items/`
+- `results/significance/qc/item_level/ipq_items/`
 
-Start with CSV:
-- `s_items_experience_welch.csv`
-- `b_items_experience_welch.csv`
-- `ipq_items_experience_welch.csv`
+Start with:
+- `README.md`
+- `csv/s_items_primary_main_interactions.csv`
+- `csv/b_items_primary_main_interactions.csv`
+- `csv/ipq_items_primary_main_interactions.csv`
 
 Use this when:
-- you need to identify which individual items drive the group difference
-- you want supplementary detail after the main pattern is already clear
+- you need to identify which individual items drive the significance pattern
+- you want S1–S5, B1–B3, and IPQ1–IPQ6 at the same modeling level as the Afford4 core branch
 
 ---
 

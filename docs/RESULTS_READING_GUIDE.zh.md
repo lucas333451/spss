@@ -120,18 +120,19 @@
 
 ### 第五步：如果你要逐题看
 看这里：
-- `results/significance/qc/item_level/experience/s_items/`
-- `results/significance/qc/item_level/experience/b_items/`
-- `results/significance/qc/item_level/experience/ipq_items/`
+- `results/significance/qc/item_level/s_items/`
+- `results/significance/qc/item_level/b_items/`
+- `results/significance/qc/item_level/ipq_items/`
 
-优先看 csv：
-- `s_items_experience_welch.csv`
-- `b_items_experience_welch.csv`
-- `ipq_items_experience_welch.csv`
+优先看：
+- `README.md`
+- `csv/s_items_primary_main_interactions.csv`
+- `csv/b_items_primary_main_interactions.csv`
+- `csv/ipq_items_primary_main_interactions.csv`
 
 作用：
-- 判断具体题目层面哪些差异更强
-- 适合补充说明，不建议一开始就陷进去看
+- 判断具体题目层面哪些效应在显著性上更关键
+- 让 S1–S5、B1–B3、IPQ1–IPQ6 与 Afford4 core branch 处于同一建模层级来阅读
 
 ---
 

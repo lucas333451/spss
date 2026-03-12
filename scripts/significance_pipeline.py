@@ -64,9 +64,9 @@ def _write_research_map(out: Path, branches: list[str]) -> None:
     for branch in branches:
         lines.append(f"- {branch}: `./{branch}/overall/core_model/csv/model_comparison.csv` + `./{branch}/overall/core_model/csv/table_main_interactions.csv` + `./{branch}/overall/core_model/md/results_draft_zh.md`")
     lines.append("")
-    lines.append("## Q4. What do item-level significance results say for S1–S5 / B1–B3 / IPQ?")
+    lines.append("## Q4. What do item-level significance results say for S1–S5 / B1–B3 / IPQ1–IPQ6?")
     for branch in branches:
-        lines.append(f"- {branch}: `./{branch}/item_level/README.md` + `./{branch}/item_level/experience/s_items/csv/s_items_experience_welch.csv` + `./{branch}/item_level/experience/b_items/csv/b_items_experience_welch.csv` + `./{branch}/item_level/experience/ipq_items/csv/ipq_items_experience_welch.csv`")
+        lines.append(f"- {branch}: `./{branch}/item_level/README.md` + `./{branch}/item_level/s_items/csv/s_items_primary_main_interactions.csv` + `./{branch}/item_level/b_items/csv/b_items_primary_main_interactions.csv` + `./{branch}/item_level/ipq_items/csv/ipq_items_primary_main_interactions.csv`")
     lines.append("")
     lines.append("## Q5. Do high/low experience groups differ in WWR significance patterns?")
     for branch in branches:
