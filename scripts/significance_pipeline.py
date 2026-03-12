@@ -39,11 +39,11 @@ def _write_index(out: Path, branches: list[str]) -> None:
     lines.append("")
     for branch in branches:
         lines.append(f"### {branch}")
-        lines.append(f"1. `./{branch}/overall/core_model/results_draft_zh.md` — overall core model narrative")
-        lines.append(f"2. `./{branch}/overall/wwr_polynomial/wwr_polynomial_contrasts.csv` — overall WWR linear/quadratic significance")
-        lines.append(f"3. `./{branch}/experience/wwr_polynomial_group_only/wwr_polynomial_contrasts.csv` — experience-group significance")
-        lines.append(f"4. `./{branch}/experience/wwr_polynomial_group_round/csv/wwr_polynomial_contrasts.csv` — experience × round follow-up")
-        lines.append(f"5. `./{branch}/item_level/experience/s_items/csv/s_items_experience_welch.csv` — S/B/IPQ item-level significance entry")
+        lines.append(f"1. `./{branch}/overall/core_model/md/results_draft_zh.md` — Afford4 core-model narrative")
+        lines.append(f"2. `./{branch}/item_level/README.md` — S1–S5 / B1–B3 / IPQ item-level significance overview")
+        lines.append(f"3. `./{branch}/overall/wwr_polynomial/wwr_polynomial_contrasts.csv` — overall WWR linear/quadratic significance")
+        lines.append(f"4. `./{branch}/experience/wwr_polynomial_group_only/wwr_polynomial_contrasts.csv` — experience-group significance")
+        lines.append(f"5. `./{branch}/experience/wwr_polynomial_group_round/csv/wwr_polynomial_contrasts.csv` — experience × round follow-up")
         lines.append("")
     (out / "significance_index.md").write_text("\n".join(lines), encoding="utf-8")
 
@@ -60,21 +60,21 @@ def _write_research_map(out: Path, branches: list[str]) -> None:
     for branch in branches:
         lines.append(f"- {branch}: `./{branch}/overall/wwr_polynomial/wwr_polynomial_contrasts.csv` (Direction column) + `./{branch}/overall/wwr_polynomial/wwr_polynomial_figures/*.png`")
     lines.append("")
-    lines.append("## Q3. Is there an overall WWR / Complexity effect in the core model?")
+    lines.append("## Q3. What does the Afford4 core model say about WWR / Complexity / ExperienceGroup?")
     for branch in branches:
-        lines.append(f"- {branch}: `./{branch}/overall/core_model/table_main_interactions.csv` + `./{branch}/overall/core_model/table_fixed_effects.csv`")
+        lines.append(f"- {branch}: `./{branch}/overall/core_model/csv/model_comparison.csv` + `./{branch}/overall/core_model/csv/table_main_interactions.csv` + `./{branch}/overall/core_model/md/results_draft_zh.md`")
     lines.append("")
-    lines.append("## Q4. Do high/low experience groups differ in significance patterns?")
+    lines.append("## Q4. What do item-level significance results say for S1–S5 / B1–B3 / IPQ?")
+    for branch in branches:
+        lines.append(f"- {branch}: `./{branch}/item_level/README.md` + `./{branch}/item_level/experience/s_items/csv/s_items_experience_welch.csv` + `./{branch}/item_level/experience/b_items/csv/b_items_experience_welch.csv` + `./{branch}/item_level/experience/ipq_items/csv/ipq_items_experience_welch.csv`")
+    lines.append("")
+    lines.append("## Q5. Do high/low experience groups differ in WWR significance patterns?")
     for branch in branches:
         lines.append(f"- {branch}: `./{branch}/experience/wwr_polynomial_group_only/wwr_polynomial_contrasts.csv`")
     lines.append("")
-    lines.append("## Q5. Do experience effects change by round?")
+    lines.append("## Q6. Do experience effects change by round?")
     for branch in branches:
         lines.append(f"- {branch}: `./{branch}/experience/wwr_polynomial_group_round/csv/wwr_polynomial_contrasts.csv`")
-    lines.append("")
-    lines.append("## Q6. Are item-level S / B / IPQ differences significant by experience group?")
-    for branch in branches:
-        lines.append(f"- {branch}: `./{branch}/item_level/experience/s_items/csv/s_items_experience_welch.csv` + `./{branch}/item_level/experience/b_items/csv/b_items_experience_welch.csv` + `./{branch}/item_level/experience/ipq_items/csv/ipq_items_experience_welch.csv`")
     (out / "research_questions_map.md").write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -89,10 +89,11 @@ def _write_guide_png(out: Path, branches: list[str]) -> str:
     for branch in branches:
         lines1 += [
             f"[{branch}]",
-            "1. overall / core_model / results_draft_zh.md",
-            "2. overall / wwr_polynomial / wwr_polynomial_contrasts.csv",
-            "3. experience / wwr_polynomial_group_only / wwr_polynomial_contrasts.csv",
-            "4. experience / wwr_polynomial_group_round / wwr_polynomial_contrasts.csv",
+            "1. overall / core_model / md / results_draft_zh.md",
+            "2. item_level / README.md",
+            "3. overall / wwr_polynomial / wwr_polynomial_contrasts.csv",
+            "4. experience / wwr_polynomial_group_only / wwr_polynomial_contrasts.csv",
+            "5. experience / wwr_polynomial_group_round / wwr_polynomial_contrasts.csv",
             "",
         ]
     _summary_box(ax1, "Read this order first", lines1)
@@ -102,8 +103,9 @@ def _write_guide_png(out: Path, branches: list[str]) -> str:
         lines2 += [
             f"[{branch}] Q1/Q2 → overall / wwr_polynomial",
             f"[{branch}] Q3 → overall / core_model",
-            f"[{branch}] Q4 → experience / wwr_polynomial_group_only",
-            f"[{branch}] Q5 → experience / wwr_polynomial_group_round",
+            f"[{branch}] Q4 → item_level / README.md + experience/*_welch.csv",
+            f"[{branch}] Q5 → experience / wwr_polynomial_group_only",
+            f"[{branch}] Q6 → experience / wwr_polynomial_group_round",
             "",
         ]
     _summary_box(ax2, "Research questions map", lines2)

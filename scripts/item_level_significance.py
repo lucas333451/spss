@@ -54,13 +54,11 @@ def _summary_box(ax, title: str, lines: list[str]):
 
 def _welch_by_experience(subject_df: pd.DataFrame, dv_cols: list[str]) -> pd.DataFrame:
     rows = []
-    pvals = []
     for dv in [c for c in dv_cols if c in subject_df.columns]:
         sub = subject_df.dropna(subset=["ExperienceGroup", dv]).copy()
         groups = sorted(sub["ExperienceGroup"].astype(str).unique())
         if len(groups) != 2:
             rows.append({"DV": dv, "GroupA": np.nan, "GroupB": np.nan, "p": np.nan})
-            pvals.append(np.nan)
             continue
         g1, g2 = groups[0], groups[1]
         v1 = sub.loc[sub["ExperienceGroup"].astype(str) == g1, dv].to_numpy(dtype=float)
@@ -84,7 +82,6 @@ def _welch_by_experience(subject_df: pd.DataFrame, dv_cols: list[str]) -> pd.Dat
             "t_welch": t,
             "p": p,
         })
-        pvals.append(p)
     out = pd.DataFrame(rows)
     mask = out["p"].notna()
     out["p_holm"] = np.nan
@@ -146,7 +143,7 @@ def _write_md(df: pd.DataFrame, out_md: Path, title: str):
     out_md.write_text("\n".join(lines), encoding="utf-8")
 
 
-def _export_block(base: Path, name: str, df: pd.DataFrame) -> list[str]:
+def _export_block(base: Path, name: str, df: pd.DataFrame, title: str) -> list[str]:
     csv_dir = base / name / "csv"
     png_dir = base / name / "png"
     md_dir = base / name / "md"
@@ -160,16 +157,44 @@ def _export_block(base: Path, name: str, df: pd.DataFrame) -> list[str]:
     json_path = json_dir / f"{name}_summary.json"
 
     df.to_csv(csv_path, index=False, encoding="utf-8-sig")
-    _write_md(df, md_path, f"{name} experience significance")
-    _plot_welch_results(df, png_path, title=f"{name} experience significance")
+    _write_md(df, md_path, title)
+    _plot_welch_results(df, png_path, title=title)
     json_path.write_text(json.dumps({
         "name": name,
+        "title": title,
         "n_rows": int(len(df)),
         "csv": str(csv_path),
         "md": str(md_path),
         "png": str(png_path),
     }, ensure_ascii=False, indent=2), encoding="utf-8")
     return [str(csv_path), str(md_path), str(png_path), str(json_path)]
+
+
+def _write_readme(out: Path, outputs: dict[str, pd.DataFrame]) -> str:
+    lines = [
+        "# Item-level significance overview",
+        "",
+        "This module is a first-class significance branch alongside the Afford4 core model.",
+        "It reports item-level / indicator-level experience-group Welch significance for:",
+        "",
+        "- S1–S5",
+        "- B1–B3 and Bmean",
+        "- IPQ1–IPQ6 and IPQ_mean",
+        "",
+        "## Read in this order",
+        "1. `./experience/s_items/csv/s_items_experience_welch.csv`",
+        "2. `./experience/b_items/csv/b_items_experience_welch.csv`",
+        "3. `./experience/ipq_items/csv/ipq_items_experience_welch.csv`",
+        "",
+        "## Branch summary",
+    ]
+    for key, df in outputs.items():
+        valid = int(df["p_holm"].notna().sum()) if (not df.empty and "p_holm" in df.columns) else 0
+        sig = int((df["p_holm"] < 0.05).sum()) if (not df.empty and "p_holm" in df.columns) else 0
+        lines.append(f"- {key}: {len(df)} rows, {valid} valid Holm rows, {sig} rows with Holm p < 0.05")
+    path = out / "README.md"
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return str(path)
 
 
 def main():
@@ -187,23 +212,23 @@ def main():
     df = _exclude_subjects(df, args.exclude_subjects)
 
     outputs: list[str] = []
+    block_results: dict[str, pd.DataFrame] = {}
 
-    # S items (subject-level means across repeated rows; experience Welch as current main-compatible simple significance line)
     s_subj = _subject_level(df, S_COLS, keep_c1_only=False)
     s_res = _welch_by_experience(s_subj, S_COLS)
-    outputs += _export_block(out / "experience", "s_items", s_res)
+    block_results["s_items"] = s_res
+    outputs += _export_block(out / "experience", "s_items", s_res, "S1–S5 experience significance")
 
-    # B items (C1 only)
     b_subj = _subject_level(df, B_COLS, keep_c1_only=True)
     b_res = _welch_by_experience(b_subj, B_COLS)
-    outputs += _export_block(out / "experience", "b_items", b_res)
+    block_results["b_items"] = b_res
+    outputs += _export_block(out / "experience", "b_items", b_res, "B1–B3 / Bmean experience significance")
 
-    # IPQ items (subject-level)
     ipq_subj = _subject_level(df, IPQ_COLS, keep_c1_only=False)
     ipq_res = _welch_by_experience(ipq_subj, IPQ_COLS)
-    outputs += _export_block(out / "experience", "ipq_items", ipq_res)
+    block_results["ipq_items"] = ipq_res
+    outputs += _export_block(out / "experience", "ipq_items", ipq_res, "IPQ item / indicator experience significance")
 
-    # overall item-level descriptively-significant bundle can be kept as subject-level tables without between-group test
     overall_csv = out / "overall" / "csv"
     overall_csv.mkdir(parents=True, exist_ok=True)
     s_subj.to_csv(overall_csv / "s_items_subject_level.csv", index=False, encoding="utf-8-sig")
@@ -215,11 +240,14 @@ def main():
         str(overall_csv / "ipq_items_subject_level.csv"),
     ]
 
+    readme_path = _write_readme(out, block_results)
+    outputs.append(readme_path)
+
     payload = {
         "task": "item level significance",
         "scope": ["overall", "experience"],
         "outputs": outputs,
-        "note": "Current main-compatible item-level significance uses experience-group Welch tests for S/B/IPQ subject-level summaries.",
+        "note": "Item-level significance is a first-class branch alongside the Afford4 core model; it covers S1–S5, B1–B3/Bmean, and IPQ item/indicator results.",
     }
     (out / "item_level_significance_summary.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(payload, ensure_ascii=False))
