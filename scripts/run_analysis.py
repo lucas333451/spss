@@ -34,7 +34,7 @@ def _rescale_9_to_7(x):
     return 1.0 + (float(x) - 1.0) * (6.0 / 8.0)
 
 
-def _extract_coef_table(fit) -> pd.DataFrame:
+def _extract_coef_table(fit, n_obs: int | None = None) -> pd.DataFrame:
     params = fit.params
     bse = fit.bse
     zvals = fit.tvalues
@@ -70,6 +70,9 @@ def _extract_coef_table(fit) -> pd.DataFrame:
         return ""
 
     df["Sig"] = df["p"].apply(sigstar)
+    if n_obs is not None and n_obs > 0:
+        df["effect_size_r_approx"] = df["z"].apply(lambda z: float(z / np.sqrt(n_obs)) if pd.notna(z) else np.nan)
+        df["effect_size_abs_r_approx"] = df["effect_size_r_approx"].abs()
     return df
 
 
@@ -404,8 +407,8 @@ def _plot_fixed_effects(fixed_df: pd.DataFrame, out_dir: Path) -> str | None:
     gs = fig.add_gridspec(1, 2, width_ratios=[3.6, 1.4], wspace=0.12)
     ax = fig.add_subplot(gs[0, 0])
     ax2 = fig.add_subplot(gs[0, 1])
-    ax.axvline(0, color="#70817A", lw=1)
-    ax.errorbar(x["Coef"], np.arange(len(x)), xerr=[x["Coef"] - x["CI95_low"], x["CI95_high"] - x["Coef"]], fmt='o', color="#6FAF9F", ecolor="#A8D5C8", capsize=2)
+    ax.axvline(0, color="#8B929A", lw=0.9)
+    ax.errorbar(x["Coef"], np.arange(len(x)), xerr=[x["Coef"] - x["CI95_low"], x["CI95_high"] - x["Coef"]], fmt='o', color="#2F5D7E", ecolor="#9EB9CF", capsize=2.2)
     ax.set_yticks(np.arange(len(x)))
     ax.set_yticklabels([_humanize_term(t) for t in x["Term"]], fontsize=8)
     ax.set_title("Fixed effects with 95% CI")
@@ -434,7 +437,7 @@ def _plot_interactions(infer_df: pd.DataFrame, out_dir: Path) -> str | None:
     gs = fig.add_gridspec(1, 2, width_ratios=[3.6, 1.4], wspace=0.12)
     ax = fig.add_subplot(gs[0, 0])
     ax2 = fig.add_subplot(gs[0, 1])
-    palette = x["EffectType"].map({"Main Effect": "#6FAF9F", "Interaction (2-way)": "#8FA3B8", "Interaction (3-way)": "#C8B98B"}).fillna("#A8C7CF")
+    palette = x["EffectType"].map({"Main Effect": "#2F5D7E", "Interaction (2-way)": "#D98C3F", "Interaction (3-way)": "#7A8E65"}).fillna("#AAB4BE")
     ax.barh(np.arange(len(x)), x["minuslog10p"], color=list(palette))
     ax.set_yticks(np.arange(len(x)))
     ax.set_yticklabels(x["APA_Term"], fontsize=8)
@@ -500,8 +503,8 @@ def _plot_simple_effects(simple_df: pd.DataFrame, out_dir: Path) -> str | None:
     gs = fig.add_gridspec(1, 2, width_ratios=[3.2, 1.5], wspace=0.12)
     ax = fig.add_subplot(gs[0, 0])
     ax2 = fig.add_subplot(gs[0, 1])
-    bars = ax.bar(x["WWR"].astype(str), x["Diff_C1_minus_C0"], color="#8EC5B6")
-    ax.axhline(0, color="#70817A", lw=1)
+    bars = ax.bar(x["WWR"].astype(str), x["Diff_C1_minus_C0"], color="#4C78A8", alpha=0.88)
+    ax.axhline(0, color="#8B929A", lw=0.9)
     ax.set_title("Simple effects: C1 - C0 within each WWR")
     ax.set_xlabel("WWR")
     ax.set_ylabel("Mean difference")
@@ -566,7 +569,7 @@ def main():
     fit = best["fit"]
     fit_info = best["info"]
 
-    coef_df = _extract_coef_table(fit)
+    coef_df = _extract_coef_table(fit, n_obs=len(model_df))
     rand_df = _extract_random_effects_summary(fit)
     desc_df, fixed_df, infer_df, rand_df = _build_paper_tables(model_df, coef_df, dv_col=dv_col, random_df=rand_df)
     simple_df = _simple_effects_by_wwr(model_df, dv_col=dv_col)
@@ -576,8 +579,8 @@ def main():
         model_df_lenient = df.dropna(subset=["Afford4_lenient", "WWR", "Complexity", "ExperienceGroup"]).copy()
         cmp_lenient, best_lenient, _ = _build_model_comparison(model_df_lenient, dv_col="Afford4_lenient")
         fit_lenient = best_lenient["fit"]
-        coef_primary = _extract_coef_table(fit)
-        coef_lenient = _extract_coef_table(fit_lenient)
+        coef_primary = _extract_coef_table(fit, n_obs=len(model_df))
+        coef_lenient = _extract_coef_table(fit_lenient, n_obs=len(model_df_lenient))
         m = coef_primary[["Term","Coef","SE","z","p"]].merge(
             coef_lenient[["Term","Coef","SE","z","p"]], on="Term", how="outer", suffixes=("_primary","_lenient")
         )

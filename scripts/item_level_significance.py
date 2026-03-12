@@ -127,7 +127,7 @@ def _fit_with_fallback(data: pd.DataFrame, formula: str, re_formula: str | None)
     raise RuntimeError(f"MixedLM failed. formula={formula}, last_error={last_err}")
 
 
-def _extract_coef_table(fit) -> pd.DataFrame:
+def _extract_coef_table(fit, n_obs: int | None = None) -> pd.DataFrame:
     params = fit.params
     bse = fit.bse
     zvals = fit.tvalues
@@ -152,6 +152,9 @@ def _extract_coef_table(fit) -> pd.DataFrame:
     out["Sig"] = out["p"].map(_sigstar)
     out["EffectType"] = out["Term"].map(_classify_effect)
     out["APA_Term"] = out["Term"].map(_humanize_term)
+    if n_obs is not None and n_obs > 0:
+        out["effect_size_r_approx"] = out["z"].apply(lambda z: float(z / np.sqrt(n_obs)) if pd.notna(z) else np.nan)
+        out["effect_size_abs_r_approx"] = out["effect_size_r_approx"].abs()
     return out
 
 
@@ -258,7 +261,7 @@ def _run_one_dv(df: pd.DataFrame, domain: str, dv: str) -> tuple[pd.DataFrame, p
     ok_cmp = ok_cmp.sort_values("AIC").reset_index(drop=True)
     recommended_name = str(ok_cmp.iloc[0]["Model"])
     fit = fits[primary_name]["fit"]
-    fixed_df = _extract_coef_table(fit)
+    fixed_df = _extract_coef_table(fit, n_obs=len(model_df))
     if not fixed_df.empty:
         fixed_df.insert(0, "DV", dv)
         fixed_df.insert(1, "Domain", domain)
@@ -275,6 +278,7 @@ def _run_one_dv(df: pd.DataFrame, domain: str, dv: str) -> tuple[pd.DataFrame, p
         "Error": "",
         "DesignNote": note,
         "SignificantTerms_p_lt_0_05": int((fixed_df["p"] < 0.05).sum()) if not fixed_df.empty else 0,
+        "MaxAbsEffectSize_r_approx": float(fixed_df["effect_size_abs_r_approx"].max()) if (not fixed_df.empty and "effect_size_abs_r_approx" in fixed_df.columns) else np.nan,
     }
     cmp_df = cmp_df.sort_values(["DV", "Status", "AIC"], na_position="last").reset_index(drop=True)
     return cmp_df, fixed_df, summary
@@ -287,7 +291,7 @@ def _plot_domain_summary(summary_df: pd.DataFrame, out_png: Path, title: str) ->
     x["SignificantTerms_p_lt_0_05"] = pd.to_numeric(x["SignificantTerms_p_lt_0_05"], errors="coerce").fillna(0)
     x = x.sort_values("SignificantTerms_p_lt_0_05")
     fig, ax = plt.subplots(figsize=(8.6, max(4.2, 0.38 * len(x) + 1.5)))
-    colors = np.where(x["Status"].eq("ok"), "#4C78A8", "#D62728")
+    colors = np.where(x["Status"].eq("ok"), "#2F5D7E", "#C95A49")
     ax.barh(np.arange(len(x)), x["SignificantTerms_p_lt_0_05"], color=colors)
     ax.set_yticks(np.arange(len(x)))
     ax.set_yticklabels(x["DV"], fontsize=8.5)
@@ -307,8 +311,8 @@ def _write_domain_readme(base: Path, domain: str, summary_df: pd.DataFrame, note
         "",
         "## Main outputs",
         f"- `./csv/{domain}_model_comparison.csv`",
-        f"- `./csv/{domain}_primary_fixed_effects.csv`",
-        f"- `./csv/{domain}_primary_main_interactions.csv`",
+        f"- `./csv/{domain}_primary_fixed_effects.csv` (includes approximate r effect sizes)",
+        f"- `./csv/{domain}_primary_main_interactions.csv` (includes approximate r effect sizes)",
         f"- `./md/{domain}_summary.md`",
         f"- `./png/{domain}_significant_terms.png`",
         "",
@@ -318,6 +322,8 @@ def _write_domain_readme(base: Path, domain: str, summary_df: pd.DataFrame, note
     else:
         lines.append("## Per-DV quick summary")
         lines.append(summary_df.to_markdown(index=False, floatfmt='.4f'))
+        lines.append("")
+        lines.append("Effect-size note: `primary_fixed_effects` and `primary_main_interactions` include approximate r based on z / sqrt(N).")
     path = base / "README.md"
     path.write_text("\n".join(lines), encoding="utf-8")
     return str(path)

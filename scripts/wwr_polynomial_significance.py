@@ -445,6 +445,9 @@ def main():
             for contrast_name, coef in [("Linear", LINEAR_COEF), ("Quadratic", QUADRATIC_COEF)]:
                 stat = _contrast_glm_like(mat, coef)
                 item = dict(split_values)
+                eta_p = np.nan
+                if np.isfinite(stat["f"]) and np.isfinite(stat["df1"]) and np.isfinite(stat["df2"]) and (stat["f"] * stat["df1"] + stat["df2"]) > 0:
+                    eta_p = float((stat["f"] * stat["df1"]) / (stat["f"] * stat["df1"] + stat["df2"]))
                 item.update({
                     "DV": dv,
                     "Source": "WWR",
@@ -457,6 +460,7 @@ def main():
                     "Mean Square": stat["ms"],
                     "F": stat["f"],
                     "Sig.": stat["p"],
+                    "partial_eta2": eta_p,
                     "Error SS": float(stat["mse"] * stat["df2"]) if np.isfinite(stat["mse"]) and np.isfinite(stat["df2"]) else np.nan,
                     "Error df": stat["df2"],
                     "Error MS": stat["mse"],
@@ -520,7 +524,7 @@ def main():
     for p in _plot_trend_panels(means_df, res, fig_dir, split_cols, levels):
         figs.append(str(Path(p).relative_to(out)))
     p_col = "SigAdj." if args.p_adjust.lower() != "none" else "Sig."
-    p_label = "adjusted p" if args.p_adjust.lower() != "none" else "raw p"
+    p_label = "adjusted p" if args.p_adjust.lower() != "none" else "unadjusted p"
     for p in _plot_contrast_heatmaps(res, fig_dir, split_cols, p_col=p_col, p_label=p_label):
         figs.append(str(Path(p).relative_to(out)))
 
