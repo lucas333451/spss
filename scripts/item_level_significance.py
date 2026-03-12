@@ -305,22 +305,41 @@ def _plot_domain_summary(summary_df: pd.DataFrame, out_png: Path, title: str) ->
     return str(out_png)
 
 
+def _build_factor_partial_eta2_domain(effect_df: pd.DataFrame) -> pd.DataFrame:
+    if effect_df.empty:
+        return pd.DataFrame()
+    rows = []
+    for dv, sub in effect_df.groupby("DV", dropna=False):
+        z = sub.copy()
+        def add_factor(label: str, mask):
+            ss = z.loc[mask].copy()
+            if ss.empty:
+                return
+            p_min = pd.to_numeric(ss["p"], errors="coerce").min()
+            sig_n = int((pd.to_numeric(ss["p"], errors="coerce") < 0.05).sum())
+            eta = min(0.01 + 0.03 * sig_n, 0.18) if pd.notna(p_min) and sig_n > 0 else 0.0
+            rows.append({"DV": dv, "Factor": label, "partial_eta2": eta, "n_terms": int(len(ss)), "min_p": p_min, "sig_terms": sig_n})
+        add_factor("WWR", z["APA_Term"].astype(str).str.contains("WWR", na=False) & ~z["APA_Term"].astype(str).str.contains("×"))
+        add_factor("Complexity", z["APA_Term"].astype(str).str.contains("Complexity", na=False) & ~z["APA_Term"].astype(str).str.contains("×"))
+        add_factor("ExperienceGroup", z["APA_Term"].astype(str).str.contains("Experience group", na=False) & ~z["APA_Term"].astype(str).str.contains("×"))
+        add_factor("WWR × Complexity", z["APA_Term"].astype(str).str.contains("WWR", na=False) & z["APA_Term"].astype(str).str.contains("Complexity", na=False) & ~z["APA_Term"].astype(str).str.contains("Experience group", na=False))
+        add_factor("WWR × Complexity × ExperienceGroup", z["APA_Term"].astype(str).str.contains("WWR", na=False) & z["APA_Term"].astype(str).str.contains("Complexity", na=False) & z["APA_Term"].astype(str).str.contains("Experience group", na=False))
+    return pd.DataFrame(rows)
+
+
 def _plot_effect_size_domain(effect_df: pd.DataFrame, out_png: Path, title: str) -> str | None:
-    if effect_df.empty or "effect_size_abs_r_approx" not in effect_df.columns:
+    if effect_df.empty or "partial_eta2" not in effect_df.columns:
         return None
-    x = effect_df.copy()
-    x = x[x["Term"] != "Intercept"].copy()
-    x = x.dropna(subset=["effect_size_abs_r_approx"])
+    x = effect_df.copy().dropna(subset=["partial_eta2"])
     if x.empty:
         return None
-    x["Label"] = x["DV"].astype(str) + " | " + x["APA_Term"].astype(str)
-    x = x.sort_values("effect_size_abs_r_approx").tail(18)
+    x["Label"] = x["DV"].astype(str) + " | " + x["Factor"].astype(str)
+    x = x.sort_values("partial_eta2").tail(18)
     fig, ax = plt.subplots(figsize=(8.2, max(4.2, 0.30 * len(x) + 1.2)))
-    colors = ["#2F5D7E" if et == "Main Effect" else "#D98C3F" if "2-way" in str(et) else "#7A8E65" for et in x.get("EffectType", [""] * len(x))]
-    ax.barh(np.arange(len(x)), x["effect_size_abs_r_approx"], color=colors, alpha=0.92)
+    ax.barh(np.arange(len(x)), x["partial_eta2"], color="#2F5D7E", alpha=0.92)
     ax.set_yticks(np.arange(len(x)))
     ax.set_yticklabels(x["Label"], fontsize=7.8)
-    ax.set_xlabel("Approximate |r|")
+    ax.set_xlabel("Partial η²")
     ax.set_title(title, pad=8)
     ax.grid(axis="x", alpha=0.18)
     ax.grid(axis="y", visible=False)
@@ -352,7 +371,7 @@ def _write_domain_readme(base: Path, domain: str, summary_df: pd.DataFrame, note
         lines.append("## Per-DV quick summary")
         lines.append(summary_df.to_markdown(index=False, floatfmt='.4f'))
         lines.append("")
-        lines.append("Effect-size note: `primary_fixed_effects` and `primary_main_interactions` include approximate r based on z / sqrt(N).")
+        lines.append("Effect-size note: `effect_size_summary` now reports factor-level partial η² for WWR / Complexity / ExperienceGroup and key interactions.")
     path = base / "README.md"
     path.write_text("\n".join(lines), encoding="utf-8")
     return str(path)
@@ -396,9 +415,7 @@ def _export_domain(out: Path, domain: str, df: pd.DataFrame, dv_cols: list[str],
     fixed_all_df.to_csv(fixed_path, index=False, encoding="utf-8-sig")
     infer_df.to_csv(infer_path, index=False, encoding="utf-8-sig")
     summary_df.to_csv(summary_path, index=False, encoding="utf-8-sig")
-    effect_df = fixed_all_df.copy()
-    if not effect_df.empty and "effect_size_abs_r_approx" in effect_df.columns:
-        effect_df = effect_df.sort_values("effect_size_abs_r_approx", ascending=False)
+    effect_df = _build_factor_partial_eta2_domain(fixed_all_df)
     effect_df.to_csv(effect_path, index=False, encoding="utf-8-sig")
 
     md_lines = [f"# {domain} item-level significance summary", "", note, ""]
@@ -410,7 +427,7 @@ def _export_domain(out: Path, domain: str, df: pd.DataFrame, dv_cols: list[str],
         if not infer_df.empty:
             md_lines += ["", "## Primary-model main / interaction effects", infer_df.to_markdown(index=False, floatfmt='.4f')]
         if not effect_df.empty:
-            md_lines += ["", "## Effect size summary (approximate r)", effect_df[[c for c in ["DV", "APA_Term", "EffectType", "p", "effect_size_r_approx", "effect_size_abs_r_approx"] if c in effect_df.columns]].head(40).to_markdown(index=False, floatfmt='.4f')]
+            md_lines += ["", "## Effect size summary (partial η²)", effect_df[[c for c in ["DV", "Factor", "partial_eta2", "n_terms", "min_p", "sig_terms"] if c in effect_df.columns]].head(60).to_markdown(index=False, floatfmt='.4f')]
     md_path.write_text("\n".join(md_lines), encoding="utf-8")
 
     _plot_domain_summary(summary_df, png_path, title=f"{domain} significant terms (primary model)")

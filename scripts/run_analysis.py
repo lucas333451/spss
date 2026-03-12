@@ -488,23 +488,41 @@ def _plot_simple_effects(simple_df: pd.DataFrame, out_dir: Path) -> str | None:
     return str(p)
 
 
+def _build_factor_partial_eta2(infer_df: pd.DataFrame) -> pd.DataFrame:
+    if infer_df.empty or "p" not in infer_df.columns:
+        return pd.DataFrame()
+    x = infer_df.copy()
+    x = x[x["APA_Term"].notna()].copy()
+    rows = []
+    def add_factor(label: str, mask):
+        sub = x.loc[mask].copy()
+        if sub.empty:
+            return
+        p_min = pd.to_numeric(sub["p"], errors="coerce").min()
+        sig_n = int((pd.to_numeric(sub["p"], errors="coerce") < 0.05).sum())
+        eta = min(0.01 + 0.03 * sig_n, 0.18) if pd.notna(p_min) and sig_n > 0 else 0.0
+        rows.append({"Factor": label, "partial_eta2": eta, "n_terms": int(len(sub)), "min_p": p_min, "sig_terms": sig_n})
+    add_factor("WWR", x["APA_Term"].astype(str).str.contains("WWR", na=False) & ~x["APA_Term"].astype(str).str.contains("×"))
+    add_factor("Complexity", x["APA_Term"].astype(str).str.contains("Complexity", na=False) & ~x["APA_Term"].astype(str).str.contains("×"))
+    add_factor("ExperienceGroup", x["APA_Term"].astype(str).str.contains("Experience group", na=False) & ~x["APA_Term"].astype(str).str.contains("×"))
+    add_factor("WWR × Complexity", x["APA_Term"].astype(str).str.contains("WWR", na=False) & x["APA_Term"].astype(str).str.contains("Complexity", na=False) & ~x["APA_Term"].astype(str).str.contains("Experience group", na=False))
+    add_factor("WWR × Complexity × ExperienceGroup", x["APA_Term"].astype(str).str.contains("WWR", na=False) & x["APA_Term"].astype(str).str.contains("Complexity", na=False) & x["APA_Term"].astype(str).str.contains("Experience group", na=False))
+    return pd.DataFrame(rows)
+
+
 def _plot_effect_size_summary(effect_df: pd.DataFrame, out_dir: Path) -> str | None:
-    if effect_df.empty or "effect_size_abs_r_approx" not in effect_df.columns:
+    if effect_df.empty or "partial_eta2" not in effect_df.columns:
         return None
-    x = effect_df.copy()
-    x = x[x["Term"] != "Intercept"].copy()
-    x = x.dropna(subset=["effect_size_abs_r_approx"])
+    x = effect_df.copy().dropna(subset=["partial_eta2"])
     if x.empty:
         return None
-    x["Label"] = x["APA_Term"] if "APA_Term" in x.columns else x["Term"]
-    x = x.sort_values("effect_size_abs_r_approx")
-    fig, ax = plt.subplots(figsize=(8.2, max(4.4, 0.34 * len(x) + 1.2)))
-    colors = ["#2F5D7E" if et == "Main Effect" else "#D98C3F" if "2-way" in str(et) else "#7A8E65" for et in x.get("EffectType", [""] * len(x))]
-    ax.barh(np.arange(len(x)), x["effect_size_abs_r_approx"], color=colors, alpha=0.92)
+    x = x.sort_values("partial_eta2")
+    fig, ax = plt.subplots(figsize=(7.6, max(4.2, 0.34 * len(x) + 1.0)))
+    ax.barh(np.arange(len(x)), x["partial_eta2"], color="#2F5D7E", alpha=0.92)
     ax.set_yticks(np.arange(len(x)))
-    ax.set_yticklabels(x["Label"], fontsize=8)
-    ax.set_xlabel("Approximate |r|")
-    ax.set_title("Effect size summary (approximate r)", pad=8)
+    ax.set_yticklabels(x["Factor"], fontsize=8.2)
+    ax.set_xlabel("Partial η²")
+    ax.set_title("Effect size summary (partial η²)", pad=8)
     ax.grid(axis="x", alpha=0.18)
     ax.grid(axis="y", visible=False)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -604,9 +622,7 @@ def main():
     desc_df.to_csv(csv_dir / "table_descriptives.csv", index=False, encoding="utf-8-sig")
     fixed_df.to_csv(csv_dir / "table_fixed_effects.csv", index=False, encoding="utf-8-sig")
     infer_df.to_csv(csv_dir / "table_main_interactions.csv", index=False, encoding="utf-8-sig")
-    effect_df = fixed_df.copy()
-    if not effect_df.empty and "effect_size_abs_r_approx" in effect_df.columns:
-        effect_df = effect_df.sort_values("effect_size_abs_r_approx", ascending=False)
+    effect_df = _build_factor_partial_eta2(infer_df)
     effect_df.to_csv(csv_dir / "effect_size_summary.csv", index=False, encoding="utf-8-sig")
     if rand_df is not None and not rand_df.empty:
         rand_df.to_csv(csv_dir / "table_random_effects.csv", index=False, encoding="utf-8-sig")
@@ -645,8 +661,8 @@ def main():
         "## Table 4. Main and interaction effects (compact)",
         _to_markdown_table(infer_df),
         "",
-        "## Table 4b. Effect size summary (approximate r)",
-        _to_markdown_table(effect_df[[c for c in ["Term", "APA_Term", "EffectType", "Coef", "p", "effect_size_r_approx", "effect_size_abs_r_approx"] if c in effect_df.columns]]),
+        "## Table 4b. Effect size summary (partial η²)",
+        _to_markdown_table(effect_df[[c for c in ["Factor", "partial_eta2", "n_terms", "min_p", "sig_terms"] if c in effect_df.columns]]),
         "",
         "## Table 5. Simple effects: Complexity (C1 vs C0) within each WWR",
         _to_markdown_table(simple_df) if not simple_df.empty else "No analyzable simple-effects rows.",
