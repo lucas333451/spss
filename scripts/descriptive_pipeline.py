@@ -52,19 +52,23 @@ def _norm_p(z: pd.Series) -> float:
         return np.nan
 
 
-def _desc_stats(z: pd.Series) -> dict[str, float]:
-    zz = pd.to_numeric(z, errors="coerce").dropna()
-    n = int(len(zz))
+def _desc_stats(z: pd.Series, subject_ids: pd.Series | None = None) -> dict[str, float]:
+    zz = pd.to_numeric(z, errors="coerce")
+    valid = zz.notna()
+    zz = zz[valid]
+    n_obs = int(len(zz))
+    n_subjects = int(subject_ids[valid].astype(str).str.strip().nunique()) if subject_ids is not None else n_obs
     ci_low, ci_high = _ci95(zz)
     return {
-        "n": n,
-        "mean": float(zz.mean()) if n else np.nan,
-        "sd": float(zz.std(ddof=1)) if n > 1 else np.nan,
-        "median": float(zz.median()) if n else np.nan,
-        "min": float(zz.min()) if n else np.nan,
-        "max": float(zz.max()) if n else np.nan,
-        "skewness": float(skew(zz, bias=False)) if n > 2 else np.nan,
-        "kurtosis": float(kurtosis(zz, fisher=True, bias=False)) if n > 3 else np.nan,
+        "n": n_subjects,
+        "n_obs": n_obs,
+        "mean": float(zz.mean()) if n_obs else np.nan,
+        "sd": float(zz.std(ddof=1)) if n_obs > 1 else np.nan,
+        "median": float(zz.median()) if n_obs else np.nan,
+        "min": float(zz.min()) if n_obs else np.nan,
+        "max": float(zz.max()) if n_obs else np.nan,
+        "skewness": float(skew(zz, bias=False)) if n_obs > 2 else np.nan,
+        "kurtosis": float(kurtosis(zz, fisher=True, bias=False)) if n_obs > 3 else np.nan,
         "ci95_low": ci_low,
         "ci95_high": ci_high,
         "shapiro_p": _norm_p(zz),
@@ -89,7 +93,7 @@ def _desc_table(df: pd.DataFrame, cols: list[str], group_cols: list[str] | None 
             key = (key,)
         key_map = dict(zip(group_cols, key)) if group_cols else {"Group": "ALL"}
         for c in use_cols:
-            rows.append({**key_map, "DV": c, **_desc_stats(sub[c])})
+            rows.append({**key_map, "DV": c, **_desc_stats(sub[c], sub["SubjectID"] if "SubjectID" in sub.columns else None)})
     return pd.DataFrame(rows)
 
 
@@ -121,10 +125,10 @@ def _annotation_lines(sub: pd.DataFrame, dv: str, group_col: str | None = None) 
     if group_col and group_col in sub.columns:
         lines = []
         for g, sg in sub.groupby(group_col, dropna=False):
-            st = _desc_stats(sg[dv])
+            st = _desc_stats(sg[dv], sg["SubjectID"] if "SubjectID" in sg.columns else None)
             lines.append(f"{_format_group_value(g)}: n={st['n']}, M={_fmt_num(st['mean'])}±{_fmt_num(st['sd'])}")
         return lines
-    st = _desc_stats(sub[dv])
+    st = _desc_stats(sub[dv], sub["SubjectID"] if "SubjectID" in sub.columns else None)
     return [f"n={st['n']}, M={_fmt_num(st['mean'])}±{_fmt_num(st['sd'])}"]
 
 

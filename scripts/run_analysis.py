@@ -285,7 +285,7 @@ def _build_model_comparison(model_df: pd.DataFrame, dv_col: str):
 
 def _build_paper_tables(model_df: pd.DataFrame, coef_df: pd.DataFrame, dv_col: str, random_df: pd.DataFrame | None = None):
     d = model_df.copy()
-    desc = d.groupby(["WWR", "Complexity"], as_index=False)[dv_col].agg(n="count", mean="mean", sd="std")
+    desc = d.groupby(["WWR", "Complexity"], as_index=False).agg(n_subjects=("SubjectID", "nunique"), mean=(dv_col, "mean"), sd=(dv_col, "std")).rename(columns={"n_subjects": "n"})
 
     fixed = coef_df.copy()
     fixed["EffectType"], fixed["EffectRaw"] = zip(*fixed["Term"].map(_classify_effect))
