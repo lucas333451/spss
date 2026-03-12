@@ -410,7 +410,7 @@ def _export_domain(out: Path, domain: str, df: pd.DataFrame, dv_cols: list[str],
         if not infer_df.empty:
             md_lines += ["", "## Primary-model main / interaction effects", infer_df.to_markdown(index=False, floatfmt='.4f')]
         if not effect_df.empty:
-            md_lines += ["", "## Effect size summary (approximate r)", effect_df[[c for c in [\"DV\",\"APA_Term\",\"EffectType\",\"p\",\"effect_size_r_approx\",\"effect_size_abs_r_approx\"] if c in effect_df.columns]].head(40).to_markdown(index=False, floatfmt='.4f')]
+            md_lines += ["", "## Effect size summary (approximate r)", effect_df[[c for c in ["DV", "APA_Term", "EffectType", "p", "effect_size_r_approx", "effect_size_abs_r_approx"] if c in effect_df.columns]].head(40).to_markdown(index=False, floatfmt='.4f')]
     md_path.write_text("\n".join(md_lines), encoding="utf-8")
 
     _plot_domain_summary(summary_df, png_path, title=f"{domain} significant terms (primary model)")
