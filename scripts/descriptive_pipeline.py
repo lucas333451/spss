@@ -11,12 +11,14 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import skew, kurtosis, shapiro, sem, t
 
-from plot_style import apply_bae_style
+from plot_style import apply_bae_style, get_publication_palette
 
 QC_EXCLUDE = "孙校聪,康少勇,张钰鹏,杨可,洪婷婷,陈韬,高梓楠,赵国宏"
 S_COLS = ["S1", "S2", "S3", "S4", "S5"]
 B_COLS = ["B1", "B2", "B3", "Bmean"]
 IPQ_COLS = ["IPQ1", "IPQ2", "IPQ3", "IPQ4", "IPQ5", "IPQ6", "IPQ_mean"]
+LIKERT_LIMS = (1, 7)
+LIKERT_TICKS = list(range(1, 8))
 
 
 def _exclude_subjects(df: pd.DataFrame, text: str) -> pd.DataFrame:
@@ -97,38 +99,243 @@ def _subject_level_ipq(df: pd.DataFrame) -> pd.DataFrame:
     return df.groupby("SubjectID", as_index=False).first()
 
 
-def _fmt_num(v: float | None, nd: int = 3) -> str:
+def _fmt_num(v: float | None, nd: int = 2) -> str:
     if v is None or pd.isna(v):
         return "NA"
     return f"{float(v):.{nd}f}"
 
 
-def _summary_text(sub: pd.DataFrame, dv: str, group_col: str | None = None) -> str:
-    lines = []
+def _format_group_value(v) -> str:
+    if pd.isna(v):
+        return "NA"
+    try:
+        fv = float(v)
+        if fv.is_integer():
+            return str(int(fv))
+    except Exception:
+        pass
+    return str(v)
+
+
+def _annotation_lines(sub: pd.DataFrame, dv: str, group_col: str | None = None) -> list[str]:
     if group_col and group_col in sub.columns:
+        lines = []
         for g, sg in sub.groupby(group_col, dropna=False):
             st = _desc_stats(sg[dv])
-            lines.append(
-                f"{group_col}={g}\n"
-                f"n={st['n']}  mean={_fmt_num(st['mean'])}\n"
-                f"sd={_fmt_num(st['sd'])}  median={_fmt_num(st['median'])}\n"
-                f"95% CI [{_fmt_num(st['ci95_low'])}, {_fmt_num(st['ci95_high'])}]\n"
-                f"skew={_fmt_num(st['skewness'])}  kurt={_fmt_num(st['kurtosis'])}\n"
-                f"Shapiro p={_fmt_num(st['shapiro_p'])}"
-            )
-    else:
-        st = _desc_stats(sub[dv])
-        lines.append(
-            f"n={st['n']}\n"
-            f"mean={_fmt_num(st['mean'])}\n"
-            f"sd={_fmt_num(st['sd'])}\n"
-            f"median={_fmt_num(st['median'])}\n"
-            f"95% CI [{_fmt_num(st['ci95_low'])}, {_fmt_num(st['ci95_high'])}]\n"
-            f"skew={_fmt_num(st['skewness'])}\n"
-            f"kurt={_fmt_num(st['kurtosis'])}\n"
-            f"Shapiro p={_fmt_num(st['shapiro_p'])}"
+            lines.append(f"{_format_group_value(g)}: n={st['n']}, M={_fmt_num(st['mean'])}±{_fmt_num(st['sd'])}")
+        return lines
+    st = _desc_stats(sub[dv])
+    return [f"n={st['n']}, M={_fmt_num(st['mean'])}±{_fmt_num(st['sd'])}"]
+
+
+def _publication_title(dv: str, xcol: str | None, hue: str | None, kind_label: str) -> str:
+    if xcol and hue and xcol != hue:
+        return f"{dv} by {xcol} and {hue} ({kind_label})"
+    if xcol:
+        return f"{dv} across {xcol} ({kind_label})"
+    if hue:
+        return f"{dv} by {hue} ({kind_label})"
+    return f"{dv} distribution ({kind_label})"
+
+
+def _set_likert_axis(ax, dv: str) -> None:
+    dv_upper = dv.upper()
+    if dv_upper.startswith("S") or dv_upper.startswith("B") or dv_upper.startswith("IPQ"):
+        ax.set_ylim(*LIKERT_LIMS)
+        ax.set_yticks(LIKERT_TICKS)
+
+
+def _finalize_axis(ax, dv: str, xcol: str | None, title: str) -> None:
+    ax.set_title(title, pad=8)
+    ax.set_xlabel(xcol if xcol else "")
+    ax.set_ylabel(dv)
+    ax.tick_params(axis="x", rotation=0)
+    ax.grid(axis="y", linestyle="-", linewidth=0.55, alpha=0.22)
+    ax.grid(axis="x", visible=False)
+    _set_likert_axis(ax, dv)
+
+
+def _annotate_key_stats(ax, sub: pd.DataFrame, dv: str, group_col: str | None = None) -> None:
+    lines = _annotation_lines(sub, dv, group_col)
+    text = "\n".join(lines)
+    ax.text(
+        0.99,
+        0.98,
+        text,
+        transform=ax.transAxes,
+        va="top",
+        ha="right",
+        fontsize=8.1,
+        color="#3F4B57",
+        bbox=dict(boxstyle="round,pad=0.28", fc="white", ec="#D7DDE4", lw=0.7, alpha=0.94),
+    )
+
+
+def _get_order(series: pd.Series) -> list:
+    vals = [v for v in series.dropna().unique().tolist()]
+    try:
+        return sorted(vals, key=lambda x: float(x))
+    except Exception:
+        return sorted(vals, key=lambda x: str(x))
+
+
+def _get_grouped_palette(sub: pd.DataFrame, hue: str | None) -> dict | None:
+    if not hue or hue not in sub.columns:
+        return None
+    levels = _get_order(sub[hue])
+    colors = get_publication_palette(len(levels))
+    return {level: colors[i] for i, level in enumerate(levels)}
+
+
+def _plot_box_jitter(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None, palette) -> None:
+    if xcol and xcol in sub.columns:
+        hue_arg = hue if hue in sub.columns and hue != xcol else None
+        sns.boxplot(
+            data=sub,
+            x=xcol,
+            y=dv,
+            hue=hue_arg,
+            palette=palette,
+            width=0.56,
+            fliersize=0,
+            linewidth=1.0,
+            dodge=True,
+            ax=ax,
         )
-    return "\n\n".join(lines)
+        sns.stripplot(
+            data=sub,
+            x=xcol,
+            y=dv,
+            hue=hue_arg,
+            palette=palette,
+            dodge=True,
+            jitter=0.18,
+            size=2.4,
+            alpha=0.42,
+            linewidth=0,
+            ax=ax,
+        )
+    else:
+        sns.boxplot(data=sub, y=dv, color="#C9D7E8", width=0.34, fliersize=0, linewidth=1.0, ax=ax)
+        sns.stripplot(data=sub, y=dv, color="#4C78A8", jitter=0.12, size=2.6, alpha=0.35, linewidth=0, ax=ax)
+
+
+def _plot_box_mean_ci(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None, palette) -> None:
+    if xcol and xcol in sub.columns:
+        hue_arg = hue if hue in sub.columns and hue != xcol else None
+        sns.boxplot(
+            data=sub,
+            x=xcol,
+            y=dv,
+            hue=hue_arg,
+            palette=palette,
+            width=0.52,
+            fliersize=0,
+            linewidth=1.0,
+            dodge=True,
+            boxprops=dict(alpha=0.32),
+            whiskerprops=dict(alpha=0.85),
+            medianprops=dict(color="#2F3B46", linewidth=1.2),
+            ax=ax,
+        )
+        sns.pointplot(
+            data=sub,
+            x=xcol,
+            y=dv,
+            hue=hue_arg,
+            palette=palette,
+            dodge=0.36 if hue_arg else False,
+            errorbar=("ci", 95),
+            join=False,
+            markers="D",
+            scale=0.78,
+            err_kws={"linewidth": 1.0, "alpha": 0.95},
+            ax=ax,
+        )
+    else:
+        sns.boxplot(
+            data=sub,
+            y=dv,
+            color="#C9D7E8",
+            width=0.34,
+            fliersize=0,
+            linewidth=1.0,
+            boxprops=dict(alpha=0.32),
+            ax=ax,
+        )
+        mean = pd.to_numeric(sub[dv], errors="coerce").mean()
+        low, high = _ci95(sub[dv])
+        ax.errorbar([0], [mean], yerr=[[mean - low], [high - mean]], fmt="D", color="#2F3B46", capsize=4, lw=1.0)
+
+
+def _plot_violin(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None, palette) -> None:
+    if xcol and xcol in sub.columns:
+        hue_arg = hue if hue in sub.columns and hue != xcol else None
+        sns.violinplot(
+            data=sub,
+            x=xcol,
+            y=dv,
+            hue=hue_arg,
+            palette=palette,
+            inner=None,
+            cut=0,
+            linewidth=0.9,
+            saturation=0.72,
+            dodge=True,
+            ax=ax,
+        )
+        sns.boxplot(
+            data=sub,
+            x=xcol,
+            y=dv,
+            hue=hue_arg,
+            palette=palette,
+            width=0.18,
+            fliersize=0,
+            linewidth=0.95,
+            dodge=True,
+            boxprops=dict(alpha=0.5),
+            whiskerprops=dict(alpha=0.9),
+            medianprops=dict(color="#2F3B46", linewidth=1.15),
+            ax=ax,
+        )
+        sns.pointplot(
+            data=sub,
+            x=xcol,
+            y=dv,
+            hue=hue_arg,
+            palette=palette,
+            dodge=0.36 if hue_arg else False,
+            errorbar=("ci", 95),
+            join=False,
+            markers="D",
+            scale=0.7,
+            err_kws={"linewidth": 0.95, "alpha": 0.9},
+            ax=ax,
+        )
+    else:
+        sns.violinplot(data=sub, y=dv, color="#D5E1EF", inner=None, cut=0, linewidth=0.9, saturation=0.72, ax=ax)
+        sns.boxplot(data=sub, y=dv, color="#AFC3DD", width=0.16, fliersize=0, linewidth=0.95, boxprops=dict(alpha=0.55), ax=ax)
+        mean = pd.to_numeric(sub[dv], errors="coerce").mean()
+        low, high = _ci95(sub[dv])
+        ax.errorbar([0], [mean], yerr=[[mean - low], [high - mean]], fmt="D", color="#2F3B46", capsize=4, lw=1.0)
+
+
+def _dedupe_legend(ax) -> None:
+    handles, labels = ax.get_legend_handles_labels()
+    if not handles:
+        return
+    seen = set()
+    new_handles = []
+    new_labels = []
+    for h, l in zip(handles, labels):
+        if l in seen or l == "":
+            continue
+        seen.add(l)
+        new_handles.append(h)
+        new_labels.append(l)
+    if new_handles:
+        ax.legend(new_handles, new_labels, loc="upper left", bbox_to_anchor=(0.0, 1.02), ncol=min(3, len(new_labels)))
 
 
 def _plot_distribution_panels(df: pd.DataFrame, cols: list[str], out_dir: Path, prefix: str, hue: str | None = None, xcol: str | None = None) -> list[str]:
@@ -138,57 +345,26 @@ def _plot_distribution_panels(df: pd.DataFrame, cols: list[str], out_dir: Path, 
         return made
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    violin_fill = "#A9D6CB"
-    box_fill = "#D8C9A2"
-
     for dv in use_cols:
         sub = df.dropna(subset=[dv]).copy()
         if sub.empty:
             continue
 
-        for kind in ["violin", "box"]:
-            fig = plt.figure(figsize=(9.8, 4.6))
-            gs = fig.add_gridspec(1, 2, width_ratios=[3.7, 1.45], wspace=0.18)
-            ax = fig.add_subplot(gs[0, 0])
-            ax_info = fig.add_subplot(gs[0, 1])
-            ax_info.axis("off")
-            ax_info.set_facecolor("#F7FAF8")
+        palette = _get_grouped_palette(sub, hue if hue in sub.columns and hue != xcol else xcol if xcol in sub.columns else None)
+        plot_specs = [
+            ("box_jitter", _plot_box_jitter, "box+jitter"),
+            ("box_mean_ci", _plot_box_mean_ci, "box+mean±95% CI"),
+            ("violin", _plot_violin, "violin"),
+        ]
 
-            if kind == "violin":
-                if xcol and xcol in sub.columns:
-                    sns.violinplot(
-                        data=sub, x=xcol, y=dv, hue=hue if hue in sub.columns and hue != xcol else None,
-                        inner="box", cut=0, linewidth=0.8, saturation=0.95, ax=ax
-                    )
-                else:
-                    sns.violinplot(data=sub, y=dv, inner="box", cut=0, color=violin_fill, linewidth=0.8, ax=ax)
-            else:
-                if xcol and xcol in sub.columns:
-                    sns.boxplot(
-                        data=sub, x=xcol, y=dv, hue=hue if hue in sub.columns and hue != xcol else None,
-                        width=0.58, fliersize=2.5, linewidth=0.9, ax=ax
-                    )
-                else:
-                    sns.boxplot(data=sub, y=dv, color=box_fill, width=0.38, fliersize=2.5, linewidth=0.9, ax=ax)
-
-            ax.set_title(f"{dv} {'violin' if kind == 'violin' else 'boxplot'}", pad=10)
-            ax.set_xlabel(xcol if xcol and xcol in sub.columns else "")
-            ax.set_ylabel(dv)
-            ax.tick_params(axis="x", rotation=0)
-            if ax.get_legend() is not None:
-                ax.legend(frameon=False, loc="upper left")
-
-            summary = _summary_text(sub, dv, group_col=(hue if hue in sub.columns and hue != xcol else None))
-            ax_info.text(
-                0.03, 0.97, "Descriptive summary", va="top", ha="left", fontsize=10.2, fontweight="bold", color="#40534C"
-            )
-            ax_info.text(
-                0.03, 0.90, summary, va="top", ha="left", fontsize=8.6, color="#50615A", linespacing=1.35,
-                bbox=dict(boxstyle="round,pad=0.45", fc="#F4F8F6", ec="#D5DFD9", lw=0.8)
-            )
-
-            path = out_dir / f"{prefix}_{dv}_{kind}.png"
-            fig.savefig(path, dpi=230)
+        for kind_key, plot_fn, kind_label in plot_specs:
+            fig, ax = plt.subplots(figsize=(6.2, 4.4))
+            plot_fn(ax, sub, dv, xcol, hue, palette)
+            _finalize_axis(ax, dv, xcol, _publication_title(dv, xcol, hue if hue != xcol else None, kind_label))
+            _annotate_key_stats(ax, sub, dv, group_col=(hue if hue in sub.columns and hue != xcol else None))
+            _dedupe_legend(ax)
+            path = out_dir / f"{prefix}_{dv}_{kind_key}.png"
+            fig.savefig(path, dpi=300)
             plt.close(fig)
             made.append(str(path))
     return made
@@ -304,7 +480,7 @@ def main():
         "outputs": outputs,
         "stats": ["n", "mean", "sd", "median", "min", "max", "skewness", "kurtosis", "ci95", "shapiro_p"],
         "stratification": ["WWR", "Complexity", "ExperienceGroup"],
-        "figure_style": "fresh B&E / Origin-like, with side summary panels to avoid annotation overlap",
+        "figure_style": "publication palette; box+jitter and box+mean±CI recommended, violin retained as candidate; long summary panel removed; key n and M±SD kept in-figure",
     }
     (out / "descriptive_summary.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(payload, ensure_ascii=False))
