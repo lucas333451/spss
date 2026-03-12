@@ -79,7 +79,7 @@ def _classify_effect(term: str) -> tuple[str, str]:
 
     n_int = term.count(":")
     if n_int == 0:
-        if any(x in term for x in ["C(WWR)", "C(Complexity)", "C(ExperienceGroup)", "C(SportFreqGroup)", "C(Repetition)"]):
+        if any(x in term for x in ["C(WWR)", "C(Complexity)", "C(ExperienceGroup)"]):
             return "Main Effect", term
         return "Control", term
     if n_int == 1:
@@ -100,17 +100,13 @@ def _humanize_term(term: str) -> str:
         "C(WWR)[T.75]": "WWR: 75 (vs reference)",
         "C(Complexity)[T.1]": "Complexity: High/C1 (vs Low/C0)",
         "C(Complexity)[T.0]": "Complexity: Low/C0 (vs High/C1)",
-        "C(Repetition)[T.2]": "Repetition: Round2 (vs Round1)",
     }
     if t in mapping:
         return mapping[t]
 
     t = t.replace("C(ExperienceGroup)[T.", "Experience group: ")
-    t = t.replace("C(SportFreqGroup)[T.", "Sport frequency group: ")
-    t = t.replace("C(Repetition)[T.", "Repetition: Round")
     t = t.replace('C(WWR)[T.', 'WWR: ')
     t = t.replace('C(Complexity)[T.', 'Complexity: ')
-    t = t.replace('C(Position)[T.', 'Position: ')
     t = t.replace(']', ' (vs reference)')
     t = t.replace(':', ' × ')
     t = t.replace('Complexity: 1 (vs reference)', 'Complexity: High/C1 (vs Low/C0)')
@@ -202,9 +198,9 @@ def _fit_with_fallback(data: pd.DataFrame, formula: str, re_formula: str | None)
 
 
 def _build_model_comparison(model_df: pd.DataFrame, dv_col: str):
-    f_a = f"{dv_col} ~ C(WWR) + C(Complexity) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position)"
-    f_b = f"{dv_col} ~ (C(WWR) + C(Complexity) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position))**2"
-    f_c = f"{dv_col} ~ (C(WWR) + C(Complexity) + C(ExperienceGroup) + C(SportFreqGroup) + C(Repetition) + C(Position))**3"
+    f_a = f"{dv_col} ~ C(WWR) + C(Complexity) + C(ExperienceGroup)"
+    f_b = f"{dv_col} ~ C(WWR) * C(Complexity) + C(ExperienceGroup)"
+    f_c = f"{dv_col} ~ C(WWR) * C(Complexity) * C(ExperienceGroup)"
 
     specs = [
         ("Model_A_compact", f_a),
@@ -549,15 +545,10 @@ def main():
         raise SystemExit("Missing ExperienceGroup in long CSV. Please re-run transform_wide_to_long.py with latest version.")
     if "SAM_Valence" not in df.columns and "S5" in df.columns:
         df["SAM_Valence"] = df["S5"]
-    if "SportFreqGroup" not in df.columns:
-        raise SystemExit("Missing SportFreqGroup in long CSV. Please re-run transform_wide_to_long.py with latest version.")
-    if "Repetition" not in df.columns:
-        df["Repetition"] = df["Block"]
-
-    keep_cols = ["SubjectID", dv_col, "WWR", "Complexity", "Position", "ExperienceGroup", "SportFreqGroup", "Repetition"]
+    keep_cols = ["SubjectID", dv_col, "WWR", "Complexity", "ExperienceGroup"]
     model_df = df.dropna(subset=keep_cols).copy()
 
-    for c in ["WWR", "Complexity", "Position", "ExperienceGroup", "SportFreqGroup", "Repetition"]:
+    for c in ["WWR", "Complexity", "ExperienceGroup"]:
         model_df[c] = model_df[c].astype(str)
 
     cmp_df, best, fitted_models = _build_model_comparison(model_df, dv_col=dv_col)
@@ -571,7 +562,7 @@ def main():
 
     sens_out = None
     try:
-        model_df_lenient = df.dropna(subset=["Afford4_lenient", "WWR", "Complexity", "ExperienceGroup", "SportFreqGroup", "Repetition", "Position"]).copy()
+        model_df_lenient = df.dropna(subset=["Afford4_lenient", "WWR", "Complexity", "ExperienceGroup"]).copy()
         cmp_lenient, best_lenient, _ = _build_model_comparison(model_df_lenient, dv_col="Afford4_lenient")
         fit_lenient = best_lenient["fit"]
         coef_primary = _extract_coef_table(fit)
@@ -668,7 +659,7 @@ def main():
         "n_subjects": int(model_df["SubjectID"].nunique()),
         "cronbach_alpha_s1_s4": None if np.isnan(alpha) else float(alpha),
         "dv_used": dv_col,
-        "modeling_note": "Primary model is fixed to Model_A_compact (main effects) for journal-friendly main-text reporting; AIC-best model is reported as exploratory/sensitivity.",
+        "modeling_note": "Primary model is fixed to the 3-factor questionnaire core model (WWR, Complexity, ExperienceGroup); interaction extensions are reported as exploratory/sensitivity.",
         "primary_model": best["primary_model"],
         "primary_formula": best["primary_formula"],
         "recommended_model_by_aic": best["recommended_model_by_aic"],
