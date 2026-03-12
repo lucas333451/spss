@@ -171,8 +171,21 @@ def _annotate_key_stats(ax, sub: pd.DataFrame, dv: str, group_col: str | None = 
     )
 
 
+def _normalize_category_value(v):
+    if pd.isna(v):
+        return np.nan
+    try:
+        fv = float(v)
+        if fv.is_integer():
+            return str(int(fv))
+        return str(fv)
+    except Exception:
+        return str(v)
+
+
 def _get_order(series: pd.Series) -> list:
-    vals = [v for v in series.dropna().unique().tolist()]
+    vals = [_normalize_category_value(v) for v in series.dropna().unique().tolist()]
+    vals = [v for v in vals if pd.notna(v)]
     try:
         return sorted(vals, key=lambda x: float(x))
     except Exception:
@@ -184,12 +197,12 @@ def _get_grouped_palette(sub: pd.DataFrame, hue: str | None) -> dict | None:
         return None
     levels = _get_order(sub[hue])
     colors = get_publication_palette(len(levels))
-    return {level: colors[i] for i, level in enumerate(levels)}
+    return {str(level): colors[i] for i, level in enumerate(levels)}
 
 
 def _plot_box_jitter(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None, palette) -> None:
     if xcol and xcol in sub.columns:
-        hue_arg = hue if hue in sub.columns and hue != xcol else None
+        hue_arg = hue if hue in sub.columns and hue != xcol else xcol
         sns.boxplot(
             data=sub,
             x=xcol,
@@ -199,7 +212,8 @@ def _plot_box_jitter(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str 
             width=0.56,
             fliersize=0,
             linewidth=1.0,
-            dodge=True,
+            dodge=(hue_arg != xcol),
+            legend=False,
             ax=ax,
         )
         sns.stripplot(
@@ -208,11 +222,12 @@ def _plot_box_jitter(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str 
             y=dv,
             hue=hue_arg,
             palette=palette,
-            dodge=True,
+            dodge=(hue_arg != xcol),
             jitter=0.18,
             size=2.4,
             alpha=0.42,
             linewidth=0,
+            legend=False,
             ax=ax,
         )
     else:
@@ -222,7 +237,7 @@ def _plot_box_jitter(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str 
 
 def _plot_box_mean_ci(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None, palette) -> None:
     if xcol and xcol in sub.columns:
-        hue_arg = hue if hue in sub.columns and hue != xcol else None
+        hue_arg = hue if hue in sub.columns and hue != xcol else xcol
         sns.boxplot(
             data=sub,
             x=xcol,
@@ -232,10 +247,11 @@ def _plot_box_mean_ci(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str
             width=0.52,
             fliersize=0,
             linewidth=1.0,
-            dodge=True,
+            dodge=(hue_arg != xcol),
             boxprops=dict(alpha=0.32),
             whiskerprops=dict(alpha=0.85),
             medianprops=dict(color="#2F3B46", linewidth=1.2),
+            legend=False,
             ax=ax,
         )
         sns.pointplot(
@@ -244,12 +260,13 @@ def _plot_box_mean_ci(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str
             y=dv,
             hue=hue_arg,
             palette=palette,
-            dodge=0.36 if hue_arg else False,
+            dodge=0.36 if hue_arg != xcol else False,
             errorbar=("ci", 95),
             join=False,
             markers="D",
             scale=0.78,
             err_kws={"linewidth": 1.0, "alpha": 0.95},
+            legend=False,
             ax=ax,
         )
     else:
@@ -270,7 +287,7 @@ def _plot_box_mean_ci(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str
 
 def _plot_violin(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None, palette) -> None:
     if xcol and xcol in sub.columns:
-        hue_arg = hue if hue in sub.columns and hue != xcol else None
+        hue_arg = hue if hue in sub.columns and hue != xcol else xcol
         sns.violinplot(
             data=sub,
             x=xcol,
@@ -281,7 +298,8 @@ def _plot_violin(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | No
             cut=0,
             linewidth=0.9,
             saturation=0.72,
-            dodge=True,
+            dodge=(hue_arg != xcol),
+            legend=False,
             ax=ax,
         )
         sns.boxplot(
@@ -293,10 +311,11 @@ def _plot_violin(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | No
             width=0.18,
             fliersize=0,
             linewidth=0.95,
-            dodge=True,
+            dodge=(hue_arg != xcol),
             boxprops=dict(alpha=0.5),
             whiskerprops=dict(alpha=0.9),
             medianprops=dict(color="#2F3B46", linewidth=1.15),
+            legend=False,
             ax=ax,
         )
         sns.pointplot(
@@ -305,12 +324,13 @@ def _plot_violin(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | No
             y=dv,
             hue=hue_arg,
             palette=palette,
-            dodge=0.36 if hue_arg else False,
+            dodge=0.36 if hue_arg != xcol else False,
             errorbar=("ci", 95),
             join=False,
             markers="D",
             scale=0.7,
             err_kws={"linewidth": 0.95, "alpha": 0.9},
+            legend=False,
             ax=ax,
         )
     else:
@@ -349,6 +369,11 @@ def _plot_distribution_panels(df: pd.DataFrame, cols: list[str], out_dir: Path, 
         sub = df.dropna(subset=[dv]).copy()
         if sub.empty:
             continue
+
+        if xcol and xcol in sub.columns:
+            sub[xcol] = sub[xcol].map(_normalize_category_value)
+        if hue and hue in sub.columns:
+            sub[hue] = sub[hue].map(_normalize_category_value)
 
         palette = _get_grouped_palette(sub, hue if hue in sub.columns and hue != xcol else xcol if xcol in sub.columns else None)
         plot_specs = [
