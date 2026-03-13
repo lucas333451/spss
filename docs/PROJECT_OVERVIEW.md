@@ -67,6 +67,9 @@
   - `significance_index.md`
   - `research_questions_map.md`
   - `significance_guide.png`
+- 面向当前 clean main 的正文辅助入口：
+  - `scripts/build_main_branch_figure_pack.py`（整理 main 分支正文优先图清单）
+  - `scripts/build_main_branch_writing_guide.py`（生成 main 分支正文写作提纲）
 
 ### 5）结果总导航
 `scripts/build_results_guide.py`

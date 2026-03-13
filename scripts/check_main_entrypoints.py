@@ -21,6 +21,8 @@ REQUIRED_FILES = [
     REPO / 'notebooks' / 'spss_colab.ipynb',
     REPO / 'scripts' / 'check_doc_consistency.py',
     REPO / 'scripts' / 'build_results_guide.py',
+    REPO / 'scripts' / 'build_main_branch_figure_pack.py',
+    REPO / 'scripts' / 'build_main_branch_writing_guide.py',
     REPO / 'scripts' / 'check_r_item_level_lmm.py',
     REPO / 'scripts' / 'run_item_level_lmm.py',
     REPO / 'scripts' / 'pipeline.py',

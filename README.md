@@ -193,6 +193,10 @@ python scripts/significance_pipeline.py \
   - `python3 scripts/check_r_item_level_lmm.py`
 - R installation/setup guide for item-level unified LMM:
   - `docs/R_SETUP_FOR_ITEM_LEVEL_LMM.md`
+- Build a main-branch figure pack for manuscript use:
+  - `python3 scripts/build_main_branch_figure_pack.py --results-root results --out-dir results/figure_pack_main_branch`
+- Build a main-branch manuscript writing guide:
+  - `python3 scripts/build_main_branch_writing_guide.py --out-dir docs`
 - Clean-main entrypoint health check:
   - `python3 scripts/check_main_entrypoints.py`
 - Lightweight executable smoke suite:
