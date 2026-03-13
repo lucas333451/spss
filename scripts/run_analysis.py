@@ -374,8 +374,11 @@ def _plot_model_comparison(cmp_df: pd.DataFrame, out_dir: Path) -> str | None:
     if cmp_df.empty:
         return None
     x = cmp_df.copy().sort_values("AIC", ascending=True)
-    fig, ax = plt.subplots(figsize=(7.2, 4.2))
-    colors = ["#2F5D7E" if s == "ok" else "#C95A49" for s in x.get("Status", pd.Series(["ok"] * len(x)))]
+    fig = plt.figure(figsize=(8.8, 4.4))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.65, 0.95], wspace=0.12)
+    ax = fig.add_subplot(gs[0, 0])
+    ax_info = fig.add_subplot(gs[0, 1])
+    colors = ["#6FA8DC" if s == "ok" else "#E88C7D" for s in x.get("Status", pd.Series(["ok"] * len(x)))]
     ax.barh(x["Model"], x["AIC"], color=colors, alpha=0.92)
     ax.set_title("Model comparison by AIC", pad=8)
     ax.set_xlabel("AIC")
@@ -383,7 +386,13 @@ def _plot_model_comparison(cmp_df: pd.DataFrame, out_dir: Path) -> str | None:
     ax.grid(axis="x", alpha=0.18)
     ax.grid(axis="y", visible=False)
     best_row = x.iloc[0]
-    ax.text(0.98, 0.04, f"Best: {best_row['Model']} | AIC={_fmt(best_row['AIC'])}", transform=ax.transAxes, ha="right", va="bottom", fontsize=8.2, color="#4B5560")
+    info_lines = [
+        f"Best model: {best_row['Model']}",
+        f"AIC = {_fmt(best_row['AIC'])}",
+        f"BIC = {_fmt(best_row.get('BIC'))}",
+        f"LogLik = {_fmt(best_row.get('LogLik'))}",
+    ]
+    _summary_box(ax_info, "Model fit summary", info_lines)
     out_dir.mkdir(parents=True, exist_ok=True)
     p = out_dir / "model_comparison_aic.png"
     fig.savefig(p, dpi=300)
@@ -398,15 +407,26 @@ def _plot_fixed_effects(fixed_df: pd.DataFrame, out_dir: Path) -> str | None:
     if x.empty:
         return None
     x = x.sort_values("Coef")
-    fig, ax = plt.subplots(figsize=(8.2, max(4.8, 0.34 * len(x) + 1.2)))
+    fig = plt.figure(figsize=(9.8, max(4.8, 0.34 * len(x) + 1.2)))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.95, 0.95], wspace=0.10)
+    ax = fig.add_subplot(gs[0, 0])
+    ax_info = fig.add_subplot(gs[0, 1])
     ax.axvline(0, color="#8B929A", lw=0.9)
-    ax.errorbar(x["Coef"], np.arange(len(x)), xerr=[x["Coef"] - x["CI95_low"], x["CI95_high"] - x["Coef"]], fmt='o', color="#2F5D7E", ecolor="#9EB9CF", capsize=2.2)
+    ax.errorbar(x["Coef"], np.arange(len(x)), xerr=[x["Coef"] - x["CI95_low"], x["CI95_high"] - x["Coef"]], fmt='o', color="#6FA8DC", ecolor="#BFD7EA", capsize=2.2)
     ax.set_yticks(np.arange(len(x)))
     ax.set_yticklabels([_humanize_term(t) for t in x["Term"]], fontsize=8)
     ax.set_title("Fixed effects with 95% CI", pad=8)
     ax.set_xlabel("Coefficient")
     ax.grid(axis="x", alpha=0.18)
     ax.grid(axis="y", visible=False)
+    sig_n = int((pd.to_numeric(x["p"], errors="coerce") < 0.05).sum()) if "p" in x.columns else 0
+    info_lines = [
+        f"Terms shown: {len(x)}",
+        f"p < .05 terms: {sig_n}",
+        f"Most positive β: {_fmt(x['Coef'].max())}",
+        f"Most negative β: {_fmt(x['Coef'].min())}",
+    ]
+    _summary_box(ax_info, "Coefficient summary", info_lines)
     out_dir.mkdir(parents=True, exist_ok=True)
     p = out_dir / "fixed_effects_forest.png"
     fig.savefig(p, dpi=300)
@@ -420,8 +440,11 @@ def _plot_interactions(infer_df: pd.DataFrame, out_dir: Path) -> str | None:
     x = infer_df.copy()
     x["minuslog10p"] = -np.log10(pd.to_numeric(x["p"], errors="coerce"))
     x = x.sort_values("minuslog10p", ascending=True)
-    fig, ax = plt.subplots(figsize=(8.2, max(4.8, 0.34 * len(x) + 1.2)))
-    palette = x["EffectType"].map({"Main Effect": "#2F5D7E", "Interaction (2-way)": "#D98C3F", "Interaction (3-way)": "#7A8E65"}).fillna("#AAB4BE")
+    fig = plt.figure(figsize=(9.4, max(4.8, 0.34 * len(x) + 1.2)))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.85, 1.05], wspace=0.12)
+    ax = fig.add_subplot(gs[0, 0])
+    ax_info = fig.add_subplot(gs[0, 1])
+    palette = x["EffectType"].map({"Main Effect": "#6FA8DC", "Interaction (2-way)": "#F4A261", "Interaction (3-way)": "#7BC8A4"}).fillna("#C7CDD4")
     ax.barh(np.arange(len(x)), x["minuslog10p"], color=list(palette), alpha=0.92)
     ax.set_yticks(np.arange(len(x)))
     ax.set_yticklabels(x["APA_Term"], fontsize=8)
@@ -429,6 +452,9 @@ def _plot_interactions(infer_df: pd.DataFrame, out_dir: Path) -> str | None:
     ax.set_title("Main and interaction effects", pad=8)
     ax.grid(axis="x", alpha=0.18)
     ax.grid(axis="y", visible=False)
+    top_rows = x.sort_values("minuslog10p", ascending=False).head(5)
+    info_lines = [f"Top effects:"] + [f"{r['APA_Term'][:30]} | p={_fmt(r['p'],4)}" for _, r in top_rows.iterrows()]
+    _summary_box(ax_info, "Effect highlights", info_lines)
     out_dir.mkdir(parents=True, exist_ok=True)
     p = out_dir / "main_interactions_summary.png"
     fig.savefig(p, dpi=300)
@@ -471,16 +497,23 @@ def _plot_simple_effects(simple_df: pd.DataFrame, out_dir: Path) -> str | None:
     if simple_df.empty:
         return None
     x = simple_df.copy().sort_values("WWR")
-    fig, ax = plt.subplots(figsize=(7.2, 4.2))
-    bars = ax.bar(x["WWR"].astype(str), x["Diff_C1_minus_C0"], color="#4C78A8", alpha=0.88)
+    fig = plt.figure(figsize=(8.6, 4.4))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.65, 0.95], wspace=0.12)
+    ax = fig.add_subplot(gs[0, 0])
+    ax_info = fig.add_subplot(gs[0, 1])
+    bars = ax.bar(x["WWR"].astype(str), x["Diff_C1_minus_C0"], color="#6FA8DC", alpha=0.88)
     ax.axhline(0, color="#8B929A", lw=0.9)
     ax.set_title("Simple effects: C1 - C0 within each WWR", pad=8)
     ax.set_xlabel("WWR")
     ax.set_ylabel("Mean difference")
     ax.grid(axis="y", alpha=0.18)
     ax.grid(axis="x", visible=False)
-    for b, p in zip(bars, x["p"]):
-        ax.text(b.get_x() + b.get_width()/2, b.get_height(), f"p={_fmt(p, 3)}", ha="center", va="bottom", fontsize=8, color="#50615A")
+    sig_rows = x[pd.to_numeric(x["p"], errors="coerce") < 0.05].copy()
+    info_lines = [
+        f"Rows: {len(x)}",
+        f"Significant: {len(sig_rows)}",
+    ] + [f"WWR {r['WWR']}: Δ={_fmt(r['Diff_C1_minus_C0'])}, p={_fmt(r['p'],4)}" for _, r in sig_rows.head(4).iterrows()]
+    _summary_box(ax_info, "Simple-effect summary", info_lines)
     out_dir.mkdir(parents=True, exist_ok=True)
     p = out_dir / "simple_effects_complexity_by_wwr.png"
     fig.savefig(p, dpi=300)
@@ -517,14 +550,20 @@ def _plot_effect_size_summary(effect_df: pd.DataFrame, out_dir: Path) -> str | N
     if x.empty:
         return None
     x = x.sort_values("partial_eta2")
-    fig, ax = plt.subplots(figsize=(7.6, max(4.2, 0.34 * len(x) + 1.0)))
-    ax.barh(np.arange(len(x)), x["partial_eta2"], color="#2F5D7E", alpha=0.92)
+    fig = plt.figure(figsize=(8.8, max(4.2, 0.34 * len(x) + 1.0)))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.75, 1.0], wspace=0.12)
+    ax = fig.add_subplot(gs[0, 0])
+    ax_info = fig.add_subplot(gs[0, 1])
+    ax.barh(np.arange(len(x)), x["partial_eta2"], color="#6FA8DC", alpha=0.92)
     ax.set_yticks(np.arange(len(x)))
     ax.set_yticklabels(x["Factor"], fontsize=8.2)
     ax.set_xlabel("Partial η²")
     ax.set_title("Effect size summary (partial η²)", pad=8)
     ax.grid(axis="x", alpha=0.18)
     ax.grid(axis="y", visible=False)
+    top = x.sort_values("partial_eta2", ascending=False).head(4)
+    info_lines = [f"Top partial η²:"] + [f"{r['Factor']}: {_fmt(r['partial_eta2'])}" for _, r in top.iterrows()]
+    _summary_box(ax_info, "Effect-size highlights", info_lines)
     out_dir.mkdir(parents=True, exist_ok=True)
     p = out_dir / "effect_size_summary.png"
     fig.savefig(p, dpi=300)
@@ -606,14 +645,24 @@ def main():
     for d in [csv_dir, png_dir, md_dir, txt_dir, json_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
-    plt.figure(figsize=(9, 5))
+    fig = plt.figure(figsize=(8.8, 4.6))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.7, 1.0], wspace=0.12)
+    ax = fig.add_subplot(gs[0, 0])
+    ax_info = fig.add_subplot(gs[0, 1])
     pdat = model_df.copy()
     pdat["Complexity"] = pdat["Complexity"].replace({"0": "C0", "1": "C1"})
-    sns.pointplot(data=pdat, x="WWR", y=dv_col, hue="Complexity", errorbar="se", dodge=True)
-    plt.title(f"WWR × Complexity on {dv_col}")
-    plt.tight_layout()
-    plt.savefig(png_dir / "wwr_complexity_afford4.png", dpi=220)
-    plt.close()
+    sns.pointplot(data=pdat, x="WWR", y=dv_col, hue="Complexity", errorbar="se", dodge=True, palette=["#6FA8DC", "#F4A261"], ax=ax)
+    ax.set_title(f"WWR × Complexity on {dv_col}")
+    ax.grid(axis="y", alpha=0.18)
+    ax.grid(axis="x", visible=False)
+    _summary_box(ax_info, "Condition summary", [
+        f"DV: {dv_col}",
+        f"Subjects: {model_df['SubjectID'].nunique()}",
+        f"Rows: {len(model_df)}",
+        f"Alpha(S1-S4): {_fmt(alpha)}" if not np.isnan(alpha) else "Alpha(S1-S4): NA",
+    ])
+    fig.savefig(png_dir / "wwr_complexity_afford4.png", dpi=220)
+    plt.close(fig)
 
     (txt_dir / "lmm_summary.txt").write_text(str(fit.summary()), encoding="utf-8")
     (txt_dir / "model_formula.txt").write_text(str(best["primary_formula"]), encoding="utf-8")

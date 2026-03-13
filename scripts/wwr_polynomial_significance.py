@@ -227,9 +227,10 @@ def _plot_trend_panels(means: pd.DataFrame, results_df: pd.DataFrame, out_dir: P
             x["__panel__"] = "ALL"
             panel_col = "__panel__"
 
-        fig = plt.figure(figsize=(max(7.6, 4.4 * len(panel_values)), 4.6))
-        main_gs = fig.add_gridspec(1, len(panel_values), wspace=0.18)
+        fig = plt.figure(figsize=(max(9.2, 4.2 * len(panel_values) + 2.2), 4.8))
+        main_gs = fig.add_gridspec(1, len(panel_values) + 1, width_ratios=[*([1.0] * len(panel_values)), 0.95], wspace=0.18)
         axes = [fig.add_subplot(main_gs[0, i]) for i in range(len(panel_values))]
+        ax_info = fig.add_subplot(main_gs[0, len(panel_values)])
         for ax, panel_val in zip(axes, panel_values):
             sub = x[x[panel_col] == panel_val].copy()
             if hue_col and hue_col in sub.columns:
@@ -255,6 +256,14 @@ def _plot_trend_panels(means: pd.DataFrame, results_df: pd.DataFrame, out_dir: P
             handles, labels = axes[0].get_legend_handles_labels()
             if handles:
                 fig.legend(handles, labels, title=hue_col, loc="upper center", ncol=max(1, len(labels)))
+
+        rsub_all = results_df[(results_df["DV"] == dv) & (results_df["Source"] == "WWR")].copy()
+        sum_lines = []
+        for _, rr in rsub_all.sort_values([p_label if False else "Contrast"]).head(6).iterrows():
+            sum_lines.append(f"{rr['Contrast']}: p={_fmt(rr['SigAdj'] if 'SigAdj' in rr else rr['Sig.'], 4)}")
+        if not sum_lines:
+            sum_lines = ["No valid contrast rows."]
+        _summary_box(ax_info, f"Trend summary — {dv}", sum_lines)
 
         path = out_dir / f"task5_trend_profile_{dv}.png"
         fig.savefig(path, dpi=230)
