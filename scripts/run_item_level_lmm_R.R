@@ -263,60 +263,107 @@ make_emmeans_outputs <- function(fit, dv, sig_effects, p_adjust) {
   )
 }
 
-build_narrative <- function(dv, effect_rows, pair_df, caution_df) {
-  lines <- c()
-  if (nrow(effect_rows) == 0) {
-    lines <- c(lines, sprintf("- %s：Type III fixed effects 中未见显著项（至少在当前 FDR 口径下）。", dv))
+effect_label_zh <- function(effect_name) {
+  dplyr::case_when(
+    effect_name == "WWR" ~ "WWR 主效应",
+    effect_name == "Complexity" ~ "Complexity 主效应",
+    effect_name == "ExperienceGroup" ~ "ExperienceGroup 主效应",
+    effect_name == "WWR:Complexity" ~ "WWR × Complexity 二阶交互",
+    effect_name == "WWR:ExperienceGroup" ~ "WWR × ExperienceGroup 二阶交互",
+    effect_name == "Complexity:ExperienceGroup" ~ "Complexity × ExperienceGroup 二阶交互",
+    effect_name == "WWR:Complexity:ExperienceGroup" ~ "WWR × Complexity × ExperienceGroup 三阶交互",
+    TRUE ~ effect_name
+  )
+}
+
+pick_followup_pairs <- function(effect_name, sub_pair) {
+  if (nrow(sub_pair) == 0) return(sub_pair[0, ])
+  if (effect_name == "WWR") {
+    return(sub_pair %>% filter(.data$Spec == "WWR_main"))
+  } else if (effect_name == "Complexity") {
+    return(sub_pair %>% filter(.data$Spec == "Complexity_main"))
+  } else if (effect_name == "ExperienceGroup") {
+    return(sub_pair %>% filter(.data$Spec == "ExperienceGroup_main"))
+  } else if (effect_name == "WWR:Complexity") {
+    return(sub_pair %>% filter(.data$Spec %in% c("WWR_within_Complexity", "Complexity_within_WWR")))
+  } else if (effect_name == "WWR:ExperienceGroup") {
+    return(sub_pair %>% filter(.data$Spec %in% c("WWR_within_ExperienceGroup", "ExperienceGroup_within_WWR")))
+  } else if (effect_name == "Complexity:ExperienceGroup") {
+    return(sub_pair %>% filter(.data$Spec %in% c("Complexity_within_ExperienceGroup", "ExperienceGroup_within_Complexity")))
+  } else if (effect_name == "WWR:Complexity:ExperienceGroup") {
+    return(sub_pair %>% filter(.data$Spec %in% c("WWR_within_Complexity_by_ExperienceGroup", "Complexity_within_WWR_by_ExperienceGroup", "ExperienceGroup_within_WWR_by_Complexity")))
+  }
+  sub_pair[0, ]
+}
+
+sentence_for_effect <- function(dv, effect_row, pair_df) {
+  effect_name <- effect_row$Effect
+  effect_label <- effect_label_zh(effect_name)
+  base <- sprintf(
+    "%s 显著（F(%s, %s) = %s, p = %s, FDR p = %s）",
+    effect_label,
+    fmt_num(effect_row$NumDF, 2),
+    fmt_num(effect_row$DenDF, 2),
+    fmt_num(effect_row$F_value, 3),
+    fmt_num(effect_row$p, 4),
+    fmt_num(effect_row$p_fdr, 4)
+  )
+
+  sub_pair <- pair_df %>% filter(.data$DV == dv, !is.na(.data$p.value), .data$p.value < 0.05)
+  use <- pick_followup_pairs(effect_name, sub_pair)
+  if (nrow(use) == 0) {
+    return(paste0(base, "。"))
+  }
+
+  top_use <- use %>% arrange(.data$p.value) %>% head(2)
+  pair_txt <- vapply(seq_len(nrow(top_use)), function(i) {
+    rr <- top_use[i, ]
+    sprintf(
+      "%s（estimate = %s, 95%% CI [%s, %s], p = %s, %s）",
+      rr$contrast,
+      fmt_num(rr$estimate, 3),
+      fmt_num(rr$lower.CL, 3),
+      fmt_num(rr$upper.CL, 3),
+      fmt_num(rr$p.value, 4),
+      rr$comparison_direction
+    )
+  }, character(1))
+
+  if (effect_name %in% c("WWR", "Complexity", "ExperienceGroup")) {
+    paste0(base, "；pairwise comparisons 显示主要差异集中在：", paste(pair_txt, collapse = "；"), "。")
+  } else if (effect_name %in% c("WWR:Complexity", "WWR:ExperienceGroup", "Complexity:ExperienceGroup")) {
+    paste0(base, "；simple-effects / pairwise follow-up 提示交互主要体现为：", paste(pair_txt, collapse = "；"), "。")
+  } else if (effect_name == "WWR:Complexity:ExperienceGroup") {
+    paste0(base, "；三阶交互的 follow-up 比较表明差异主要出现在：", paste(pair_txt, collapse = "；"), "。")
   } else {
-    for (i in seq_len(nrow(effect_rows))) {
-      r <- effect_rows[i, ]
-      lines <- c(lines, sprintf(
-        "- %s：%s 显著，F(%s, %s) = %s，p = %s，FDR p = %s。",
-        dv,
-        r$Effect,
-        fmt_num(r$NumDF, 2),
-        fmt_num(r$DenDF, 2),
-        fmt_num(r$F_value, 3),
-        fmt_num(r$p, 4),
-        fmt_num(r$p_fdr, 4)
-      ))
+    paste0(base, "；follow-up 结果包括：", paste(pair_txt, collapse = "；"), "。")
+  }
+}
 
-      if (nrow(pair_df) > 0) {
-        sub_pair <- pair_df %>% filter(.data$DV == dv, !is.na(.data$p.value), .data$p.value < 0.05)
-        if (r$Effect == "WWR" && nrow(sub_pair) > 0) {
-          use <- sub_pair %>% filter(.data$Spec == "WWR_main")
-        } else if (r$Effect == "Complexity" && nrow(sub_pair) > 0) {
-          use <- sub_pair %>% filter(.data$Spec == "Complexity_main")
-        } else if (r$Effect == "ExperienceGroup" && nrow(sub_pair) > 0) {
-          use <- sub_pair %>% filter(.data$Spec == "ExperienceGroup_main")
-        } else if (r$Effect == "WWR:Complexity") {
-          use <- sub_pair %>% filter(.data$Spec %in% c("WWR_within_Complexity", "Complexity_within_WWR"))
-        } else if (r$Effect == "WWR:ExperienceGroup") {
-          use <- sub_pair %>% filter(.data$Spec %in% c("WWR_within_ExperienceGroup", "ExperienceGroup_within_WWR"))
-        } else if (r$Effect == "Complexity:ExperienceGroup") {
-          use <- sub_pair %>% filter(.data$Spec %in% c("Complexity_within_ExperienceGroup", "ExperienceGroup_within_Complexity"))
-        } else if (r$Effect == "WWR:Complexity:ExperienceGroup") {
-          use <- sub_pair %>% filter(.data$Spec %in% c("WWR_within_Complexity_by_ExperienceGroup", "Complexity_within_WWR_by_ExperienceGroup", "ExperienceGroup_within_WWR_by_Complexity"))
-        } else {
-          use <- sub_pair[0, ]
-        }
+build_narrative <- function(dv, effect_rows, pair_df, caution_df, type3_all_df = NULL) {
+  lines <- c()
+  all_rows <- if (!is.null(type3_all_df)) type3_all_df %>% filter(.data$DV == dv, !is.na(.data$p_fdr)) else effect_rows
 
-        if (nrow(use) > 0) {
-          top_use <- use %>% arrange(.data$p.value) %>% head(3)
-          for (j in seq_len(nrow(top_use))) {
-            rr <- top_use[j, ]
-            lines <- c(lines, sprintf(
-              "  - follow-up（%s）：%s，estimate = %s，95%% CI [%s, %s]，p = %s，方向：%s。",
-              rr$Spec,
-              rr$contrast,
-              fmt_num(rr$estimate, 3),
-              fmt_num(rr$lower.CL, 3),
-              fmt_num(rr$upper.CL, 3),
-              fmt_num(rr$p.value, 4),
-              rr$comparison_direction
-            ))
-          }
-        }
+  if (nrow(effect_rows) == 0) {
+    if (!is.null(type3_all_df) && nrow(all_rows) > 0 && any(all_rows$p < 0.05, na.rm = TRUE)) {
+      raw_only <- all_rows %>% filter(.data$p < 0.05, is.na(.data$p_fdr) | .data$p_fdr >= 0.05)
+      if (nrow(raw_only) > 0) {
+        lines <- c(lines, sprintf("- %s：有些效应在未校正水平达到 p<.05，但在 FDR 校正后未保留，因此正文建议按未通过多重校正处理。", dv))
+      } else {
+        lines <- c(lines, sprintf("- %s：Type III fixed effects 中未见显著项（至少在当前 FDR 口径下）。", dv))
+      }
+    } else {
+      lines <- c(lines, sprintf("- %s：Type III fixed effects 中未见显著项（至少在当前 FDR 口径下）。", dv))
+    }
+  } else {
+    sig_sentences <- vapply(seq_len(nrow(effect_rows)), function(i) sentence_for_effect(dv, effect_rows[i, ], pair_df), character(1))
+    lead <- sprintf("- %s：在统一结构 LMM 下，%s", dv, paste(sig_sentences, collapse = "；同时，"))
+    lines <- c(lines, paste0(lead))
+
+    if (!is.null(type3_all_df) && nrow(all_rows) > 0) {
+      raw_only <- all_rows %>% filter(.data$p < 0.05, is.na(.data$p_fdr) | .data$p_fdr >= 0.05)
+      if (nrow(raw_only) > 0) {
+        lines <- c(lines, sprintf("  - FDR 补充说明：%s 另有未校正显著但经 FDR 后未保留的效应，写作时宜作为趋势或探索性结果处理。", paste(unique(effect_label_zh(raw_only$Effect)), collapse = "、")))
       }
     }
   }
@@ -371,7 +418,7 @@ write_report_zh <- function(out_path, summary_df, fdr_df, pair_df, caution_df) {
     for (dv in unique(fdr_df$DV)) {
       dv_rows <- fdr_df %>% filter(.data$DV == dv, !is.na(.data$p_fdr), .data$p_fdr < 0.05)
       lines <- c(lines, sprintf("### %s", dv))
-      lines <- c(lines, build_narrative(dv, dv_rows, pair_df, caution_df), "")
+      lines <- c(lines, build_narrative(dv, dv_rows, pair_df, caution_df, fdr_df), "")
     }
   }
 
