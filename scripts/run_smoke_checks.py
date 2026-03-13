@@ -51,6 +51,11 @@ def main() -> int:
             ['--long-csv', '--out-dir', '--python', '--with-qc'],
             [['Significance-only pipeline'], ['overall', 'experience']],
         ),
+        (
+            [sys.executable, 'scripts/run_item_level_lmm.py', '--help'],
+            ['--long-csv', '--out-dir', '--exclude-subjects', '--p-adjust', '--df-method', '--rscript'],
+            [['item-level'], ['LMM'], ['fixed effects', 'consistent across', 'DVs']],
+        ),
     ]
     for cmd, required_flags, required_phrase_groups in cli_checks:
         out = capture(cmd)

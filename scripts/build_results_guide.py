@@ -30,6 +30,8 @@ def _write_md(out_root: Path) -> Path:
     lines.append("5. `significance/qc/overall/wwr_polynomial/png/` — overall WWR trend figures")
     lines.append("6. `significance/qc/experience/wwr_polynomial_group_only/csv/wwr_polynomial_contrasts.csv` — experience grouped significance")
     lines.append("7. `significance/qc/experience/wwr_polynomial_group_round/csv/wwr_polynomial_contrasts.csv` — round follow-up")
+    lines.append("8. `significance/qc/item_level_lmm/md/item_level_lmm_report_zh.md` — item-level / dimension-level unified LMM summary")
+    lines.append("9. `significance/qc/item_level_lmm/csv/item_level_lmm_type3_fixed_effects_fdr.csv` — item-level fixed effects after multiplicity control")
     lines.append("")
     lines.append("## 2. If you want formal reporting / 如果要正式写结果")
     lines.append("")
@@ -45,6 +47,7 @@ def _write_md(out_root: Path) -> Path:
     lines.append("- Overall WWR linear/quadratic trend → `significance/qc/overall/wwr_polynomial/`")
     lines.append("- Experience-group WWR significance → `significance/qc/experience/wwr_polynomial_group_only/`")
     lines.append("- Experience × Round follow-up → `significance/qc/experience/wwr_polynomial_group_round/`")
+    lines.append("- Item-level / dimension-level unified LMM → `significance/qc/item_level_lmm/`")
     p.write_text("\n".join(lines), encoding="utf-8")
     return p
 
@@ -80,6 +83,7 @@ def _write_png(out_root: Path) -> Path:
         "3. significance/qc/overall/core_model/png/",
         "4. significance/qc/overall/wwr_polynomial/csv/",
         "5. significance/qc/experience/wwr_polynomial_group_only/csv/",
+        "6. significance/qc/item_level_lmm/md/item_level_lmm_report_zh.md",
     ])
 
     _summary_box(ax2, "Question → folder", [
@@ -89,6 +93,7 @@ def _write_png(out_root: Path) -> Path:
         "WWR trend overall → significance/qc/overall/wwr_polynomial/",
         "Experience-group significance → significance/qc/experience/wwr_polynomial_group_only/",
         "Experience × Round → significance/qc/experience/wwr_polynomial_group_round/",
+        "Item-level unified LMM → significance/qc/item_level_lmm/",
         "",
         "Rule: png first, csv second.",
         "Rule: qc first, raw second.",

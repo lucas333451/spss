@@ -188,6 +188,8 @@ python scripts/significance_pipeline.py \
 ### 维护命令速查
 - 文档防漂移检查：
   - `python3 scripts/check_doc_consistency.py`
+- item-level 统一结构 LMM 的 R 依赖检查：
+  - `python3 scripts/check_r_item_level_lmm.py`
 - clean main 入口体检：
   - `python3 scripts/check_main_entrypoints.py`
 - 轻量可执行 smoke 检查：
