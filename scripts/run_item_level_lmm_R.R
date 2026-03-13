@@ -24,6 +24,23 @@ fmt_num <- function(x, digits = 4) {
   ifelse(is.na(x), NA_character_, format(round(x, digits), nsmall = digits, trim = TRUE))
 }
 
+is_singular_safe <- function(fit) {
+  out <- try(lme4::isSingular(fit, tol = 1e-4), silent = TRUE)
+  if (inherits(out, "try-error")) return(NA)
+  isTRUE(out)
+}
+
+collect_warning_flags <- function(warnings_text) {
+  wt <- paste(warnings_text, collapse = " | ")
+  list(
+    warning_text = wt,
+    has_warning = nzchar(wt),
+    has_convergence_warning = grepl("convergen|failed to converge|negative eigenvalue|unable to evaluate scaled gradient|bobyqa", wt, ignore.case = TRUE),
+    has_singularity_warning = grepl("singular", wt, ignore.case = TRUE),
+    has_kroger_warning = grepl("kenward-roger|pbkrtest", wt, ignore.case = TRUE)
+  )
+}
+
 extract_random_effects <- function(fit, dv) {
   vc <- as.data.frame(VarCorr(fit))
   if (nrow(vc) == 0) return(data.frame())
@@ -113,23 +130,32 @@ fit_with_fallback <- function(formula_txt, dat) {
     list(method = "Nelder_Mead", re = "(1 | SubjectID)")
   )
   last_err <- NULL
+  last_warn <- character()
   for (a in attempts) {
     full_formula <- paste0(formula_txt, " + ", a$re)
-    fit <- try(
-      lmer(
-        as.formula(full_formula),
-        data = dat,
-        REML = FALSE,
-        control = lmerControl(optimizer = a$method, calc.derivs = FALSE)
+    warn_log <- character()
+    fit <- withCallingHandlers(
+      try(
+        lmer(
+          as.formula(full_formula),
+          data = dat,
+          REML = FALSE,
+          control = lmerControl(optimizer = a$method, calc.derivs = FALSE)
+        ),
+        silent = TRUE
       ),
-      silent = TRUE
+      warning = function(w) {
+        warn_log <<- c(warn_log, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
     )
     if (!inherits(fit, "try-error")) {
-      return(list(fit = fit, formula = full_formula, re = a$re, method = a$method))
+      return(list(fit = fit, formula = full_formula, re = a$re, method = a$method, warnings = unique(warn_log)))
     }
     last_err <- as.character(fit)
+    last_warn <- unique(c(last_warn, warn_log))
   }
-  stop(last_err)
+  stop(paste(c(last_err, last_warn), collapse = " | "))
 }
 
 normalize_pairwise <- function(df, spec_label) {
@@ -148,20 +174,47 @@ normalize_pairwise <- function(df, spec_label) {
   out
 }
 
+safe_emm_summary <- function(obj, infer = c(TRUE, TRUE), adjust = NULL) {
+  warn_log <- character()
+  val <- withCallingHandlers(
+    {
+      if (is.null(adjust)) {
+        as.data.frame(summary(obj, infer = infer))
+      } else {
+        as.data.frame(summary(obj, infer = infer, adjust = adjust))
+      }
+    },
+    warning = function(w) {
+      warn_log <<- c(warn_log, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  list(data = val, warnings = unique(warn_log))
+}
+
 make_emmeans_outputs <- function(fit, dv, sig_effects, p_adjust) {
   emm_rows <- list()
   pair_rows <- list()
+  warn_rows <- list()
 
   add_emm_pair <- function(spec_label, emm_obj, pair_obj) {
-    emm_df <- as.data.frame(summary(emm_obj, infer = c(TRUE, TRUE)))
+    emm_res <- safe_emm_summary(emm_obj, infer = c(TRUE, TRUE), adjust = NULL)
+    emm_df <- emm_res$data
     emm_df$DV <- dv
     emm_df$Spec <- spec_label
     emm_rows[[length(emm_rows) + 1]] <<- emm_df
+    if (length(emm_res$warnings) > 0) {
+      warn_rows[[length(warn_rows) + 1]] <<- data.frame(DV = dv, Source = paste0("EMM:", spec_label), Warning = emm_res$warnings)
+    }
 
-    pair_df <- as.data.frame(summary(pair_obj, infer = c(TRUE, TRUE), adjust = p_adjust))
+    pair_res <- safe_emm_summary(pair_obj, infer = c(TRUE, TRUE), adjust = p_adjust)
+    pair_df <- pair_res$data
     pair_df$DV <- dv
     pair_df <- normalize_pairwise(pair_df, spec_label)
     pair_rows[[length(pair_rows) + 1]] <<- pair_df
+    if (length(pair_res$warnings) > 0) {
+      warn_rows[[length(warn_rows) + 1]] <<- data.frame(DV = dv, Source = paste0("Pairwise:", spec_label), Warning = pair_res$warnings)
+    }
   }
 
   if ("WWR" %in% sig_effects) {
@@ -205,71 +258,77 @@ make_emmeans_outputs <- function(fit, dv, sig_effects, p_adjust) {
 
   list(
     emmeans = bind_rows(emm_rows),
-    pairwise = bind_rows(pair_rows)
+    pairwise = bind_rows(pair_rows),
+    warnings = bind_rows(warn_rows)
   )
 }
 
-build_narrative <- function(dv, effect_rows, pair_df) {
+build_narrative <- function(dv, effect_rows, pair_df, caution_df) {
   lines <- c()
   if (nrow(effect_rows) == 0) {
-    return(c(sprintf("- %s：Type III fixed effects 中未见显著项（至少在当前未校正 p<.05 层面）。", dv)))
-  }
+    lines <- c(lines, sprintf("- %s：Type III fixed effects 中未见显著项（至少在当前 FDR 口径下）。", dv))
+  } else {
+    for (i in seq_len(nrow(effect_rows))) {
+      r <- effect_rows[i, ]
+      lines <- c(lines, sprintf(
+        "- %s：%s 显著，F(%s, %s) = %s，p = %s，FDR p = %s。",
+        dv,
+        r$Effect,
+        fmt_num(r$NumDF, 2),
+        fmt_num(r$DenDF, 2),
+        fmt_num(r$F_value, 3),
+        fmt_num(r$p, 4),
+        fmt_num(r$p_fdr, 4)
+      ))
 
-  for (i in seq_len(nrow(effect_rows))) {
-    r <- effect_rows[i, ]
-    lines <- c(lines, sprintf(
-      "- %s：%s 显著，F(%s, %s) = %s，p = %s，FDR p = %s。",
-      dv,
-      r$Effect,
-      fmt_num(r$NumDF, 2),
-      fmt_num(r$DenDF, 2),
-      fmt_num(r$F_value, 3),
-      fmt_num(r$p, 4),
-      fmt_num(r$p_fdr, 4)
-    ))
+      if (nrow(pair_df) > 0) {
+        sub_pair <- pair_df %>% filter(.data$DV == dv, !is.na(.data$p.value), .data$p.value < 0.05)
+        if (r$Effect == "WWR" && nrow(sub_pair) > 0) {
+          use <- sub_pair %>% filter(.data$Spec == "WWR_main")
+        } else if (r$Effect == "Complexity" && nrow(sub_pair) > 0) {
+          use <- sub_pair %>% filter(.data$Spec == "Complexity_main")
+        } else if (r$Effect == "ExperienceGroup" && nrow(sub_pair) > 0) {
+          use <- sub_pair %>% filter(.data$Spec == "ExperienceGroup_main")
+        } else if (r$Effect == "WWR:Complexity") {
+          use <- sub_pair %>% filter(.data$Spec %in% c("WWR_within_Complexity", "Complexity_within_WWR"))
+        } else if (r$Effect == "WWR:ExperienceGroup") {
+          use <- sub_pair %>% filter(.data$Spec %in% c("WWR_within_ExperienceGroup", "ExperienceGroup_within_WWR"))
+        } else if (r$Effect == "Complexity:ExperienceGroup") {
+          use <- sub_pair %>% filter(.data$Spec %in% c("Complexity_within_ExperienceGroup", "ExperienceGroup_within_Complexity"))
+        } else if (r$Effect == "WWR:Complexity:ExperienceGroup") {
+          use <- sub_pair %>% filter(.data$Spec %in% c("WWR_within_Complexity_by_ExperienceGroup", "Complexity_within_WWR_by_ExperienceGroup", "ExperienceGroup_within_WWR_by_Complexity"))
+        } else {
+          use <- sub_pair[0, ]
+        }
 
-    if (nrow(pair_df) > 0) {
-      sub_pair <- pair_df %>% filter(.data$DV == dv, !is.na(.data$p.value), .data$p.value < 0.05)
-      if (r$Effect == "WWR" && nrow(sub_pair) > 0) {
-        use <- sub_pair %>% filter(.data$Spec == "WWR_main")
-      } else if (r$Effect == "Complexity" && nrow(sub_pair) > 0) {
-        use <- sub_pair %>% filter(.data$Spec == "Complexity_main")
-      } else if (r$Effect == "ExperienceGroup" && nrow(sub_pair) > 0) {
-        use <- sub_pair %>% filter(.data$Spec == "ExperienceGroup_main")
-      } else if (r$Effect == "WWR:Complexity") {
-        use <- sub_pair %>% filter(.data$Spec %in% c("WWR_within_Complexity", "Complexity_within_WWR"))
-      } else if (r$Effect == "WWR:ExperienceGroup") {
-        use <- sub_pair %>% filter(.data$Spec %in% c("WWR_within_ExperienceGroup", "ExperienceGroup_within_WWR"))
-      } else if (r$Effect == "Complexity:ExperienceGroup") {
-        use <- sub_pair %>% filter(.data$Spec %in% c("Complexity_within_ExperienceGroup", "ExperienceGroup_within_Complexity"))
-      } else if (r$Effect == "WWR:Complexity:ExperienceGroup") {
-        use <- sub_pair %>% filter(.data$Spec %in% c("WWR_within_Complexity_by_ExperienceGroup", "Complexity_within_WWR_by_ExperienceGroup", "ExperienceGroup_within_WWR_by_Complexity"))
-      } else {
-        use <- sub_pair[0, ]
-      }
-
-      if (nrow(use) > 0) {
-        top_use <- use %>% arrange(.data$p.value) %>% head(3)
-        for (j in seq_len(nrow(top_use))) {
-          rr <- top_use[j, ]
-          lines <- c(lines, sprintf(
-            "  - follow-up（%s）：%s，estimate = %s，95%% CI [%s, %s]，p = %s，方向：%s。",
-            rr$Spec,
-            rr$contrast,
-            fmt_num(rr$estimate, 3),
-            fmt_num(rr$lower.CL, 3),
-            fmt_num(rr$upper.CL, 3),
-            fmt_num(rr$p.value, 4),
-            rr$comparison_direction
-          ))
+        if (nrow(use) > 0) {
+          top_use <- use %>% arrange(.data$p.value) %>% head(3)
+          for (j in seq_len(nrow(top_use))) {
+            rr <- top_use[j, ]
+            lines <- c(lines, sprintf(
+              "  - follow-up（%s）：%s，estimate = %s，95%% CI [%s, %s]，p = %s，方向：%s。",
+              rr$Spec,
+              rr$contrast,
+              fmt_num(rr$estimate, 3),
+              fmt_num(rr$lower.CL, 3),
+              fmt_num(rr$upper.CL, 3),
+              fmt_num(rr$p.value, 4),
+              rr$comparison_direction
+            ))
+          }
         }
       }
     }
   }
+
+  caut <- caution_df %>% filter(.data$DV == dv)
+  if (nrow(caut) > 0) {
+    lines <- c(lines, sprintf("  - 谨慎解释：该因变量存在模型 warning（%s），建议结合 fit indices / random effects 一并审阅。", paste(unique(caut$warning_class), collapse = ", ")))
+  }
   lines
 }
 
-write_report_zh <- function(out_path, summary_df, fdr_df, pair_df) {
+write_report_zh <- function(out_path, summary_df, fdr_df, pair_df, caution_df) {
   lines <- c(
     "# 逐题 / 逐维度 LMM 结果汇总（自动生成）",
     "",
@@ -288,11 +347,21 @@ write_report_zh <- function(out_path, summary_df, fdr_df, pair_df) {
     lines <- c(lines, "## 每个因变量的模型状态", "")
     for (i in seq_len(nrow(summary_df))) {
       r <- summary_df[i, ]
+      caution_txt <- ifelse(isTRUE(r$caution_flag), sprintf("；caution=%s", r$caution_reason), "")
       lines <- c(lines, sprintf(
-        "- %s：status=%s；subjects=%s；rows=%s；random=%s；AIC=%s；BIC=%s；-2LL=%s。",
+        "- %s：status=%s；subjects=%s；rows=%s；random=%s；AIC=%s；BIC=%s；-2LL=%s%s。",
         r$DV, r$Status, r$n_subjects, r$n_rows, r$used_random,
-        fmt_num(r$AIC), fmt_num(r$BIC), fmt_num(r$minus2LL)
+        fmt_num(r$AIC), fmt_num(r$BIC), fmt_num(r$minus2LL), caution_txt
       ))
+    }
+    lines <- c(lines, "")
+  }
+
+  if (nrow(caution_df) > 0) {
+    lines <- c(lines, "## 需要谨慎解释的因变量", "")
+    for (dv in unique(caution_df$DV)) {
+      sub <- caution_df %>% filter(.data$DV == dv)
+      lines <- c(lines, sprintf("- %s：%s", dv, paste(unique(sub$warning_class), collapse = ", ")))
     }
     lines <- c(lines, "")
   }
@@ -302,7 +371,7 @@ write_report_zh <- function(out_path, summary_df, fdr_df, pair_df) {
     for (dv in unique(fdr_df$DV)) {
       dv_rows <- fdr_df %>% filter(.data$DV == dv, !is.na(.data$p_fdr), .data$p_fdr < 0.05)
       lines <- c(lines, sprintf("### %s", dv))
-      lines <- c(lines, build_narrative(dv, dv_rows, pair_df), "")
+      lines <- c(lines, build_narrative(dv, dv_rows, pair_df, caution_df), "")
     }
   }
 
@@ -352,6 +421,7 @@ random_rows <- list()
 fit_rows <- list()
 emm_rows <- list()
 pair_rows <- list()
+warning_rows <- list()
 
 for (dv in dvs) {
   dat <- x %>% filter(!is.na(.data[[dv]]))
@@ -371,7 +441,7 @@ for (dv in dvs) {
   rhs <- paste("WWR * Complexity * ExperienceGroup")
   fit_obj <- try(fit_with_fallback(formula_txt = paste0(dv, " ~ ", rhs), dat = dat), silent = TRUE)
   if (inherits(fit_obj, "try-error")) {
-    status_rows[[length(status_rows) + 1]] <- data.frame(DV = dv, Status = "fit_failed", Reason = as.character(fit_obj), n_rows = n_rows, n_subjects = n_subjects)
+    status_rows[[length(status_rows) + 1]] <- data.frame(DV = dv, Status = "fit_failed", Reason = as.character(fit_obj), n_rows = n_rows, n_subjects = n_subjects, caution_flag = TRUE, caution_reason = "fit_failed")
     next
   }
 
@@ -379,6 +449,15 @@ for (dv in dvs) {
   full_formula <- fit_obj$formula
   used_re <- fit_obj$re
   fit_method <- fit_obj$method
+  warning_flags <- collect_warning_flags(fit_obj$warnings)
+  singular_flag <- is_singular_safe(fit)
+  caution_flag <- isTRUE(warning_flags$has_convergence_warning) || isTRUE(warning_flags$has_singularity_warning) || isTRUE(singular_flag)
+  caution_reason <- paste(unique(c(
+    if (isTRUE(warning_flags$has_convergence_warning)) "convergence_warning" else NULL,
+    if (isTRUE(warning_flags$has_singularity_warning)) "singularity_warning" else NULL,
+    if (isTRUE(singular_flag)) "isSingular_TRUE" else NULL,
+    if (isTRUE(warning_flags$has_kroger_warning)) "kenward_roger_fallback_warning" else NULL
+  )), collapse = ";")
 
   status_rows[[length(status_rows) + 1]] <- data.frame(
     DV = dv,
@@ -388,8 +467,28 @@ for (dv in dvs) {
     used_random = used_re,
     fit_method = fit_method,
     n_rows = n_rows,
-    n_subjects = n_subjects
+    n_subjects = n_subjects,
+    singular_flag = singular_flag,
+    has_warning = warning_flags$has_warning,
+    warning_text = warning_flags$warning_text,
+    caution_flag = caution_flag,
+    caution_reason = ifelse(nzchar(caution_reason), caution_reason, NA_character_)
   )
+
+  if (warning_flags$has_warning) {
+    warn_classes <- unique(c(
+      if (isTRUE(warning_flags$has_convergence_warning)) "convergence_warning" else NULL,
+      if (isTRUE(warning_flags$has_singularity_warning)) "singularity_warning" else NULL,
+      if (isTRUE(warning_flags$has_kroger_warning)) "kenward_roger_fallback_warning" else NULL
+    ))
+    if (length(warn_classes) == 0) warn_classes <- "other_warning"
+    for (wc in warn_classes) {
+      warning_rows[[length(warning_rows) + 1]] <- data.frame(DV = dv, Source = "model_fit", warning_class = wc, warning_text = warning_flags$warning_text)
+    }
+  }
+  if (isTRUE(singular_flag)) {
+    warning_rows[[length(warning_rows) + 1]] <- data.frame(DV = dv, Source = "model_fit", warning_class = "isSingular_TRUE", warning_text = "lme4::isSingular returned TRUE")
+  }
 
   type3_tmp <- try(extract_type3(fit, dv, full_formula, opt$`df-method`, "(1 + Complexity | SubjectID)", used_re, fit_method, n_rows, n_subjects), silent = TRUE)
   if (!inherits(type3_tmp, "try-error")) {
@@ -399,6 +498,10 @@ for (dv in dvs) {
     if (!inherits(emm_out, "try-error")) {
       if (nrow(emm_out$emmeans) > 0) emm_rows[[length(emm_rows) + 1]] <- emm_out$emmeans
       if (nrow(emm_out$pairwise) > 0) pair_rows[[length(pair_rows) + 1]] <- emm_out$pairwise
+      if (nrow(emm_out$warnings) > 0) {
+        ew <- emm_out$warnings %>% rename(warning_text = .data$Warning) %>% mutate(warning_class = "emmeans_warning")
+        warning_rows[[length(warning_rows) + 1]] <- ew[, c("DV", "Source", "warning_class", "warning_text")]
+      }
     }
   }
 
@@ -431,6 +534,7 @@ random_df <- bind_rows(random_rows)
 fit_df <- bind_rows(fit_rows)
 emm_df <- bind_rows(emm_rows)
 pair_df <- bind_rows(pair_rows)
+warning_df <- bind_rows(warning_rows)
 
 fdr_df <- type3_df
 if (nrow(fdr_df) > 0) {
@@ -448,14 +552,15 @@ summary_df <- status_df %>%
 write_csv(status_df, file.path(out_dir, "csv", "item_level_lmm_model_status.csv"))
 write_csv(desc_df, file.path(out_dir, "csv", "item_level_lmm_descriptives.csv"))
 write_csv(type3_df, file.path(out_dir, "csv", "item_level_lmm_type3_fixed_effects.csv"))
+write_csv(fdr_df, file.path(out_dir, "csv", "item_level_lmm_type3_fixed_effects_fdr.csv"))
 write_csv(fixed_df, file.path(out_dir, "csv", "item_level_lmm_fixed_effect_estimates.csv"))
 write_csv(random_df, file.path(out_dir, "csv", "item_level_lmm_random_effects.csv"))
 write_csv(fit_df, file.path(out_dir, "csv", "item_level_lmm_fit_indices.csv"))
 write_csv(emm_df, file.path(out_dir, "csv", "item_level_lmm_emmeans.csv"))
 write_csv(pair_df, file.path(out_dir, "csv", "item_level_lmm_pairwise.csv"))
-write_csv(fdr_df, file.path(out_dir, "csv", "item_level_lmm_type3_fixed_effects_fdr.csv"))
+write_csv(warning_df, file.path(out_dir, "csv", "item_level_lmm_warnings.csv"))
 
-write_report_zh(file.path(out_dir, "md", "item_level_lmm_report_zh.md"), summary_df, fdr_df, pair_df)
+write_report_zh(file.path(out_dir, "md", "item_level_lmm_report_zh.md"), summary_df, fdr_df, pair_df, warning_df)
 
 payload <- list(
   task = "item_level_lmm",
@@ -470,6 +575,7 @@ payload <- list(
     "csv/item_level_lmm_fit_indices.csv",
     "csv/item_level_lmm_emmeans.csv",
     "csv/item_level_lmm_pairwise.csv",
+    "csv/item_level_lmm_warnings.csv",
     "md/item_level_lmm_report_zh.md"
   ),
   modeling_note = "Each DV is fit with the same fixed-effect structure: WWR * Complexity * ExperienceGroup.",

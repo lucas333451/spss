@@ -127,6 +127,7 @@ Start with:
 - `csv/item_level_lmm_fixed_effect_estimates.csv`
 - `csv/item_level_lmm_emmeans.csv`
 - `csv/item_level_lmm_pairwise.csv`
+- `csv/item_level_lmm_warnings.csv`
 
 Use this when:
 - you need to identify which S1–S5, B1–B3, and IPQ items/dimensions are driven by each fixed effect or interaction

@@ -129,6 +129,7 @@
 - `csv/item_level_lmm_fixed_effect_estimates.csv`
 - `csv/item_level_lmm_emmeans.csv`
 - `csv/item_level_lmm_pairwise.csv`
+- `csv/item_level_lmm_warnings.csv`
 
 作用：
 - 判断 S1–S5、B1–B3、IPQ 各题或各维度分别受哪些主效应 / 交互影响

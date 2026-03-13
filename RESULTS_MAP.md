@@ -77,6 +77,7 @@
 6. `results/significance/qc/item_level_lmm/csv/item_level_lmm_pairwise.csv`
 7. `results/significance/qc/item_level_lmm/csv/item_level_lmm_fit_indices.csv`
 8. `results/significance/qc/item_level_lmm/csv/item_level_lmm_random_effects.csv`
+9. `results/significance/qc/item_level_lmm/csv/item_level_lmm_warnings.csv`
 
 ---
 
