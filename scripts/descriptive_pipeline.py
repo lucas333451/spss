@@ -159,20 +159,27 @@ def _finalize_axis(ax, dv: str, xcol: str | None, title: str) -> None:
     _set_likert_axis(ax, dv)
 
 
-def _annotate_key_stats(ax, sub: pd.DataFrame, dv: str, group_col: str | None = None) -> None:
-    lines = _annotation_lines(sub, dv, group_col)
-    text = "\n".join(lines)
+def _summary_box(ax, title: str, lines: list[str]) -> None:
+    ax.axis("off")
+    ax.set_facecolor("#F7FAFD")
+    ax.text(0.04, 0.97, title, va="top", ha="left", fontsize=10.0, fontweight="bold", color="#40534C")
     ax.text(
-        0.99,
-        0.98,
-        text,
+        0.04,
+        0.90,
+        "\n".join(lines),
         transform=ax.transAxes,
         va="top",
-        ha="right",
-        fontsize=8.1,
-        color="#3F4B57",
-        bbox=dict(boxstyle="round,pad=0.28", fc="white", ec="#D7DDE4", lw=0.7, alpha=0.94),
+        ha="left",
+        fontsize=8.2,
+        color="#4E5E6A",
+        linespacing=1.35,
+        bbox=dict(boxstyle="round,pad=0.38", fc="white", ec="#D7E0E8", lw=0.75, alpha=0.96),
     )
+
+
+def _annotate_key_stats(ax, sub: pd.DataFrame, dv: str, group_col: str | None = None) -> None:
+    lines = _annotation_lines(sub, dv, group_col)
+    _summary_box(ax, f"Key stats — {dv}", lines)
 
 
 def _normalize_category_value(v):
@@ -217,10 +224,15 @@ def _plot_box_jitter(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str 
             order=x_order,
             hue_order=hue_order,
             palette=palette,
-            width=0.56,
+            width=0.42,
             fliersize=0,
-            linewidth=1.0,
+            linewidth=1.05,
             dodge=(hue_arg != xcol),
+            saturation=0.88,
+            boxprops=dict(alpha=0.42),
+            whiskerprops=dict(alpha=0.9),
+            capprops=dict(alpha=0.9),
+            medianprops=dict(color="#2F3B46", linewidth=1.25),
             legend=False,
             ax=ax,
         )
@@ -233,16 +245,44 @@ def _plot_box_jitter(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str 
             hue_order=hue_order,
             palette=palette,
             dodge=(hue_arg != xcol),
-            jitter=0.18,
-            size=2.4,
-            alpha=0.42,
+            jitter=0.11,
+            size=2.0,
+            alpha=0.26,
             linewidth=0,
             legend=False,
             ax=ax,
         )
+        sns.pointplot(
+            data=sub,
+            x=xcol,
+            y=dv,
+            hue=hue_arg,
+            order=x_order,
+            hue_order=hue_order,
+            palette=palette,
+            dodge=0.52 if hue_arg != xcol else False,
+            errorbar=None,
+            join=False,
+            markers="D",
+            scale=0.72,
+            legend=False,
+            ax=ax,
+        )
     else:
-        sns.boxplot(data=sub, y=dv, color="#C9D7E8", width=0.34, fliersize=0, linewidth=1.0, ax=ax)
-        sns.stripplot(data=sub, y=dv, color="#4C78A8", jitter=0.12, size=2.6, alpha=0.35, linewidth=0, ax=ax)
+        sns.boxplot(
+            data=sub,
+            y=dv,
+            color="#D7E7F5",
+            width=0.28,
+            fliersize=0,
+            linewidth=1.05,
+            boxprops=dict(alpha=0.5),
+            medianprops=dict(color="#2F3B46", linewidth=1.25),
+            ax=ax,
+        )
+        sns.stripplot(data=sub, y=dv, color="#6FA8DC", jitter=0.08, size=2.0, alpha=0.24, linewidth=0, ax=ax)
+        mean = pd.to_numeric(sub[dv], errors="coerce").mean()
+        ax.scatter([0], [mean], marker="D", s=28, color="#2F3B46", zorder=4)
 
 
 def _plot_box_mean_ci(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None, palette) -> None:
@@ -258,12 +298,12 @@ def _plot_box_mean_ci(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str
             order=x_order,
             hue_order=hue_order,
             palette=palette,
-            width=0.52,
+            width=0.40,
             fliersize=0,
             linewidth=1.0,
             dodge=(hue_arg != xcol),
-            boxprops=dict(alpha=0.32),
-            whiskerprops=dict(alpha=0.85),
+            boxprops=dict(alpha=0.34),
+            whiskerprops=dict(alpha=0.88),
             medianprops=dict(color="#2F3B46", linewidth=1.2),
             legend=False,
             ax=ax,
@@ -316,8 +356,8 @@ def _plot_violin(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | No
             palette=palette,
             inner=None,
             cut=0,
-            linewidth=0.9,
-            saturation=0.72,
+            linewidth=0.85,
+            saturation=0.58,
             dodge=(hue_arg != xcol),
             legend=False,
             ax=ax,
@@ -407,10 +447,13 @@ def _plot_distribution_panels(df: pd.DataFrame, cols: list[str], out_dir: Path, 
         ]
 
         for kind_key, plot_fn, kind_label in plot_specs:
-            fig, ax = plt.subplots(figsize=(6.2, 4.4))
+            fig = plt.figure(figsize=(8.6, 4.4))
+            gs = fig.add_gridspec(1, 2, width_ratios=[1.95, 0.95], wspace=0.12)
+            ax = fig.add_subplot(gs[0, 0])
+            ax_info = fig.add_subplot(gs[0, 1])
             plot_fn(ax, sub, dv, xcol, hue, palette)
             _finalize_axis(ax, dv, xcol, _publication_title(dv, xcol, hue if hue != xcol else None, kind_label))
-            _annotate_key_stats(ax, sub, dv, group_col=(hue if hue in sub.columns and hue != xcol else None))
+            _annotate_key_stats(ax_info, sub, dv, group_col=(hue if hue in sub.columns and hue != xcol else None))
             _dedupe_legend(ax)
             path = out_dir / f"{prefix}_{dv}_{kind_key}.png"
             fig.savefig(path, dpi=300)
@@ -529,7 +572,7 @@ def main():
         "outputs": outputs,
         "stats": ["n", "mean", "sd", "median", "min", "max", "skewness", "kurtosis", "ci95", "shapiro_p"],
         "stratification": ["WWR", "Complexity", "ExperienceGroup"],
-        "figure_style": "publication palette; box+jitter and box+mean±CI recommended, violin retained as candidate; long summary panel removed; key n and M±SD kept in-figure",
+        "figure_style": "Origin/Building and Environment-inspired fresh style; blue-orange publication palette; main panel + right-side summary box; narrower boxes, larger dodge spacing, reduced jitter overlap; key n and M±SD moved out of the plotting area",
     }
     (out / "descriptive_summary.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(payload, ensure_ascii=False))

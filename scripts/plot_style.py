@@ -7,12 +7,12 @@ import matplotlib as mpl
 import seaborn as sns
 
 PUBLICATION_PALETTE = [
-    "#4C78A8",  # muted blue
-    "#F58518",  # muted orange
-    "#54A24B",  # green
-    "#B279A2",  # mauve
-    "#9D755D",  # brown
-    "#BAB0AC",  # gray
+    "#6FA8DC",  # fresh light blue
+    "#F4A261",  # soft orange
+    "#7BC8A4",  # fresh green
+    "#B8A1D9",  # light mauve
+    "#C6A78B",  # soft brown
+    "#C7CDD4",  # cool gray
 ]
 
 
