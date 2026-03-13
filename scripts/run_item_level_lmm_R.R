@@ -443,7 +443,7 @@ if (nrow(fdr_df) > 0) {
 }
 
 summary_df <- status_df %>%
-  left_join(fit_df %>% select(.data$DV, .data$AIC, .data$BIC, .data$logLik, .data$minus2LL, .data$used_random), by = "DV")
+  left_join(fit_df %>% select("DV", "AIC", "BIC", "logLik", "minus2LL", "used_random"), by = "DV")
 
 write_csv(status_df, file.path(out_dir, "csv", "item_level_lmm_model_status.csv"))
 write_csv(desc_df, file.path(out_dir, "csv", "item_level_lmm_descriptives.csv"))
