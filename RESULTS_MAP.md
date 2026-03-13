@@ -68,11 +68,15 @@
 
 ---
 
-## Q7. S / B / IPQ 的逐题组间显著性看哪里？
-1. `results/significance/qc/item_level/experience/s_items/csv/s_items_experience_welch.csv`
-2. `results/significance/qc/item_level/experience/b_items/csv/b_items_experience_welch.csv`
-3. `results/significance/qc/item_level/experience/ipq_items/csv/ipq_items_experience_welch.csv`
-4. `results/significance/qc/item_level/experience/` 下对应 png / md / json
+## Q7. S / B / IPQ 的逐题 / 逐维度统一结构 LMM 看哪里？
+1. `results/significance/qc/item_level_lmm/md/item_level_lmm_report_zh.md`
+2. `results/significance/qc/item_level_lmm/csv/item_level_lmm_type3_fixed_effects.csv`
+3. `results/significance/qc/item_level_lmm/csv/item_level_lmm_type3_fixed_effects_fdr.csv`
+4. `results/significance/qc/item_level_lmm/csv/item_level_lmm_fixed_effect_estimates.csv`
+5. `results/significance/qc/item_level_lmm/csv/item_level_lmm_emmeans.csv`
+6. `results/significance/qc/item_level_lmm/csv/item_level_lmm_pairwise.csv`
+7. `results/significance/qc/item_level_lmm/csv/item_level_lmm_fit_indices.csv`
+8. `results/significance/qc/item_level_lmm/csv/item_level_lmm_random_effects.csv`
 
 ---
 

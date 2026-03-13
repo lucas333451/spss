@@ -57,7 +57,7 @@ The previous larger, more exploratory version is preserved in branch:
   - currently centered on:
     - core LMM model via `scripts/run_analysis.py` (now with corresponding PNG outputs for model comparison, fixed effects, interactions, random effects, and simple effects)
     - SPSS-aligned WWR polynomial significance via `scripts/wwr_polynomial_significance.py` (including direct direction labels: linear increase/decrease and whether WWR=45 is the highest or lowest; PNG uses main-panel + side-summary layout to reduce overlap)
-    - `scripts/item_level_significance.py` as the item-level significance entry for S / B / IPQ experience-group inference with unified csv/png/md/json outputs
+    - `scripts/run_item_level_lmm.py` (Python wrapper) + `scripts/run_item_level_lmm_R.R` as the item-level / dimension-level unified LMM entry for S1–S5, B1–B3, and IPQ items/dimensions, using the same fixed-effect structure (WWR, Complexity, ExperienceGroup, and their interactions) across DVs with Type III tests, fixed-effect estimates, EMMs, pairwise comparisons, fit indices, random-part summaries, and FDR output
   - also auto-generates:
     - `significance_index.md` (what to read first)
     - `research_questions_map.md` (which result answers which question)
@@ -120,6 +120,10 @@ results/
           png/
           md/
           json/
+      item_level_lmm/
+        csv/
+        md/
+        json/
     qc/                # only when --with-qc is used
       overall/
         core_model/
@@ -144,6 +148,10 @@ results/
           png/
           md/
           json/
+      item_level_lmm/
+        csv/
+        md/
+        json/
 ```
 
 ---

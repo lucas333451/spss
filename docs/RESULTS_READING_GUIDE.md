@@ -116,21 +116,22 @@ Together, these answer:
 
 ---
 
-### Step 5 — If you need item-level detail
+### Step 5 — If you need item-level / dimension-level unified LMM detail
 Go to:
-- `results/significance/qc/item_level/s_items/`
-- `results/significance/qc/item_level/b_items/`
-- `results/significance/qc/item_level/ipq_items/`
+- `results/significance/qc/item_level_lmm/`
 
 Start with:
-- `README.md`
-- `csv/s_items_primary_main_interactions.csv`
-- `csv/b_items_primary_main_interactions.csv`
-- `csv/ipq_items_primary_main_interactions.csv`
+- `md/item_level_lmm_report_zh.md`
+- `csv/item_level_lmm_type3_fixed_effects.csv`
+- `csv/item_level_lmm_type3_fixed_effects_fdr.csv`
+- `csv/item_level_lmm_fixed_effect_estimates.csv`
+- `csv/item_level_lmm_emmeans.csv`
+- `csv/item_level_lmm_pairwise.csv`
 
 Use this when:
-- you need to identify which individual items drive the significance pattern
-- you want S1–S5, B1–B3, and IPQ1–IPQ6 at the same modeling level as the Afford4 core branch
+- you need to identify which S1–S5, B1–B3, and IPQ items/dimensions are driven by each fixed effect or interaction
+- you want item-by-item answers for WWR, Complexity, ExperienceGroup, and their 2-way / 3-way interactions
+- you need manuscript-facing Type III tests, fixed-effect estimates, EMMs, pairwise comparisons, multiplicity control, fit indices, and random-part summaries
 
 ---
 

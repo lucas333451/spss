@@ -118,21 +118,22 @@
 
 ---
 
-### 第五步：如果你要逐题看
+### 第五步：如果你要逐题 / 逐维度看统一结构 LMM
 看这里：
-- `results/significance/qc/item_level/s_items/`
-- `results/significance/qc/item_level/b_items/`
-- `results/significance/qc/item_level/ipq_items/`
+- `results/significance/qc/item_level_lmm/`
 
 优先看：
-- `README.md`
-- `csv/s_items_primary_main_interactions.csv`
-- `csv/b_items_primary_main_interactions.csv`
-- `csv/ipq_items_primary_main_interactions.csv`
+- `md/item_level_lmm_report_zh.md`
+- `csv/item_level_lmm_type3_fixed_effects.csv`
+- `csv/item_level_lmm_type3_fixed_effects_fdr.csv`
+- `csv/item_level_lmm_fixed_effect_estimates.csv`
+- `csv/item_level_lmm_emmeans.csv`
+- `csv/item_level_lmm_pairwise.csv`
 
 作用：
-- 判断具体题目层面哪些效应在显著性上更关键
-- 让 S1–S5、B1–B3、IPQ1–IPQ6 与 Afford4 core branch 处于同一建模层级来阅读
+- 判断 S1–S5、B1–B3、IPQ 各题或各维度分别受哪些主效应 / 交互影响
+- 逐个因变量回答：WWR、Complexity、ExperienceGroup 以及二阶 / 三阶交互分别影响哪些题目
+- 给正文提供 Type III、固定效应估计、EMMs、pairwise、多重校正、拟合指标、随机部分结果这些论文级材料
 
 ---
 

@@ -41,7 +41,7 @@ def _write_index(out: Path, branches: list[str]) -> None:
         lines.append(f"### {branch}")
         lines.append(f"1. `./{branch}/overall/core_model/md/results_draft_zh.md` — Afford4 core-model narrative")
         lines.append(f"2. `./{branch}/overall/core_model/png/effect_size_summary.png` — Afford4 effect-size quick read")
-        lines.append(f"3. `./{branch}/item_level/README.md` — S1–S5 / B1–B3 / IPQ item-level significance overview")
+        lines.append(f"3. `./{branch}/item_level_lmm/md/item_level_lmm_report_zh.md` — S1–S5 / B1–B3 / IPQ 逐题/逐维度统一结构 LMM 汇总")
         lines.append(f"4. `./{branch}/overall/wwr_polynomial/wwr_polynomial_contrasts.csv` — overall WWR linear/quadratic significance")
         lines.append(f"4. `./{branch}/experience/wwr_polynomial_group_only/wwr_polynomial_contrasts.csv` — experience-group significance")
         lines.append(f"5. `./{branch}/experience/wwr_polynomial_group_round/csv/wwr_polynomial_contrasts.csv` — experience × round follow-up")
@@ -67,7 +67,7 @@ def _write_research_map(out: Path, branches: list[str]) -> None:
     lines.append("")
     lines.append("## Q4. What do item-level significance results say for S1–S5 / B1–B3 / IPQ1–IPQ6?")
     for branch in branches:
-        lines.append(f"- {branch}: `./{branch}/item_level/README.md` + `./{branch}/item_level/s_items/csv/s_items_primary_main_interactions.csv` + `./{branch}/item_level/b_items/csv/b_items_primary_main_interactions.csv` + `./{branch}/item_level/ipq_items/csv/ipq_items_primary_main_interactions.csv` + `./{branch}/item_level/s_items/png/s_items_effect_size_summary.png` + `./{branch}/item_level/b_items/png/b_items_effect_size_summary.png` + `./{branch}/item_level/ipq_items/png/ipq_items_effect_size_summary.png`")
+        lines.append(f"- {branch}: `./{branch}/item_level_lmm/md/item_level_lmm_report_zh.md` + `./{branch}/item_level_lmm/csv/item_level_lmm_type3_fixed_effects.csv` + `./{branch}/item_level_lmm/csv/item_level_lmm_type3_fixed_effects_fdr.csv` + `./{branch}/item_level_lmm/csv/item_level_lmm_fixed_effect_estimates.csv` + `./{branch}/item_level_lmm/csv/item_level_lmm_emmeans.csv` + `./{branch}/item_level_lmm/csv/item_level_lmm_pairwise.csv`")
     lines.append("")
     lines.append("## Q5. Do high/low experience groups differ in WWR significance patterns?")
     for branch in branches:
@@ -91,7 +91,7 @@ def _write_guide_png(out: Path, branches: list[str]) -> str:
         lines1 += [
             f"[{branch}]",
             "1. overall / core_model / md / results_draft_zh.md",
-            "2. item_level / README.md",
+            "2. item_level_lmm / md / item_level_lmm_report_zh.md",
             "3. overall / wwr_polynomial / wwr_polynomial_contrasts.csv",
             "4. experience / wwr_polynomial_group_only / wwr_polynomial_contrasts.csv",
             "5. experience / wwr_polynomial_group_round / wwr_polynomial_contrasts.csv",
@@ -104,7 +104,7 @@ def _write_guide_png(out: Path, branches: list[str]) -> str:
         lines2 += [
             f"[{branch}] Q1/Q2 → overall / wwr_polynomial",
             f"[{branch}] Q3 → overall / core_model",
-            f"[{branch}] Q4 → item_level / README.md + experience/*_welch.csv",
+            f"[{branch}] Q4 → item_level_lmm / md + csv / Type III + EMMs + pairwise",
             f"[{branch}] Q5 → experience / wwr_polynomial_group_only",
             f"[{branch}] Q6 → experience / wwr_polynomial_group_round",
             "",
@@ -171,12 +171,14 @@ def main():
         outputs.append(str((base / "experience" / "wwr_polynomial_group_round").relative_to(out)))
 
         run([
-            args.python, "scripts/item_level_significance.py",
+            args.python, "scripts/run_item_level_lmm.py",
             "--long-csv", str(args.long_csv),
-            "--out-dir", str(base / "item_level"),
+            "--out-dir", str(base / "item_level_lmm"),
             "--exclude-subjects", exclude,
+            "--p-adjust", "fdr",
+            "--df-method", "Satterthwaite",
         ])
-        outputs.append(str((base / "item_level").relative_to(out)))
+        outputs.append(str((base / "item_level_lmm").relative_to(out)))
 
     branch_names = [b for b, _ in branches]
     _write_index(out, branch_names)

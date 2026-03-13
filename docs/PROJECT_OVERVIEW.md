@@ -62,7 +62,7 @@
 主要内容：
 - `scripts/run_analysis.py`：整体核心模型（LMM 主体）
 - `scripts/wwr_polynomial_significance.py`：WWR 三水平线性 / 二次趋势显著性
-- `scripts/item_level_significance.py`：S / B / IPQ 的逐题组间显著性
+- `scripts/run_item_level_lmm.py` + `scripts/run_item_level_lmm_R.R`：S1–S5、B1–B3、IPQ 各题或维度的统一结构逐题 LMM（WWR、Complexity、ExperienceGroup 及其交互保持一致），并导出 Type III、固定效应估计、EMMs、pairwise、多重校正、拟合指标、随机部分结果
 - 自动导航文件：
   - `significance_index.md`
   - `research_questions_map.md`
