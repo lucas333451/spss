@@ -27,7 +27,9 @@ def main() -> int:
     if not rscript:
         raise SystemExit(
             "Rscript not found. Please install R or provide --rscript <path>. "
-            "This unified item-level LMM branch depends on the R stack: lme4, lmerTest, emmeans, readr, dplyr, tidyr, stringr, jsonlite."
+            "You can first run `python3 scripts/check_r_item_level_lmm.py` to diagnose the environment, "
+            "and see `docs/R_SETUP_FOR_ITEM_LEVEL_LMM.md` for installation commands. "
+            "This unified item-level LMM branch depends on the R stack: optparse, readr, dplyr, tidyr, stringr, lme4, lmerTest, emmeans, jsonlite."
         )
 
     script_path = Path(__file__).with_name("run_item_level_lmm_R.R")

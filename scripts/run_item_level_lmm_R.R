@@ -105,7 +105,7 @@ extract_type3 <- function(fit, dv, formula_txt, df_method, requested_re, used_re
   out
 }
 
-fit_with_fallback <- function(formula_txt, dat, df_method) {
+fit_with_fallback <- function(formula_txt, dat) {
   attempts <- list(
     list(method = "bobyqa", re = "(1 + Complexity | SubjectID)"),
     list(method = "Nelder_Mead", re = "(1 + Complexity | SubjectID)"),
@@ -132,6 +132,22 @@ fit_with_fallback <- function(formula_txt, dat, df_method) {
   stop(last_err)
 }
 
+normalize_pairwise <- function(df, spec_label) {
+  if (nrow(df) == 0) return(df)
+  out <- df
+  if (!("contrast" %in% names(out))) out$contrast <- NA_character_
+  if (!("estimate" %in% names(out))) out$estimate <- NA_real_
+  if (!("SE" %in% names(out))) out$SE <- NA_real_
+  if (!("df" %in% names(out))) out$df <- NA_real_
+  if (!("lower.CL" %in% names(out))) out$lower.CL <- NA_real_
+  if (!("upper.CL" %in% names(out))) out$upper.CL <- NA_real_
+  if (!("p.value" %in% names(out))) out$p.value <- NA_real_
+  out$comparison_direction <- ifelse(is.na(out$estimate), NA_character_, ifelse(out$estimate > 0, "first > second", ifelse(out$estimate < 0, "first < second", "no difference")))
+  out$Spec <- spec_label
+  out$Sig <- vapply(out$p.value, sig_tier, character(1))
+  out
+}
+
 make_emmeans_outputs <- function(fit, dv, sig_effects, p_adjust) {
   emm_rows <- list()
   pair_rows <- list()
@@ -144,8 +160,7 @@ make_emmeans_outputs <- function(fit, dv, sig_effects, p_adjust) {
 
     pair_df <- as.data.frame(summary(pair_obj, infer = c(TRUE, TRUE), adjust = p_adjust))
     pair_df$DV <- dv
-    pair_df$Spec <- spec_label
-    pair_df$Sig <- vapply(pair_df$p.value, sig_tier, character(1))
+    pair_df <- normalize_pairwise(pair_df, spec_label)
     pair_rows[[length(pair_rows) + 1]] <<- pair_df
   }
 
@@ -194,12 +209,78 @@ make_emmeans_outputs <- function(fit, dv, sig_effects, p_adjust) {
   )
 }
 
-write_report_zh <- function(out_path, summary_df, fdr_df) {
+build_narrative <- function(dv, effect_rows, pair_df) {
+  lines <- c()
+  if (nrow(effect_rows) == 0) {
+    return(c(sprintf("- %s：Type III fixed effects 中未见显著项（至少在当前未校正 p<.05 层面）。", dv)))
+  }
+
+  for (i in seq_len(nrow(effect_rows))) {
+    r <- effect_rows[i, ]
+    lines <- c(lines, sprintf(
+      "- %s：%s 显著，F(%s, %s) = %s，p = %s，FDR p = %s。",
+      dv,
+      r$Effect,
+      fmt_num(r$NumDF, 2),
+      fmt_num(r$DenDF, 2),
+      fmt_num(r$F_value, 3),
+      fmt_num(r$p, 4),
+      fmt_num(r$p_fdr, 4)
+    ))
+
+    if (nrow(pair_df) > 0) {
+      sub_pair <- pair_df %>% filter(.data$DV == dv, !is.na(.data$p.value), .data$p.value < 0.05)
+      if (r$Effect == "WWR" && nrow(sub_pair) > 0) {
+        use <- sub_pair %>% filter(.data$Spec == "WWR_main")
+      } else if (r$Effect == "Complexity" && nrow(sub_pair) > 0) {
+        use <- sub_pair %>% filter(.data$Spec == "Complexity_main")
+      } else if (r$Effect == "ExperienceGroup" && nrow(sub_pair) > 0) {
+        use <- sub_pair %>% filter(.data$Spec == "ExperienceGroup_main")
+      } else if (r$Effect == "WWR:Complexity") {
+        use <- sub_pair %>% filter(.data$Spec %in% c("WWR_within_Complexity", "Complexity_within_WWR"))
+      } else if (r$Effect == "WWR:ExperienceGroup") {
+        use <- sub_pair %>% filter(.data$Spec %in% c("WWR_within_ExperienceGroup", "ExperienceGroup_within_WWR"))
+      } else if (r$Effect == "Complexity:ExperienceGroup") {
+        use <- sub_pair %>% filter(.data$Spec %in% c("Complexity_within_ExperienceGroup", "ExperienceGroup_within_Complexity"))
+      } else if (r$Effect == "WWR:Complexity:ExperienceGroup") {
+        use <- sub_pair %>% filter(.data$Spec %in% c("WWR_within_Complexity_by_ExperienceGroup", "Complexity_within_WWR_by_ExperienceGroup", "ExperienceGroup_within_WWR_by_Complexity"))
+      } else {
+        use <- sub_pair[0, ]
+      }
+
+      if (nrow(use) > 0) {
+        top_use <- use %>% arrange(.data$p.value) %>% head(3)
+        for (j in seq_len(nrow(top_use))) {
+          rr <- top_use[j, ]
+          lines <- c(lines, sprintf(
+            "  - follow-up（%s）：%s，estimate = %s，95%% CI [%s, %s]，p = %s，方向：%s。",
+            rr$Spec,
+            rr$contrast,
+            fmt_num(rr$estimate, 3),
+            fmt_num(rr$lower.CL, 3),
+            fmt_num(rr$upper.CL, 3),
+            fmt_num(rr$p.value, 4),
+            rr$comparison_direction
+          ))
+        }
+      }
+    }
+  }
+  lines
+}
+
+write_report_zh <- function(out_path, summary_df, fdr_df, pair_df) {
   lines <- c(
     "# 逐题 / 逐维度 LMM 结果汇总（自动生成）",
     "",
     "固定效应统一为：WWR、Complexity、ExperienceGroup，以及所有二阶 / 三阶交互；随机部分默认尝试 `(1 + Complexity | SubjectID)`，失败时回退到 `(1 | SubjectID)`。",
     "估计方法：ML；Type III fixed effects 使用 lmerTest；显著项 follow-up 使用 estimated marginal means + pairwise comparisons。",
+    "多重检验控制：当前汇总文件同时保留原始 p 与 FDR 校正后的 p。正式写作优先参考 FDR 结果。",
+    "",
+    "## 样本与层级结构说明",
+    "- 层级单位：重复测量嵌套于 SubjectID。",
+    "- 重复测量因子：WWR、Complexity；被试间分组：ExperienceGroup。",
+    "- 每个因变量都使用相同固定效应结构，以便逐题回答哪个主效应或交互影响了哪些题目。",
     ""
   )
 
@@ -208,7 +289,7 @@ write_report_zh <- function(out_path, summary_df, fdr_df) {
     for (i in seq_len(nrow(summary_df))) {
       r <- summary_df[i, ]
       lines <- c(lines, sprintf(
-        "- %s：status=%s；subjects=%s；rows=%s；random=%s；AIC=%s；BIC=%s；-2LL=%s",
+        "- %s：status=%s；subjects=%s；rows=%s；random=%s；AIC=%s；BIC=%s；-2LL=%s。",
         r$DV, r$Status, r$n_subjects, r$n_rows, r$used_random,
         fmt_num(r$AIC), fmt_num(r$BIC), fmt_num(r$minus2LL)
       ))
@@ -217,19 +298,11 @@ write_report_zh <- function(out_path, summary_df, fdr_df) {
   }
 
   if (nrow(fdr_df) > 0) {
-    sig_df <- fdr_df %>% filter(!is.na(.data$p_fdr) & .data$p_fdr < 0.05)
-    lines <- c(lines, "## FDR 后仍显著的 fixed effects", "")
-    if (nrow(sig_df) == 0) {
-      lines <- c(lines, "- 当前没有在 FDR 校正后仍显著的效应。", "")
-    } else {
-      for (i in seq_len(nrow(sig_df))) {
-        r <- sig_df[i, ]
-        lines <- c(lines, sprintf(
-          "- %s | %s：F(%s, %s) = %s, p = %s, FDR p = %s",
-          r$DV, r$Effect, fmt_num(r$NumDF, 2), fmt_num(r$DenDF, 2), fmt_num(r$F_value, 3), fmt_num(r$p, 4), fmt_num(r$p_fdr, 4)
-        ))
-      }
-      lines <- c(lines, "")
+    lines <- c(lines, "## 按因变量汇总显著结果", "")
+    for (dv in unique(fdr_df$DV)) {
+      dv_rows <- fdr_df %>% filter(.data$DV == dv, !is.na(.data$p_fdr), .data$p_fdr < 0.05)
+      lines <- c(lines, sprintf("### %s", dv))
+      lines <- c(lines, build_narrative(dv, dv_rows, pair_df), "")
     }
   }
 
@@ -296,7 +369,7 @@ for (dv in dvs) {
     relocate(.data$DV)
 
   rhs <- paste("WWR * Complexity * ExperienceGroup")
-  fit_obj <- try(fit_with_fallback(formula_txt = paste0(dv, " ~ ", rhs), dat = dat, df_method = opt$`df-method`), silent = TRUE)
+  fit_obj <- try(fit_with_fallback(formula_txt = paste0(dv, " ~ ", rhs), dat = dat), silent = TRUE)
   if (inherits(fit_obj, "try-error")) {
     status_rows[[length(status_rows) + 1]] <- data.frame(DV = dv, Status = "fit_failed", Reason = as.character(fit_obj), n_rows = n_rows, n_subjects = n_subjects)
     next
@@ -318,10 +391,10 @@ for (dv in dvs) {
     n_subjects = n_subjects
   )
 
-  type3_df <- try(extract_type3(fit, dv, full_formula, opt$`df-method`, "(1 + Complexity | SubjectID)", used_re, fit_method, n_rows, n_subjects), silent = TRUE)
-  if (!inherits(type3_df, "try-error")) {
-    type3_rows[[length(type3_rows) + 1]] <- type3_df
-    sig_effects <- type3_df %>% filter(!is.na(.data$p) & .data$p < 0.05) %>% pull(.data$Effect) %>% as.character()
+  type3_tmp <- try(extract_type3(fit, dv, full_formula, opt$`df-method`, "(1 + Complexity | SubjectID)", used_re, fit_method, n_rows, n_subjects), silent = TRUE)
+  if (!inherits(type3_tmp, "try-error")) {
+    type3_rows[[length(type3_rows) + 1]] <- type3_tmp
+    sig_effects <- type3_tmp %>% filter(!is.na(.data$p) & .data$p < 0.05) %>% pull(.data$Effect) %>% as.character()
     emm_out <- try(make_emmeans_outputs(fit, dv, sig_effects, opt$`p-adjust`), silent = TRUE)
     if (!inherits(emm_out, "try-error")) {
       if (nrow(emm_out$emmeans) > 0) emm_rows[[length(emm_rows) + 1]] <- emm_out$emmeans
@@ -329,11 +402,11 @@ for (dv in dvs) {
     }
   }
 
-  fixed_df <- try(extract_fixed_effects(fit, dv, opt$`df-method`), silent = TRUE)
-  if (!inherits(fixed_df, "try-error")) fixed_rows[[length(fixed_rows) + 1]] <- fixed_df
+  fixed_tmp <- try(extract_fixed_effects(fit, dv, opt$`df-method`), silent = TRUE)
+  if (!inherits(fixed_tmp, "try-error")) fixed_rows[[length(fixed_rows) + 1]] <- fixed_tmp
 
-  random_df <- try(extract_random_effects(fit, dv), silent = TRUE)
-  if (!inherits(random_df, "try-error") && nrow(random_df) > 0) random_rows[[length(random_rows) + 1]] <- random_df
+  random_tmp <- try(extract_random_effects(fit, dv), silent = TRUE)
+  if (!inherits(random_tmp, "try-error") && nrow(random_tmp) > 0) random_rows[[length(random_rows) + 1]] <- random_tmp
 
   fit_rows[[length(fit_rows) + 1]] <- data.frame(
     DV = dv,
@@ -382,7 +455,7 @@ write_csv(emm_df, file.path(out_dir, "csv", "item_level_lmm_emmeans.csv"))
 write_csv(pair_df, file.path(out_dir, "csv", "item_level_lmm_pairwise.csv"))
 write_csv(fdr_df, file.path(out_dir, "csv", "item_level_lmm_type3_fixed_effects_fdr.csv"))
 
-write_report_zh(file.path(out_dir, "md", "item_level_lmm_report_zh.md"), summary_df, fdr_df)
+write_report_zh(file.path(out_dir, "md", "item_level_lmm_report_zh.md"), summary_df, fdr_df, pair_df)
 
 payload <- list(
   task = "item_level_lmm",

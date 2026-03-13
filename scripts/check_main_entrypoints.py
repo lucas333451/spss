@@ -16,6 +16,7 @@ REQUIRED_FILES = [
     REPO / 'docs' / 'PROJECT_OVERVIEW.md',
     REPO / 'docs' / 'RESULTS_READING_GUIDE.md',
     REPO / 'docs' / 'RESULTS_READING_GUIDE.zh.md',
+    REPO / 'docs' / 'R_SETUP_FOR_ITEM_LEVEL_LMM.md',
     REPO / 'notebooks' / 'colab_setup.ipynb',
     REPO / 'notebooks' / 'spss_colab.ipynb',
     REPO / 'scripts' / 'check_doc_consistency.py',

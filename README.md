@@ -191,6 +191,8 @@ python scripts/significance_pipeline.py \
   - `python3 scripts/check_doc_consistency.py`
 - R dependency check for item-level unified LMM:
   - `python3 scripts/check_r_item_level_lmm.py`
+- R installation/setup guide for item-level unified LMM:
+  - `docs/R_SETUP_FOR_ITEM_LEVEL_LMM.md`
 - Clean-main entrypoint health check:
   - `python3 scripts/check_main_entrypoints.py`
 - Lightweight executable smoke suite:

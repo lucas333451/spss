@@ -190,6 +190,8 @@ python scripts/significance_pipeline.py \
   - `python3 scripts/check_doc_consistency.py`
 - item-level 统一结构 LMM 的 R 依赖检查：
   - `python3 scripts/check_r_item_level_lmm.py`
+- item-level 统一结构 LMM 的 R 安装说明：
+  - `docs/R_SETUP_FOR_ITEM_LEVEL_LMM.md`
 - clean main 入口体检：
   - `python3 scripts/check_main_entrypoints.py`
 - 轻量可执行 smoke 检查：
