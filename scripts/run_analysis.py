@@ -98,22 +98,25 @@ def _humanize_term(term: str) -> str:
     t = str(term)
     mapping = {
         "Intercept": "Intercept",
-        "C(WWR)[T.15]": "WWR: 15 (vs reference)",
-        "C(WWR)[T.45]": "WWR: 45 (vs reference)",
-        "C(WWR)[T.75]": "WWR: 75 (vs reference)",
-        "C(Complexity)[T.1]": "Complexity: High/C1 (vs Low/C0)",
-        "C(Complexity)[T.0]": "Complexity: Low/C0 (vs High/C1)",
+        "C(WWR)[T.15]": "WWR 15 vs reference",
+        "C(WWR)[T.45]": "WWR 45 vs reference",
+        "C(WWR)[T.75]": "WWR 75 vs reference",
+        "C(Complexity)[T.1]": "Complexity C1/High vs C0/Low",
+        "C(Complexity)[T.0]": "Complexity C0/Low vs C1/High",
+        "C(ExperienceGroup)[T.Low]": "ExperienceGroup Low vs reference",
+        "C(ExperienceGroup)[T.High]": "ExperienceGroup High vs reference",
     }
     if t in mapping:
         return mapping[t]
 
-    t = t.replace("C(ExperienceGroup)[T.", "Experience group: ")
-    t = t.replace('C(WWR)[T.', 'WWR: ')
-    t = t.replace('C(Complexity)[T.', 'Complexity: ')
-    t = t.replace(']', ' (vs reference)')
+    t = t.replace("C(ExperienceGroup)[T.", "ExperienceGroup ")
+    t = t.replace('C(WWR)[T.', 'WWR ')
+    t = t.replace('C(Complexity)[T.', 'Complexity ')
+    t = t.replace(']', ' vs reference')
     t = t.replace(':', ' × ')
-    t = t.replace('Complexity: 1 (vs reference)', 'Complexity: High/C1 (vs Low/C0)')
-    t = t.replace('Complexity: 0 (vs reference)', 'Complexity: Low/C0 (vs High/C1)')
+    t = t.replace('Complexity 1 vs reference', 'Complexity C1/High vs C0/Low')
+    t = t.replace('Complexity 0 vs reference', 'Complexity C0/Low vs C1/High')
+    t = t.replace('ExperienceGroup Low vs reference', 'ExperienceGroup Low vs High')
     return t
 
 

@@ -259,8 +259,11 @@ def _plot_trend_panels(means: pd.DataFrame, results_df: pd.DataFrame, out_dir: P
 
         rsub_all = results_df[(results_df["DV"] == dv) & (results_df["Source"] == "WWR")].copy()
         sum_lines = []
-        for _, rr in rsub_all.sort_values([p_label if False else "Contrast"]).head(6).iterrows():
-            sum_lines.append(f"{rr['Contrast']}: p={_fmt(rr['SigAdj'] if 'SigAdj' in rr else rr['Sig.'], 4)}")
+        for _, rr in rsub_all.sort_values("Contrast").head(6).iterrows():
+            p_use = rr["SigAdj"] if ("SigAdj" in rr.index and pd.notna(rr["SigAdj"])) else rr["Sig."]
+            sum_lines.append(f"{rr['Contrast']}: p={_fmt(p_use, 4)} | {rr.get('Direction', '')}")
+        if "n_subjects" in rsub_all.columns and not rsub_all.empty:
+            sum_lines.insert(0, f"n = {int(rsub_all['n_subjects'].max())}")
         if not sum_lines:
             sum_lines = ["No valid contrast rows."]
         _summary_box(ax_info, f"Trend summary — {dv}", sum_lines)
@@ -319,23 +322,45 @@ def _plot_contrast_heatmaps(df: pd.DataFrame, out_dir: Path, split_cols: list[st
                         ptxt = f"{pv:0.3f}"
                     annot.loc[r, c] = f"p={ptxt}{_sigstar(pv)}"
 
-        fig, ax = plt.subplots(figsize=(max(9.0, 0.9 * len(mat.columns) + 4.0), max(4.0, 0.55 * len(mat.index) + 1.6)))
-
-        sns.heatmap(
-            -np.log10(mat.astype(float)),
-            cmap=sns.light_palette("#2F5D7E", as_cmap=True),
-            annot=annot,
-            fmt="",
-            annot_kws={"fontsize": 8.2},
-            linewidths=0.6,
-            linecolor="#E6ECE8",
-            cbar_kws={"label": f"-log10({p_label})"},
-            ax=ax,
-        )
-        ax.set_title(f"WWR Polynomial {contrast} significance map ({p_label})")
-        ax.set_xlabel("DV")
-        ax.set_ylabel("Split cell")
-        ax.tick_params(axis="x", rotation=25)
+        if len(mat.index) == 1:
+            vals = -np.log10(mat.astype(float)).iloc[0].to_numpy(dtype=float)
+            cols = list(mat.columns)
+            fig, ax = plt.subplots(figsize=(max(7.2, 1.0 * len(cols) + 2.8), 2.4))
+            tile = vals.reshape(1, -1)
+            sns.heatmap(
+                tile,
+                cmap=sns.light_palette("#6FA8DC", as_cmap=True),
+                annot=np.array([annot.iloc[0].tolist()]),
+                fmt="",
+                annot_kws={"fontsize": 8.6},
+                linewidths=0.8,
+                linecolor="#E6ECE8",
+                cbar_kws={"label": f"-log10({p_label})"},
+                yticklabels=[mat.index[0]],
+                xticklabels=cols,
+                ax=ax,
+            )
+            ax.set_title(f"WWR Polynomial {contrast} significance strip ({p_label})")
+            ax.set_xlabel("DV")
+            ax.set_ylabel("Split cell")
+            ax.tick_params(axis="x", rotation=20)
+        else:
+            fig, ax = plt.subplots(figsize=(max(9.0, 0.9 * len(mat.columns) + 4.0), max(4.0, 0.55 * len(mat.index) + 1.6)))
+            sns.heatmap(
+                -np.log10(mat.astype(float)),
+                cmap=sns.light_palette("#6FA8DC", as_cmap=True),
+                annot=annot,
+                fmt="",
+                annot_kws={"fontsize": 8.0},
+                linewidths=0.6,
+                linecolor="#E6ECE8",
+                cbar_kws={"label": f"-log10({p_label})"},
+                ax=ax,
+            )
+            ax.set_title(f"WWR Polynomial {contrast} significance map ({p_label})")
+            ax.set_xlabel("DV")
+            ax.set_ylabel("Split cell")
+            ax.tick_params(axis="x", rotation=25)
 
         path = out_dir / f"task5_{contrast.lower()}_contrast_heatmap.png"
         fig.savefig(path, dpi=230)
