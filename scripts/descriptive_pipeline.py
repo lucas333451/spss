@@ -177,9 +177,100 @@ def _summary_box(ax, title: str, lines: list[str]) -> None:
     )
 
 
-def _annotate_key_stats(ax, sub: pd.DataFrame, dv: str, group_col: str | None = None) -> None:
-    lines = _annotation_lines(sub, dv, group_col)
-    _summary_box(ax, f"Key stats — {dv}", lines)
+def _cluster_annotation_map(sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None) -> dict[str, list[str]]:
+    if not xcol or xcol not in sub.columns:
+        return {"ALL": _annotation_lines(sub, dv, group_col=(hue if hue in sub.columns else None))}
+
+    lines_map: dict[str, list[str]] = {}
+    x_order = _get_order(sub[xcol])
+    use_hue = hue if hue and hue in sub.columns and hue != xcol else None
+    for xv in x_order:
+        sx = sub[sub[xcol] == xv]
+        if sx.empty:
+            continue
+        if use_hue:
+            cluster_lines = []
+            for hv, sh in sx.groupby(use_hue, dropna=False):
+                st = _desc_stats(sh[dv], sh["SubjectID"] if "SubjectID" in sh.columns else None)
+                cluster_lines.append(f"{_format_group_value(hv)}: M={_fmt_num(st['mean'])}, SD={_fmt_num(st['sd'])}")
+        else:
+            st = _desc_stats(sx[dv], sx["SubjectID"] if "SubjectID" in sx.columns else None)
+            cluster_lines = [f"M={_fmt_num(st['mean'])}, SD={_fmt_num(st['sd'])}"]
+        lines_map[str(xv)] = cluster_lines
+    return lines_map
+
+
+def _sample_size_legend_lines(sub: pd.DataFrame, hue: str | None = None) -> list[str]:
+    if hue and hue in sub.columns:
+        lines = []
+        for hv, sh in sub.groupby(hue, dropna=False):
+            n = sh["SubjectID"].astype(str).str.strip().nunique() if "SubjectID" in sh.columns else len(sh)
+            lines.append(f"{_format_group_value(hv)}: n={n}")
+        return lines
+    n = sub["SubjectID"].astype(str).str.strip().nunique() if "SubjectID" in sub.columns else len(sub)
+    return [f"Total participants: n={n}"]
+
+
+def _annotate_cluster_stats(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None = None) -> None:
+    lines_map = _cluster_annotation_map(sub, dv, xcol, hue)
+    if not lines_map:
+        return
+
+    y0, y1 = ax.get_ylim()
+    yr = y1 - y0
+    if yr <= 0:
+        yr = 1.0
+
+    top_pad = max(0.65, yr * 0.22)
+    ax.set_ylim(y0, y1 + top_pad)
+    y_text = y1 + top_pad * 0.92
+
+    if not xcol or xcol not in sub.columns:
+        text = "\n".join(lines_map.get("ALL", []))
+        ax.text(
+            0,
+            y_text,
+            text,
+            ha="center",
+            va="top",
+            fontsize=7.9,
+            color="#4E5E6A",
+            bbox=dict(boxstyle="round,pad=0.28", fc="white", ec="#D7E0E8", lw=0.7, alpha=0.95),
+            clip_on=False,
+            zorder=6,
+        )
+    else:
+        x_order = _get_order(sub[xcol])
+        for i, xv in enumerate(x_order):
+            text = "\n".join(lines_map.get(str(xv), []))
+            if not text:
+                continue
+            ax.text(
+                i,
+                y_text,
+                text,
+                ha="center",
+                va="top",
+                fontsize=7.5,
+                color="#4E5E6A",
+                bbox=dict(boxstyle="round,pad=0.24", fc="white", ec="#D7E0E8", lw=0.7, alpha=0.95),
+                clip_on=False,
+                zorder=6,
+            )
+
+    legend_lines = _sample_size_legend_lines(sub, hue)
+    ax.text(
+        0.985,
+        0.03,
+        "\n".join(legend_lines),
+        transform=ax.transAxes,
+        ha="right",
+        va="bottom",
+        fontsize=7.4,
+        color="#536471",
+        bbox=dict(boxstyle="round,pad=0.24", fc="white", ec="#D7E0E8", lw=0.7, alpha=0.94),
+        zorder=6,
+    )
 
 
 def _normalize_category_value(v):
@@ -211,7 +302,7 @@ def _get_grouped_palette(sub: pd.DataFrame, hue: str | None) -> dict | None:
     return {str(level): colors[i] for i, level in enumerate(levels)}
 
 
-def _plot_box_jitter(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None, palette) -> None:
+def _plot_box(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None, palette) -> None:
     if xcol and xcol in sub.columns:
         hue_arg = hue if hue in sub.columns and hue != xcol else xcol
         x_order = _get_order(sub[xcol])
@@ -233,23 +324,6 @@ def _plot_box_jitter(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str 
             whiskerprops=dict(alpha=0.9),
             capprops=dict(alpha=0.9),
             medianprops=dict(color="#2F3B46", linewidth=1.25),
-            legend=False,
-            ax=ax,
-        )
-        sns.stripplot(
-            data=sub,
-            x=xcol,
-            y=dv,
-            hue=hue_arg,
-            order=x_order,
-            hue_order=hue_order,
-            palette=palette,
-            dodge=(hue_arg != xcol),
-            jitter=0.11,
-            size=2.0,
-            alpha=0.26,
-            linewidth=0,
-            legend=False,
             ax=ax,
         )
         sns.pointplot(
@@ -261,11 +335,8 @@ def _plot_box_jitter(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str 
             hue_order=hue_order,
             palette=palette,
             dodge=0.52 if hue_arg != xcol else False,
-            errorbar=None,
             join=False,
             markers="D",
-            scale=0.72,
-            legend=False,
             ax=ax,
         )
     else:
@@ -280,7 +351,45 @@ def _plot_box_jitter(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str 
             medianprops=dict(color="#2F3B46", linewidth=1.25),
             ax=ax,
         )
-        sns.stripplot(data=sub, y=dv, color="#6FA8DC", jitter=0.08, size=2.0, alpha=0.24, linewidth=0, ax=ax)
+        mean = pd.to_numeric(sub[dv], errors="coerce").mean()
+        ax.scatter([0], [mean], marker="D", s=28, color="#2F3B46", zorder=4)
+
+
+def _plot_jitter(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None, palette) -> None:
+    if xcol and xcol in sub.columns:
+        hue_arg = hue if hue in sub.columns and hue != xcol else xcol
+        x_order = _get_order(sub[xcol])
+        hue_order = _get_order(sub[hue_arg]) if hue_arg and hue_arg in sub.columns else None
+        sns.stripplot(
+            data=sub,
+            x=xcol,
+            y=dv,
+            hue=hue_arg,
+            order=x_order,
+            hue_order=hue_order,
+            palette=palette,
+            dodge=(hue_arg != xcol),
+            jitter=0.11,
+            size=2.4,
+            alpha=0.35,
+            linewidth=0,
+            ax=ax,
+        )
+        sns.pointplot(
+            data=sub,
+            x=xcol,
+            y=dv,
+            hue=hue_arg,
+            order=x_order,
+            hue_order=hue_order,
+            palette=palette,
+            dodge=0.52 if hue_arg != xcol else False,
+            join=False,
+            markers="D",
+            ax=ax,
+        )
+    else:
+        sns.stripplot(data=sub, y=dv, color="#6FA8DC", jitter=0.08, size=2.4, alpha=0.32, linewidth=0, ax=ax)
         mean = pd.to_numeric(sub[dv], errors="coerce").mean()
         ax.scatter([0], [mean], marker="D", s=28, color="#2F3B46", zorder=4)
 
@@ -305,7 +414,6 @@ def _plot_box_mean_ci(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str
             boxprops=dict(alpha=0.34),
             whiskerprops=dict(alpha=0.88),
             medianprops=dict(color="#2F3B46", linewidth=1.2),
-            legend=False,
             ax=ax,
         )
         sns.pointplot(
@@ -317,12 +425,8 @@ def _plot_box_mean_ci(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str
             hue_order=hue_order,
             palette=palette,
             dodge=0.36 if hue_arg != xcol else False,
-            errorbar=("ci", 95),
-            linestyle="none",
+            ci=95,
             markers="D",
-            markersize=6.2,
-            err_kws={"linewidth": 1.0, "alpha": 0.95},
-            legend=False,
             ax=ax,
         )
     else:
@@ -359,7 +463,6 @@ def _plot_violin(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | No
             linewidth=0.85,
             saturation=0.58,
             dodge=(hue_arg != xcol),
-            legend=False,
             ax=ax,
         )
         sns.boxplot(
@@ -377,7 +480,6 @@ def _plot_violin(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | No
             boxprops=dict(alpha=0.5),
             whiskerprops=dict(alpha=0.9),
             medianprops=dict(color="#2F3B46", linewidth=1.15),
-            legend=False,
             ax=ax,
         )
         sns.pointplot(
@@ -389,12 +491,8 @@ def _plot_violin(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | No
             hue_order=hue_order,
             palette=palette,
             dodge=0.36 if hue_arg != xcol else False,
-            errorbar=("ci", 95),
-            linestyle="none",
+            ci=95,
             markers="D",
-            markersize=5.8,
-            err_kws={"linewidth": 0.95, "alpha": 0.9},
-            legend=False,
             ax=ax,
         )
     else:
@@ -441,22 +539,21 @@ def _plot_distribution_panels(df: pd.DataFrame, cols: list[str], out_dir: Path, 
 
         palette = _get_grouped_palette(sub, hue if hue in sub.columns and hue != xcol else xcol if xcol in sub.columns else None)
         plot_specs = [
-            ("box_jitter", _plot_box_jitter, "box+jitter"),
+            ("box", _plot_box, "box"),
+            ("jitter", _plot_jitter, "jitter"),
             ("box_mean_ci", _plot_box_mean_ci, "box+mean±95% CI"),
             ("violin", _plot_violin, "violin"),
         ]
 
         for kind_key, plot_fn, kind_label in plot_specs:
-            fig = plt.figure(figsize=(8.6, 4.4))
-            gs = fig.add_gridspec(1, 2, width_ratios=[1.95, 0.95], wspace=0.12)
-            ax = fig.add_subplot(gs[0, 0])
-            ax_info = fig.add_subplot(gs[0, 1])
+            fig, ax = plt.subplots(figsize=(8.4, 4.8))
             plot_fn(ax, sub, dv, xcol, hue, palette)
             _finalize_axis(ax, dv, xcol, _publication_title(dv, xcol, hue if hue != xcol else None, kind_label))
-            _annotate_key_stats(ax_info, sub, dv, group_col=(hue if hue in sub.columns and hue != xcol else None))
+            _annotate_cluster_stats(ax, sub, dv, xcol, hue if hue in sub.columns and hue != xcol else None)
             _dedupe_legend(ax)
+            fig.tight_layout()
             path = out_dir / f"{prefix}_{dv}_{kind_key}.png"
-            fig.savefig(path, dpi=300)
+            fig.savefig(path, dpi=300, bbox_inches="tight")
             plt.close(fig)
             made.append(str(path))
     return made
@@ -572,7 +669,7 @@ def main():
         "outputs": outputs,
         "stats": ["n", "mean", "sd", "median", "min", "max", "skewness", "kurtosis", "ci95", "shapiro_p"],
         "stratification": ["WWR", "Complexity", "ExperienceGroup"],
-        "figure_style": "Origin/Building and Environment-inspired fresh style; blue-orange publication palette; main panel + right-side summary box; narrower boxes, larger dodge spacing, reduced jitter overlap; key n and M±SD moved out of the plotting area",
+        "figure_style": "Origin/Building and Environment-inspired fresh style; blue-orange publication palette; box and jitter exported as separate figures; per-WWR SD/mean annotations placed above each cluster instead of a right-side summary box",
     }
     (out / "descriptive_summary.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(payload, ensure_ascii=False))

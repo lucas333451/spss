@@ -1,0 +1,8 @@
+{
+  "n_subjects": 32,
+  "total_rows": 384,
+  "expected_rows": 384,
+  "n_abnormal_subjects": 0,
+  "abnormal_subjects": [],
+  "qc_pass": true
+}
