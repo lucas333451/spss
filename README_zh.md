@@ -159,11 +159,15 @@ results/
 ### 跑完整清爽版主流程
 ```bash
 python scripts/pipeline.py \
-  --excel "your_file.xlsx" \
+  --excel "/root/VR+EEG实验问卷-编码版-2026-02-17 .xlsx" \
   --sheet 0 \
-  --out-root results \
+  --out-root /root/问卷 \
   --with-qc
 ```
+
+> 当前项目默认输入文件：`/root/VR+EEG实验问卷-编码版-2026-02-17 .xlsx`
+>
+> 当前项目默认输出目录：`/root/问卷`
 
 ### 只跑描述性分析
 ```bash
