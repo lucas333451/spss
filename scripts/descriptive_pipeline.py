@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 import argparse
 import json
+from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
@@ -132,6 +133,16 @@ def _annotation_lines(sub: pd.DataFrame, dv: str, group_col: str | None = None) 
     return [f"n={st['n']}, M={_fmt_num(st['mean'])}±{_fmt_num(st['sd'])}"]
 
 
+@dataclass
+class _LabelSpec:
+    x: float
+    y: float
+    text: str
+    wwr: str
+    group: str
+    stats: dict[str, float]
+
+
 def _publication_title(dv: str, xcol: str | None, hue: str | None, kind_label: str) -> str:
     if xcol and hue and xcol != hue:
         return f"{dv} by {xcol} and {hue} ({kind_label})"
@@ -212,65 +223,120 @@ def _sample_size_legend_lines(sub: pd.DataFrame, hue: str | None = None) -> list
 
 
 def _annotate_cluster_stats(ax, sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None = None) -> None:
-    lines_map = _cluster_annotation_map(sub, dv, xcol, hue)
-    if not lines_map:
-        return
+    return
 
-    y0, y1 = ax.get_ylim()
-    yr = y1 - y0
-    if yr <= 0:
-        yr = 1.0
 
-    top_pad = max(0.65, yr * 0.22)
-    ax.set_ylim(y0, y1 + top_pad)
-    y_text = y1 + top_pad * 0.92
+def _compute_group_layout(sub: pd.DataFrame, xcol: str | None, hue: str | None) -> tuple[list[_LabelSpec], str | None]:
+    work = sub.copy()
+    if xcol and xcol in work.columns:
+        work[xcol] = work[xcol].map(_normalize_category_value)
+    if hue and hue in work.columns:
+        work[hue] = work[hue].map(_normalize_category_value)
 
+    if not xcol or xcol not in work.columns:
+        return [], None
+
+    x_order = _get_order(work[xcol])
+    hue_arg = hue if hue and hue in work.columns and hue != xcol else None
+    hue_order = _get_order(work[hue_arg]) if hue_arg else []
+    width = 0.78
+    dodge_span = min(width, 0.72)
+
+    rows = []
+    for xi, xv in enumerate(x_order):
+        sx = work[work[xcol] == xv]
+        if sx.empty:
+            continue
+        if hue_arg:
+            n_h = max(1, len(hue_order))
+            for hi, hv in enumerate(hue_order):
+                sh = sx[sx[hue_arg] == hv]
+                if sh.empty:
+                    continue
+                offset = (-dodge_span / 2.0) + ((hi + 0.5) * dodge_span / n_h)
+                rows.append((xi + offset, xv, hv, sh))
+        else:
+            rows.append((float(xi), xv, xv, sx))
+    return rows, hue_arg
+
+
+def _build_label_specs(sub: pd.DataFrame, dv: str, xcol: str | None, hue: str | None, mode: str) -> list[_LabelSpec]:
     if not xcol or xcol not in sub.columns:
-        text = "\n".join(lines_map.get("ALL", []))
-        ax.text(
-            0,
-            y_text,
-            text,
-            ha="center",
-            va="top",
-            fontsize=7.9,
-            color="#4E5E6A",
-            bbox=dict(boxstyle="round,pad=0.28", fc="white", ec="#D7E0E8", lw=0.7, alpha=0.95),
-            clip_on=False,
-            zorder=6,
-        )
-    else:
-        x_order = _get_order(sub[xcol])
-        for i, xv in enumerate(x_order):
-            text = "\n".join(lines_map.get(str(xv), []))
-            if not text:
-                continue
-            ax.text(
-                i,
-                y_text,
-                text,
-                ha="center",
-                va="top",
-                fontsize=7.5,
-                color="#4E5E6A",
-                bbox=dict(boxstyle="round,pad=0.24", fc="white", ec="#D7E0E8", lw=0.7, alpha=0.95),
-                clip_on=False,
-                zorder=6,
-            )
+        st = _desc_stats(sub[dv], sub["SubjectID"] if "SubjectID" in sub.columns else None)
+        if mode == "ci":
+            text = f"M={_fmt_num(st['mean'])} [{_fmt_num(st['ci95_low'])}, {_fmt_num(st['ci95_high'])}]"
+        else:
+            text = f"M={_fmt_num(st['mean'])}, SD={_fmt_num(st['sd'])}"
+        return [_LabelSpec(x=0.05, y=float(st["median"]), text=text, wwr="NA", group="ALL", stats=st)]
 
-    legend_lines = _sample_size_legend_lines(sub, hue)
-    ax.text(
-        0.985,
-        0.03,
-        "\n".join(legend_lines),
-        transform=ax.transAxes,
-        ha="right",
-        va="bottom",
-        fontsize=7.4,
-        color="#536471",
-        bbox=dict(boxstyle="round,pad=0.24", fc="white", ec="#D7E0E8", lw=0.7, alpha=0.94),
-        zorder=6,
-    )
+    layout_rows, hue_arg = _compute_group_layout(sub, xcol, hue)
+    specs: list[_LabelSpec] = []
+    for x, xv, gv, sg in layout_rows:
+        st = _desc_stats(sg[dv], sg["SubjectID"] if "SubjectID" in sg.columns else None)
+        if mode == "ci":
+            text = f"M={_fmt_num(st['mean'])} [{_fmt_num(st['ci95_low'])}, {_fmt_num(st['ci95_high'])}]"
+        else:
+            text = f"M={_fmt_num(st['mean'])}, SD={_fmt_num(st['sd'])}"
+        wwr_v = str(xv) if xcol == "WWR" else (str(sg["WWR"].iloc[0]) if "WWR" in sg.columns and len(sg["WWR"].dropna()) else "NA")
+        group_v = str(gv) if hue_arg else str(xv)
+        specs.append(_LabelSpec(x=float(x) + 0.05, y=float(st["median"]), text=text, wwr=wwr_v, group=group_v, stats=st))
+    return specs
+
+
+def _apply_label_collision_offsets(ax, specs: list[_LabelSpec], min_gap_px: float = 16.0, shift_px: float = 14.0) -> list[tuple[_LabelSpec, float]]:
+    if not specs:
+        return []
+    with_offsets: list[tuple[_LabelSpec, float]] = []
+    sorted_specs = sorted(specs, key=lambda s: s.y)
+    prev_display_y = None
+    current_shift = 0.0
+    for spec in sorted_specs:
+        disp_y = ax.transData.transform((spec.x, spec.y))[1]
+        if prev_display_y is not None and (disp_y + current_shift - prev_display_y) < min_gap_px:
+            current_shift += shift_px
+        shifted = disp_y + current_shift
+        prev_display_y = shifted
+        with_offsets.append((spec, current_shift))
+    return with_offsets
+
+
+def _annotate_compact_labels(ax, specs: list[_LabelSpec]) -> None:
+    for spec, shift_px in _apply_label_collision_offsets(ax, specs):
+        ax.annotate(
+            spec.text,
+            xy=(spec.x, spec.y),
+            xycoords="data",
+            xytext=(5, 7 + shift_px),
+            textcoords="offset points",
+            ha="left",
+            va="bottom",
+            fontsize=7.3,
+            color="#3E4D5A",
+            bbox=dict(boxstyle="round,pad=0.20", fc="white", ec="#D7E0E8", lw=0.6, alpha=0.78),
+            zorder=6,
+            clip_on=False,
+        )
+
+
+def _export_plot_stats_csv(path: Path, specs: list[_LabelSpec]) -> Path:
+    rows = []
+    for spec in specs:
+        rows.append(
+            {
+                "WWR": spec.wwr,
+                "group": spec.group,
+                "n": spec.stats["n"],
+                "mean": spec.stats["mean"],
+                "sd": spec.stats["sd"],
+                "median": spec.stats["median"],
+                "ci95_low": spec.stats["ci95_low"],
+                "ci95_high": spec.stats["ci95_high"],
+            }
+        )
+    out_path = path.with_suffix("")
+    out_path = out_path.with_name(f"{out_path.name}_plot_stats.csv")
+    pd.DataFrame(rows).to_csv(out_path, index=False, encoding="utf-8-sig")
+    return out_path
 
 
 def _normalize_category_value(v):
@@ -549,13 +615,17 @@ def _plot_distribution_panels(df: pd.DataFrame, cols: list[str], out_dir: Path, 
             fig, ax = plt.subplots(figsize=(8.4, 4.8))
             plot_fn(ax, sub, dv, xcol, hue, palette)
             _finalize_axis(ax, dv, xcol, _publication_title(dv, xcol, hue if hue != xcol else None, kind_label))
-            _annotate_cluster_stats(ax, sub, dv, xcol, hue if hue in sub.columns and hue != xcol else None)
             _dedupe_legend(ax)
+            stats_mode = "ci" if kind_key in {"box_mean_ci", "violin"} else "sd"
+            specs = _build_label_specs(sub, dv, xcol, hue if hue in sub.columns and hue != xcol else None, stats_mode)
+            _annotate_compact_labels(ax, specs)
             fig.tight_layout()
             path = out_dir / f"{prefix}_{dv}_{kind_key}.png"
             fig.savefig(path, dpi=300, bbox_inches="tight")
+            stats_path = _export_plot_stats_csv(path, specs)
             plt.close(fig)
             made.append(str(path))
+            made.append(str(stats_path))
     return made
 
 
@@ -669,7 +739,7 @@ def main():
         "outputs": outputs,
         "stats": ["n", "mean", "sd", "median", "min", "max", "skewness", "kurtosis", "ci95", "shapiro_p"],
         "stratification": ["WWR", "Complexity", "ExperienceGroup"],
-        "figure_style": "Origin/Building and Environment-inspired fresh style; blue-orange publication palette; box and jitter exported as separate figures; per-WWR SD/mean annotations placed above each cluster instead of a right-side summary box",
+        "figure_style": "in-plot compact labels, no side panel",
     }
     (out / "descriptive_summary.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(payload, ensure_ascii=False))
